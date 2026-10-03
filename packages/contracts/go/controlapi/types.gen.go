@@ -300,6 +300,84 @@ func (e InviteStatus) Valid() bool {
 	}
 }
 
+// Defines values for LedgerAccountKind.
+const (
+	LedgerAccountKindCLUBTREASURY LedgerAccountKind = "CLUB_TREASURY"
+	LedgerAccountKindMEMBERWALLET LedgerAccountKind = "MEMBER_WALLET"
+	LedgerAccountKindTABLESTACK   LedgerAccountKind = "TABLE_STACK"
+)
+
+// Valid indicates whether the value is a known member of the LedgerAccountKind enum.
+func (e LedgerAccountKind) Valid() bool {
+	switch e {
+	case LedgerAccountKindCLUBTREASURY:
+		return true
+	case LedgerAccountKindMEMBERWALLET:
+		return true
+	case LedgerAccountKindTABLESTACK:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for LedgerKind.
+const (
+	LedgerKindADMINADJUSTMENT   LedgerKind = "ADMIN_ADJUSTMENT"
+	LedgerKindCLUBDEDUCTION     LedgerKind = "CLUB_DEDUCTION"
+	LedgerKindCLUBGRANT         LedgerKind = "CLUB_GRANT"
+	LedgerKindHANDSETTLEMENT    LedgerKind = "HAND_SETTLEMENT"
+	LedgerKindPROMOTIONALCREDIT LedgerKind = "PROMOTIONAL_CREDIT"
+	LedgerKindREVERSAL          LedgerKind = "REVERSAL"
+	LedgerKindTABLEBUYIN        LedgerKind = "TABLE_BUY_IN"
+	LedgerKindTABLECASHOUT      LedgerKind = "TABLE_CASH_OUT"
+)
+
+// Valid indicates whether the value is a known member of the LedgerKind enum.
+func (e LedgerKind) Valid() bool {
+	switch e {
+	case LedgerKindADMINADJUSTMENT:
+		return true
+	case LedgerKindCLUBDEDUCTION:
+		return true
+	case LedgerKindCLUBGRANT:
+		return true
+	case LedgerKindHANDSETTLEMENT:
+		return true
+	case LedgerKindPROMOTIONALCREDIT:
+		return true
+	case LedgerKindREVERSAL:
+		return true
+	case LedgerKindTABLEBUYIN:
+		return true
+	case LedgerKindTABLECASHOUT:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for LedgerTransactionActorType.
+const (
+	LedgerTransactionActorTypeGAMESERVICE LedgerTransactionActorType = "GAME_SERVICE"
+	LedgerTransactionActorTypeSYSTEM      LedgerTransactionActorType = "SYSTEM"
+	LedgerTransactionActorTypeUSER        LedgerTransactionActorType = "USER"
+)
+
+// Valid indicates whether the value is a known member of the LedgerTransactionActorType enum.
+func (e LedgerTransactionActorType) Valid() bool {
+	switch e {
+	case LedgerTransactionActorTypeGAMESERVICE:
+		return true
+	case LedgerTransactionActorTypeSYSTEM:
+		return true
+	case LedgerTransactionActorTypeUSER:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for MemberStatus.
 const (
 	MemberStatusACTIVE MemberStatus = "ACTIVE"
@@ -514,6 +592,13 @@ type AuthResult struct {
 // ChipAmount Integer amount of virtual chips (no monetary value).
 type ChipAmount = int64
 
+// ChipMovementRequest defines model for ChipMovementRequest.
+type ChipMovementRequest struct {
+	Amount int64   `json:"amount"`
+	Note   *string `json:"note,omitempty"`
+	UserId Uuid    `json:"userId"`
+}
+
 // Club defines model for Club.
 type Club struct {
 	// CreatedAt UTC RFC 3339 timestamp
@@ -634,6 +719,67 @@ type JoinClubRequest struct {
 	Code string `json:"code"`
 }
 
+// LedgerAccountKind defines model for LedgerAccountKind.
+type LedgerAccountKind string
+
+// LedgerEntry defines model for LedgerEntry.
+type LedgerEntry struct {
+	AccountId   Uuid              `json:"accountId"`
+	AccountKind LedgerAccountKind `json:"accountKind"`
+
+	// Amount Integer amount of virtual chips (no monetary value).
+	Amount ChipAmount `json:"amount"`
+
+	// BalanceAfter Integer amount of virtual chips (no monetary value).
+	BalanceAfter  ChipAmount          `json:"balanceAfter"`
+	OwnerId       Uuid                `json:"ownerId"`
+	OwnerUsername *string             `json:"ownerUsername"`
+	TableId       *openapi_types.UUID `json:"tableId"`
+}
+
+// LedgerKind defines model for LedgerKind.
+type LedgerKind string
+
+// LedgerSummary defines model for LedgerSummary.
+type LedgerSummary struct {
+	// AtTables Integer amount of virtual chips (no monetary value).
+	AtTables ChipAmount `json:"atTables"`
+	ClubId   Uuid       `json:"clubId"`
+	Holders  int        `json:"holders"`
+
+	// InWallets Integer amount of virtual chips (no monetary value).
+	InWallets ChipAmount `json:"inWallets"`
+
+	// Issued Integer amount of virtual chips (no monetary value).
+	Issued ChipAmount `json:"issued"`
+}
+
+// LedgerTransaction defines model for LedgerTransaction.
+type LedgerTransaction struct {
+	ActorType     LedgerTransactionActorType `json:"actorType"`
+	ActorUserId   *openapi_types.UUID        `json:"actorUserId"`
+	ActorUsername *string                    `json:"actorUsername"`
+
+	// CreatedAt UTC RFC 3339 timestamp
+	CreatedAt     Timestamp              `json:"createdAt"`
+	Entries       []LedgerEntry          `json:"entries"`
+	Id            Uuid                   `json:"id"`
+	Kind          LedgerKind             `json:"kind"`
+	Metadata      map[string]interface{} `json:"metadata"`
+	ReferenceId   *string                `json:"referenceId"`
+	ReferenceType *string                `json:"referenceType"`
+	ReversesTxId  *openapi_types.UUID    `json:"reversesTxId"`
+}
+
+// LedgerTransactionActorType defines model for LedgerTransaction.ActorType.
+type LedgerTransactionActorType string
+
+// LedgerTransactionPage defines model for LedgerTransactionPage.
+type LedgerTransactionPage struct {
+	Items      []LedgerTransaction `json:"items"`
+	NextCursor *string             `json:"nextCursor"`
+}
+
 // LoginRequest defines model for LoginRequest.
 type LoginRequest struct {
 	DeviceId *string `json:"deviceId,omitempty"`
@@ -651,6 +797,23 @@ type Member struct {
 	Status   MemberStatus `json:"status"`
 	UserId   Uuid         `json:"userId"`
 	Username string       `json:"username"`
+}
+
+// MemberBalance defines model for MemberBalance.
+type MemberBalance struct {
+	// TableBalance Integer amount of virtual chips (no monetary value).
+	TableBalance ChipAmount `json:"tableBalance"`
+	UserId       Uuid       `json:"userId"`
+	Username     string     `json:"username"`
+
+	// WalletBalance Integer amount of virtual chips (no monetary value).
+	WalletBalance ChipAmount `json:"walletBalance"`
+}
+
+// MemberBalancePage defines model for MemberBalancePage.
+type MemberBalancePage struct {
+	Items      []MemberBalance `json:"items"`
+	NextCursor *string         `json:"nextCursor"`
 }
 
 // MemberPage defines model for MemberPage.
@@ -676,6 +839,11 @@ type RegisterRequest struct {
 	Email    openapi_types.Email `json:"email"`
 	Password string              `json:"password"`
 	Username string              `json:"username"`
+}
+
+// ReversalRequest defines model for ReversalRequest.
+type ReversalRequest struct {
+	Note string `json:"note"`
 }
 
 // Session defines model for Session.
@@ -730,6 +898,37 @@ type UserStatus string
 
 // Uuid defines model for Uuid.
 type Uuid = openapi_types.UUID
+
+// Wallet defines model for Wallet.
+type Wallet struct {
+	// Balance Integer amount of virtual chips (no monetary value).
+	Balance ChipAmount `json:"balance"`
+	ClubId  Uuid       `json:"clubId"`
+	UserId  Uuid       `json:"userId"`
+}
+
+// WalletEntry defines model for WalletEntry.
+type WalletEntry struct {
+	// Amount Integer amount of virtual chips (no monetary value).
+	Amount ChipAmount `json:"amount"`
+
+	// BalanceAfter Integer amount of virtual chips (no monetary value).
+	BalanceAfter ChipAmount `json:"balanceAfter"`
+
+	// CreatedAt UTC RFC 3339 timestamp
+	CreatedAt     Timestamp  `json:"createdAt"`
+	EntryId       Uuid       `json:"entryId"`
+	Kind          LedgerKind `json:"kind"`
+	ReferenceId   *string    `json:"referenceId"`
+	ReferenceType *string    `json:"referenceType"`
+	TxId          Uuid       `json:"txId"`
+}
+
+// WalletEntryPage defines model for WalletEntryPage.
+type WalletEntryPage struct {
+	Items      []WalletEntry `json:"items"`
+	NextCursor *string       `json:"nextCursor"`
+}
 
 // AuthTransport defines model for AuthTransport.
 type AuthTransport string
@@ -796,10 +995,44 @@ type ListClubAuditLogParams struct {
 	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
 }
 
+// DeductChipsParams defines parameters for DeductChips.
+type DeductChipsParams struct {
+	// IdempotencyKey Required for chip movements; retries with the same key never move chips twice.
+	IdempotencyKey string `json:"Idempotency-Key"`
+}
+
+// GrantChipsParams defines parameters for GrantChips.
+type GrantChipsParams struct {
+	// IdempotencyKey Required for chip movements; retries with the same key never move chips twice.
+	IdempotencyKey string `json:"Idempotency-Key"`
+}
+
 // CreateClubInviteParams defines parameters for CreateClubInvite.
 type CreateClubInviteParams struct {
 	// IdempotencyKey Unique key making a retried state-changing request a no-op.
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// ListMemberBalancesParams defines parameters for ListMemberBalances.
+type ListMemberBalancesParams struct {
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Cursor Opaque cursor from a previous page's `nextCursor`.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+}
+
+// ListLedgerTransactionsParams defines parameters for ListLedgerTransactions.
+type ListLedgerTransactionsParams struct {
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Cursor Opaque cursor from a previous page's `nextCursor`.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+}
+
+// ReverseLedgerTransactionParams defines parameters for ReverseLedgerTransaction.
+type ReverseLedgerTransactionParams struct {
+	// IdempotencyKey Required for chip movements; retries with the same key never move chips twice.
+	IdempotencyKey string `json:"Idempotency-Key"`
 }
 
 // ListClubMembersParams defines parameters for ListClubMembers.
@@ -811,6 +1044,14 @@ type ListClubMembersParams struct {
 
 	// Status Filter by status (staff only; members always see ACTIVE).
 	Status *MemberStatus `form:"status,omitempty" json:"status,omitempty"`
+}
+
+// ListMyWalletEntriesParams defines parameters for ListMyWalletEntries.
+type ListMyWalletEntriesParams struct {
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Cursor Opaque cursor from a previous page's `nextCursor`.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
 }
 
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
@@ -828,11 +1069,20 @@ type CreateClubJSONRequestBody = CreateClubRequest
 // JoinClubByCodeJSONRequestBody defines body for JoinClubByCode for application/json ContentType.
 type JoinClubByCodeJSONRequestBody = JoinClubRequest
 
+// DeductChipsJSONRequestBody defines body for DeductChips for application/json ContentType.
+type DeductChipsJSONRequestBody = ChipMovementRequest
+
+// GrantChipsJSONRequestBody defines body for GrantChips for application/json ContentType.
+type GrantChipsJSONRequestBody = ChipMovementRequest
+
 // CreateClubInviteJSONRequestBody defines body for CreateClubInvite for application/json ContentType.
 type CreateClubInviteJSONRequestBody = CreateInviteRequest
 
 // JoinClubJSONRequestBody defines body for JoinClub for application/json ContentType.
 type JoinClubJSONRequestBody = JoinClubRequest
+
+// ReverseLedgerTransactionJSONRequestBody defines body for ReverseLedgerTransaction for application/json ContentType.
+type ReverseLedgerTransactionJSONRequestBody = ReversalRequest
 
 // UpdateClubMemberJSONRequestBody defines body for UpdateClubMember for application/json ContentType.
 type UpdateClubMemberJSONRequestBody = UpdateMemberRequest

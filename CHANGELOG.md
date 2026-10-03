@@ -5,6 +5,19 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added — M3 Ledger
+
+- Migration `000005_ledger`: per-club accounts (treasury, member wallets,
+  table stacks), immutable transactions/entries, `ledger_post()` enforcing
+  zero-sum, idempotency, non-negative balances, per-kind flows and
+  deterministic locking; `ledger_reverse()`; deferred zero-sum trigger;
+  balance-projection guard; `ledger_invariant_violations` view.
+- `go/ledger-client` (Go) and `LedgerRepository` (TS) over the same SQL API.
+- Chip administration API: wallet + history, grants, deductions, reversals,
+  circulation summary, member balances, transaction log; audit + risk events.
+- Worker job monitoring ledger invariants (`ledger_invariant_violations` gauge)
+  and a worker `/metrics` endpoint. Demo seed grants chips idempotently.
+
 ### Added — M2 Pure Hold'em engine
 
 - `go/poker`: card model, crypto-secure Fisher–Yates shuffle with unbiased

@@ -30,6 +30,8 @@ tags:
     description: Current user profile and sessions
   - name: clubs
     description: Clubs, memberships, roles, invites, audit
+  - name: ledger
+    description: Virtual-chip wallets and club chip administration (no monetary value)
 paths:
   /health/live:
     get:
@@ -486,6 +488,202 @@ paths:
                 $ref: '#/components/schemas/AuditPage'
         '403':
           $ref: '#/components/responses/Error'
+  /v1/clubs/{clubId}/wallet:
+    parameters:
+      - $ref: '#/components/parameters/ClubId'
+    get:
+      tags: [ledger]
+      operationId: getMyWallet
+      summary: My virtual-chip wallet balance in this club
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Wallet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Wallet'
+        '403':
+          $ref: '#/components/responses/Error'
+  /v1/clubs/{clubId}/wallet/entries:
+    parameters:
+      - $ref: '#/components/parameters/ClubId'
+    get:
+      tags: [ledger]
+      operationId: listMyWalletEntries
+      summary: My wallet movements (newest first)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Page of entries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WalletEntryPage'
+  /v1/clubs/{clubId}/chips/grants:
+    parameters:
+      - $ref: '#/components/parameters/ClubId'
+    post:
+      tags: [ledger]
+      operationId: grantChips
+      summary: Grant virtual chips from the club treasury to a member (ADMIN+)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: Required for chip movements; retries with the same key never move chips twice.
+          schema:
+            type: string
+            pattern: '^[A-Za-z0-9._:-]{8,128}$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChipMovementRequest'
+      responses:
+        '201':
+          description: Posted ledger transaction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LedgerTransaction'
+        '403':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+  /v1/clubs/{clubId}/chips/deductions:
+    parameters:
+      - $ref: '#/components/parameters/ClubId'
+    post:
+      tags: [ledger]
+      operationId: deductChips
+      summary: Return a member's chips to the club treasury (ADMIN+)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: Required for chip movements; retries with the same key never move chips twice.
+          schema:
+            type: string
+            pattern: '^[A-Za-z0-9._:-]{8,128}$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChipMovementRequest'
+      responses:
+        '201':
+          description: Posted ledger transaction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LedgerTransaction'
+        '422':
+          $ref: '#/components/responses/Error'
+  /v1/clubs/{clubId}/ledger/summary:
+    parameters:
+      - $ref: '#/components/parameters/ClubId'
+    get:
+      tags: [ledger]
+      operationId: getLedgerSummary
+      summary: Chips in circulation (ADMIN+, platform admins)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LedgerSummary'
+  /v1/clubs/{clubId}/ledger/balances:
+    parameters:
+      - $ref: '#/components/parameters/ClubId'
+    get:
+      tags: [ledger]
+      operationId: listMemberBalances
+      summary: Member wallet and table balances (ADMIN+)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Page of balances
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemberBalancePage'
+  /v1/clubs/{clubId}/ledger/transactions:
+    parameters:
+      - $ref: '#/components/parameters/ClubId'
+    get:
+      tags: [ledger]
+      operationId: listLedgerTransactions
+      summary: Club ledger transactions with entries (ADMIN+)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Page of transactions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LedgerTransactionPage'
+  /v1/clubs/{clubId}/ledger/transactions/{txId}/reversal:
+    parameters:
+      - $ref: '#/components/parameters/ClubId'
+      - name: txId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+    post:
+      tags: [ledger]
+      operationId: reverseLedgerTransaction
+      summary: Reverse an administrative chip movement (ADMIN+)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: Required for chip movements; retries with the same key never move chips twice.
+          schema:
+            type: string
+            pattern: '^[A-Za-z0-9._:-]{8,128}$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReversalRequest'
+      responses:
+        '201':
+          description: Posted reversal
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LedgerTransaction'
+        '403':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
 components:
   securitySchemes:
     bearerAuth:
@@ -900,6 +1098,217 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AuditRecord'
+        nextCursor:
+          type: string
+          nullable: true
+    LedgerKind:
+      type: string
+      enum:
+        [
+          CLUB_GRANT,
+          CLUB_DEDUCTION,
+          PROMOTIONAL_CREDIT,
+          ADMIN_ADJUSTMENT,
+          TABLE_BUY_IN,
+          TABLE_CASH_OUT,
+          HAND_SETTLEMENT,
+          REVERSAL,
+        ]
+    LedgerAccountKind:
+      type: string
+      enum: [CLUB_TREASURY, MEMBER_WALLET, TABLE_STACK]
+    Wallet:
+      type: object
+      additionalProperties: false
+      required: [clubId, userId, balance]
+      properties:
+        clubId:
+          $ref: '#/components/schemas/Uuid'
+        userId:
+          $ref: '#/components/schemas/Uuid'
+        balance:
+          $ref: '#/components/schemas/ChipAmount'
+    WalletEntry:
+      type: object
+      additionalProperties: false
+      required: [entryId, txId, kind, amount, balanceAfter, referenceType, referenceId, createdAt]
+      properties:
+        entryId:
+          $ref: '#/components/schemas/Uuid'
+        txId:
+          $ref: '#/components/schemas/Uuid'
+        kind:
+          $ref: '#/components/schemas/LedgerKind'
+        amount:
+          $ref: '#/components/schemas/ChipAmount'
+        balanceAfter:
+          $ref: '#/components/schemas/ChipAmount'
+        referenceType:
+          type: string
+          nullable: true
+        referenceId:
+          type: string
+          nullable: true
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+    WalletEntryPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/WalletEntry'
+        nextCursor:
+          type: string
+          nullable: true
+    ChipMovementRequest:
+      type: object
+      additionalProperties: false
+      required: [userId, amount]
+      properties:
+        userId:
+          $ref: '#/components/schemas/Uuid'
+        amount:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 1000000000000000
+        note:
+          type: string
+          maxLength: 200
+    ReversalRequest:
+      type: object
+      additionalProperties: false
+      required: [note]
+      properties:
+        note:
+          type: string
+          minLength: 1
+          maxLength: 200
+    LedgerEntry:
+      type: object
+      additionalProperties: false
+      required: [accountId, accountKind, ownerId, ownerUsername, tableId, amount, balanceAfter]
+      properties:
+        accountId:
+          $ref: '#/components/schemas/Uuid'
+        accountKind:
+          $ref: '#/components/schemas/LedgerAccountKind'
+        ownerId:
+          $ref: '#/components/schemas/Uuid'
+        ownerUsername:
+          type: string
+          nullable: true
+        tableId:
+          type: string
+          format: uuid
+          nullable: true
+        amount:
+          $ref: '#/components/schemas/ChipAmount'
+        balanceAfter:
+          $ref: '#/components/schemas/ChipAmount'
+    LedgerTransaction:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          id,
+          kind,
+          actorType,
+          actorUserId,
+          actorUsername,
+          referenceType,
+          referenceId,
+          reversesTxId,
+          metadata,
+          createdAt,
+          entries,
+        ]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        kind:
+          $ref: '#/components/schemas/LedgerKind'
+        actorType:
+          type: string
+          enum: [USER, SYSTEM, GAME_SERVICE]
+        actorUserId:
+          type: string
+          format: uuid
+          nullable: true
+        actorUsername:
+          type: string
+          nullable: true
+        referenceType:
+          type: string
+          nullable: true
+        referenceId:
+          type: string
+          nullable: true
+        reversesTxId:
+          type: string
+          format: uuid
+          nullable: true
+        metadata:
+          type: object
+          additionalProperties: true
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/LedgerEntry'
+    LedgerTransactionPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/LedgerTransaction'
+        nextCursor:
+          type: string
+          nullable: true
+    LedgerSummary:
+      type: object
+      additionalProperties: false
+      required: [clubId, issued, inWallets, atTables, holders]
+      properties:
+        clubId:
+          $ref: '#/components/schemas/Uuid'
+        issued:
+          $ref: '#/components/schemas/ChipAmount'
+        inWallets:
+          $ref: '#/components/schemas/ChipAmount'
+        atTables:
+          $ref: '#/components/schemas/ChipAmount'
+        holders:
+          type: integer
+    MemberBalance:
+      type: object
+      additionalProperties: false
+      required: [userId, username, walletBalance, tableBalance]
+      properties:
+        userId:
+          $ref: '#/components/schemas/Uuid'
+        username:
+          type: string
+        walletBalance:
+          $ref: '#/components/schemas/ChipAmount'
+        tableBalance:
+          $ref: '#/components/schemas/ChipAmount'
+    MemberBalancePage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MemberBalance'
         nextCursor:
           type: string
           nullable: true

@@ -1,8 +1,10 @@
 import { createServer } from 'node:http';
 import { Pool } from 'pg';
 import pino from 'pino';
+import { collectDefaultMetrics, Registry } from 'prom-client';
 import { loadConfig } from './config';
 import { Job, runJobs } from './jobs';
+import { ledgerInvariantCheck } from './ledger-jobs';
 import { purgeIdempotencyKeys } from './purge-jobs';
 
 async function main(): Promise<void> {
@@ -20,11 +22,19 @@ async function main(): Promise<void> {
   let draining = false;
 
   // Jobs are registered here as milestones add them (see docs/architecture.md).
-  const jobs: Job[] = [purgeIdempotencyKeys(pool)];
+  const registry = new Registry();
+  registry.setDefaultLabels({ service: 'worker' });
+  collectDefaultMetrics({ register: registry });
+  const jobs: Job[] = [purgeIdempotencyKeys(pool), ledgerInvariantCheck(pool, logger, registry)];
 
   const server = createServer(async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 'no-store');
+    if (req.method === 'GET' && req.url === '/metrics') {
+      res.setHeader('Content-Type', registry.contentType);
+      res.end(await registry.metrics());
+      return;
+    }
     if (req.method === 'GET' && req.url === '/health/live') {
       res.end(JSON.stringify({ status: 'ok', service: 'worker' }));
       return;
@@ -56,6 +66,7 @@ async function main(): Promise<void> {
     logger.info({ port: config.WORKER_PORT }, 'service_listening'),
   );
 
+  void runJobs(jobs, logger);
   const timer = setInterval(() => {
     void runJobs(jobs, logger);
   }, config.JOB_INTERVAL_MS);

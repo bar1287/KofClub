@@ -1,0 +1,10 @@
+DROP VIEW IF EXISTS ledger_invariant_violations;
+DROP FUNCTION IF EXISTS ledger_reverse(uuid, uuid, text, text, uuid, jsonb);
+DROP FUNCTION IF EXISTS ledger_post(uuid, text, text, uuid, text, uuid, text, text, jsonb, jsonb, uuid);
+DROP FUNCTION IF EXISTS ledger_ensure_account(uuid, text, uuid, uuid);
+DROP TABLE IF EXISTS ledger_entries;
+DROP TABLE IF EXISTS ledger_transactions;
+DROP TABLE IF EXISTS ledger_accounts;
+DROP FUNCTION IF EXISTS ledger_assert_zero_sum();
+DROP FUNCTION IF EXISTS ledger_accounts_insert_guard();
+DROP FUNCTION IF EXISTS ledger_accounts_guard();

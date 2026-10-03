@@ -7,7 +7,7 @@ with the repository at the end of every task.
 
 ## Current milestone
 
-**M3 — Ledger** (next). M0, M1 and M2 are complete.
+**M4 — Table service** (next). M0–M3 are complete.
 
 ## Milestones (spec §16)
 
@@ -17,7 +17,7 @@ with the repository at the end of every task.
 | M1 — Identity + Clubs    | ✅ Done | Argon2id, EdDSA JWT, refresh rotation + reuse detection, sessions, clubs/invites/roles/bans, RBAC, audit, rate limits, idempotency              |
 | M2 — Pure Hold'em engine | ✅ Done | `go/poker`: crypto shuffle, evaluator (exhaustive tests), NL betting state machine, side pots, odd chips, table/button; 12k-hand property tests |
 | M3 — Ledger              | ⏳ Next |                                                                                                                                                 |
-| M4 — Table service       | Pending |                                                                                                                                                 |
+| M4 — Table service       | ⏳ Next |                                                                                                                                                 |
 | M5 — Realtime            | Pending |                                                                                                                                                 |
 | M6 — Web poker table     | Pending |                                                                                                                                                 |
 | M7 — History + Admin     | Pending |                                                                                                                                                 |
@@ -74,10 +74,14 @@ Auth: `POST /auth/register|login|refresh|logout`. Me: `GET /me`,
 `POST /clubs/{id}/join-code/rotate`, `GET /clubs/{id}/members`,
 `PATCH /clubs/{id}/members/{userId}`, `POST|GET /clubs/{id}/invites`,
 `DELETE /clubs/{id}/invites/{inviteId}`, `GET /clubs/{id}/audit-log`.
+Ledger: `GET /clubs/{id}/wallet`, `GET /clubs/{id}/wallet/entries`,
+`POST /clubs/{id}/chips/grants|deductions`, `GET /clubs/{id}/ledger/summary|balances|transactions`,
+`POST /clubs/{id}/ledger/transactions/{txId}/reversal`.
 Canonical contract: `packages/contracts/openapi/control-api.yaml`
 (integration tests validate responses against it).
 
 ## Next tasks
 
-1. M3: ledger migration (`ledger_accounts`, `ledger_transactions`, `ledger_entries`), `ledger_post()` SQL function enforcing zero-sum, idempotency (`external_ref`), non-negative balances, append-only entries.
-2. M3: control-api ledger module (club treasury grants/deductions, balances, history), `go/ledger-client` for the game service (buy-in, cash-out, hand settlement inside caller transactions); concurrency/idempotency tests.
+1. M4: migrations for `tables`, `table_seats`, `hands`, `hand_players`, `game_events`, `table_leases` (+ FK from `ledger_accounts.table_id`).
+2. M4: control-api table configuration endpoints (`POST/GET /v1/clubs/{id}/tables`), seat/leave forwarding to the game service.
+3. M4: game-service lease manager (epoch fencing), table actor (serialized commands, timers, buy-in/cash-out, hand persistence + atomic settlement, command idempotency), internal API, recovery.

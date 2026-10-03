@@ -1,16 +1,33 @@
 {
   "$comment": "Local/demo data only. scripts refuse to load seeds when APP_ENV=production.",
   "users": [
-    { "email": "alice@demo.kofclub.test", "username": "alice", "password": "alice-demo-password" },
-    { "email": "bob@demo.kofclub.test", "username": "bob", "password": "bob-demo-password" },
-    { "email": "carol@demo.kofclub.test", "username": "carol", "password": "carol-demo-password" }
+    {
+      "email": "alice@demo.kofclub.test",
+      "username": "alice",
+      "password": "alice-demo-password"
+    },
+    {
+      "email": "bob@demo.kofclub.test",
+      "username": "bob",
+      "password": "bob-demo-password"
+    },
+    {
+      "email": "carol@demo.kofclub.test",
+      "username": "carol",
+      "password": "carol-demo-password"
+    }
   ],
   "clubs": [
     {
       "name": "Demo Club",
       "description": "Seeded demo club (virtual chips only)",
       "owner": "alice",
-      "members": ["bob", "carol"]
+      "members": ["bob", "carol"],
+      "grants": {
+        "alice": 10000,
+        "bob": 10000,
+        "carol": 10000
+      }
     }
   ]
 }

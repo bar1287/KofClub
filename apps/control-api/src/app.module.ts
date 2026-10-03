@@ -12,6 +12,7 @@ import { MetricsModule } from './metrics/metrics.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { ClubsModule } from './modules/clubs/clubs.module';
 import { IdentityModule } from './modules/identity/identity.module';
+import { LedgerModule } from './modules/ledger/ledger.module';
 import { RiskModule } from './modules/risk/risk.module';
 
 @Module({})
@@ -31,6 +32,7 @@ export class AppModule {
         RiskModule,
         IdentityModule,
         ClubsModule,
+        LedgerModule,
       ],
       providers: [{ provide: APP_FILTER, useClass: AppErrorFilter }],
     };

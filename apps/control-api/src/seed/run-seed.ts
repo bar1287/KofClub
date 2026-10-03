@@ -10,10 +10,17 @@ import { loadConfig } from '../config/config';
 import { Database } from '../infra/database/database';
 import { ClubsService } from '../modules/clubs/clubs.service';
 import { AuthService } from '../modules/identity/auth.service';
+import { LedgerService } from '../modules/ledger/ledger.service';
 
 interface SeedFile {
   users: Array<{ email: string; username: string; password: string }>;
-  clubs: Array<{ name: string; description?: string; owner: string; members: string[] }>;
+  clubs: Array<{
+    name: string;
+    description?: string;
+    owner: string;
+    members: string[];
+    grants?: Record<string, number>;
+  }>;
 }
 
 /**
@@ -36,6 +43,7 @@ async function main(): Promise<void> {
   try {
     const authService = app.get(AuthService);
     const clubs = app.get(ClubsService);
+    const ledger = app.get(LedgerService);
     const db = app.get(Database);
     const ctx: RequestContext = { requestId: 'seed', ipHash: null, userAgent: 'seed-script' };
 
@@ -88,6 +96,22 @@ async function main(): Promise<void> {
         } catch (err) {
           if (!(err instanceof AppError) || err.code !== 'ALREADY_CLUB_MEMBER') throw err;
         }
+      }
+      for (const [username, amount] of Object.entries(c.grants ?? {})) {
+        const member = principals.get(username);
+        if (!member) throw new Error(`unknown grant recipient ${username}`);
+        // Fixed idempotency keys make re-seeding a no-op for chips too.
+        await ledger.grant(
+          owner,
+          club.id,
+          { userId: member.userId, amount, note: 'demo seed' },
+          `seed-grant-${username}`,
+          {
+            ...ctx,
+            auth: owner,
+          },
+        );
+        console.log(`  chips: ${username} has ${(await ledger.wallet(member, club.id)).balance}`);
       }
     }
     console.log('seed complete');

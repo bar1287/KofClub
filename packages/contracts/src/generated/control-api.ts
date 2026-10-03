@@ -164,6 +164,44 @@ export type paths = {
     patch?: never;
     trace?: never;
   };
+  '/v1/clubs/{clubId}/chips/deductions': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        clubId: components['parameters']['ClubId'];
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Return a member's chips to the club treasury (ADMIN+) */
+    post: operations['deductChips'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/clubs/{clubId}/chips/grants': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        clubId: components['parameters']['ClubId'];
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Grant virtual chips from the club treasury to a member (ADMIN+) */
+    post: operations['grantChips'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/clubs/{clubId}/invites': {
     parameters: {
       query?: never;
@@ -261,6 +299,83 @@ export type paths = {
     patch?: never;
     trace?: never;
   };
+  '/v1/clubs/{clubId}/ledger/balances': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        clubId: components['parameters']['ClubId'];
+      };
+      cookie?: never;
+    };
+    /** Member wallet and table balances (ADMIN+) */
+    get: operations['listMemberBalances'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/clubs/{clubId}/ledger/summary': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        clubId: components['parameters']['ClubId'];
+      };
+      cookie?: never;
+    };
+    /** Chips in circulation (ADMIN+, platform admins) */
+    get: operations['getLedgerSummary'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/clubs/{clubId}/ledger/transactions': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        clubId: components['parameters']['ClubId'];
+      };
+      cookie?: never;
+    };
+    /** Club ledger transactions with entries (ADMIN+) */
+    get: operations['listLedgerTransactions'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/clubs/{clubId}/ledger/transactions/{txId}/reversal': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        clubId: components['parameters']['ClubId'];
+        txId: components['schemas']['Uuid'];
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Reverse an administrative chip movement (ADMIN+) */
+    post: operations['reverseLedgerTransaction'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/clubs/{clubId}/members': {
     parameters: {
       query?: never;
@@ -298,6 +413,44 @@ export type paths = {
     head?: never;
     /** Change a member's role or status (ban/unban) */
     patch: operations['updateClubMember'];
+    trace?: never;
+  };
+  '/v1/clubs/{clubId}/wallet': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        clubId: components['parameters']['ClubId'];
+      };
+      cookie?: never;
+    };
+    /** My virtual-chip wallet balance in this club */
+    get: operations['getMyWallet'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/clubs/{clubId}/wallet/entries': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        clubId: components['parameters']['ClubId'];
+      };
+      cookie?: never;
+    };
+    /** My wallet movements (newest first) */
+    get: operations['listMyWalletEntries'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
     trace?: never;
   };
   '/v1/clubs/join': {
@@ -410,6 +563,12 @@ export type components = {
      * @description Integer amount of virtual chips (no monetary value).
      */
     ChipAmount: number;
+    ChipMovementRequest: {
+      /** Format: int64 */
+      amount: number;
+      note?: string;
+      userId: components['schemas']['Uuid'];
+    };
     Club: {
       createdAt: components['schemas']['Timestamp'];
       description: string | null;
@@ -542,6 +701,57 @@ export type components = {
       /** @description Club join code (8 chars) or invite code (12 chars); case-insensitive. */
       code: string;
     };
+    /** @enum {string} */
+    LedgerAccountKind: 'CLUB_TREASURY' | 'MEMBER_WALLET' | 'TABLE_STACK';
+    LedgerEntry: {
+      accountId: components['schemas']['Uuid'];
+      accountKind: components['schemas']['LedgerAccountKind'];
+      amount: components['schemas']['ChipAmount'];
+      balanceAfter: components['schemas']['ChipAmount'];
+      ownerId: components['schemas']['Uuid'];
+      ownerUsername: string | null;
+      /** Format: uuid */
+      tableId: string | null;
+    };
+    /** @enum {string} */
+    LedgerKind:
+      | 'CLUB_GRANT'
+      | 'CLUB_DEDUCTION'
+      | 'PROMOTIONAL_CREDIT'
+      | 'ADMIN_ADJUSTMENT'
+      | 'TABLE_BUY_IN'
+      | 'TABLE_CASH_OUT'
+      | 'HAND_SETTLEMENT'
+      | 'REVERSAL';
+    LedgerSummary: {
+      atTables: components['schemas']['ChipAmount'];
+      clubId: components['schemas']['Uuid'];
+      holders: number;
+      inWallets: components['schemas']['ChipAmount'];
+      issued: components['schemas']['ChipAmount'];
+    };
+    LedgerTransaction: {
+      /** @enum {string} */
+      actorType: 'USER' | 'SYSTEM' | 'GAME_SERVICE';
+      /** Format: uuid */
+      actorUserId: string | null;
+      actorUsername: string | null;
+      createdAt: components['schemas']['Timestamp'];
+      entries: components['schemas']['LedgerEntry'][];
+      id: components['schemas']['Uuid'];
+      kind: components['schemas']['LedgerKind'];
+      metadata: {
+        [key: string]: unknown;
+      };
+      referenceId: string | null;
+      referenceType: string | null;
+      /** Format: uuid */
+      reversesTxId: string | null;
+    };
+    LedgerTransactionPage: {
+      items: components['schemas']['LedgerTransaction'][];
+      nextCursor: string | null;
+    };
     LoginRequest: {
       deviceId?: string;
       /** @description Email or username */
@@ -554,6 +764,16 @@ export type components = {
       status: components['schemas']['MemberStatus'];
       userId: components['schemas']['Uuid'];
       username: string;
+    };
+    MemberBalance: {
+      tableBalance: components['schemas']['ChipAmount'];
+      userId: components['schemas']['Uuid'];
+      username: string;
+      walletBalance: components['schemas']['ChipAmount'];
+    };
+    MemberBalancePage: {
+      items: components['schemas']['MemberBalance'][];
+      nextCursor: string | null;
     };
     MemberPage: {
       items: components['schemas']['Member'][];
@@ -572,6 +792,9 @@ export type components = {
       email: string;
       password: string;
       username: string;
+    };
+    ReversalRequest: {
+      note: string;
     };
     Session: {
       createdAt: components['schemas']['Timestamp'];
@@ -609,6 +832,25 @@ export type components = {
     UserStatus: 'ACTIVE' | 'SUSPENDED' | 'DELETED';
     /** Format: uuid */
     Uuid: string;
+    Wallet: {
+      balance: components['schemas']['ChipAmount'];
+      clubId: components['schemas']['Uuid'];
+      userId: components['schemas']['Uuid'];
+    };
+    WalletEntry: {
+      amount: components['schemas']['ChipAmount'];
+      balanceAfter: components['schemas']['ChipAmount'];
+      createdAt: components['schemas']['Timestamp'];
+      entryId: components['schemas']['Uuid'];
+      kind: components['schemas']['LedgerKind'];
+      referenceId: string | null;
+      referenceType: string | null;
+      txId: components['schemas']['Uuid'];
+    };
+    WalletEntryPage: {
+      items: components['schemas']['WalletEntry'][];
+      nextCursor: string | null;
+    };
   };
   responses: {
     /** @description Machine-readable error */
@@ -906,6 +1148,67 @@ export interface operations {
       403: components['responses']['Error'];
     };
   };
+  deductChips: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Required for chip movements; retries with the same key never move chips twice. */
+        'Idempotency-Key': string;
+      };
+      path: {
+        clubId: components['parameters']['ClubId'];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ChipMovementRequest'];
+      };
+    };
+    responses: {
+      /** @description Posted ledger transaction */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LedgerTransaction'];
+        };
+      };
+      422: components['responses']['Error'];
+    };
+  };
+  grantChips: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Required for chip movements; retries with the same key never move chips twice. */
+        'Idempotency-Key': string;
+      };
+      path: {
+        clubId: components['parameters']['ClubId'];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ChipMovementRequest'];
+      };
+    };
+    responses: {
+      /** @description Posted ledger transaction */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LedgerTransaction'];
+        };
+      };
+      403: components['responses']['Error'];
+      409: components['responses']['Error'];
+    };
+  };
   listClubInvites: {
     parameters: {
       query?: never;
@@ -1054,6 +1357,112 @@ export interface operations {
       403: components['responses']['Error'];
     };
   };
+  listMemberBalances: {
+    parameters: {
+      query?: {
+        /** @description Opaque cursor from a previous page's `nextCursor`. */
+        cursor?: components['parameters']['Cursor'];
+        limit?: components['parameters']['Limit'];
+      };
+      header?: never;
+      path: {
+        clubId: components['parameters']['ClubId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Page of balances */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MemberBalancePage'];
+        };
+      };
+    };
+  };
+  getLedgerSummary: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        clubId: components['parameters']['ClubId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Summary */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LedgerSummary'];
+        };
+      };
+    };
+  };
+  listLedgerTransactions: {
+    parameters: {
+      query?: {
+        /** @description Opaque cursor from a previous page's `nextCursor`. */
+        cursor?: components['parameters']['Cursor'];
+        limit?: components['parameters']['Limit'];
+      };
+      header?: never;
+      path: {
+        clubId: components['parameters']['ClubId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Page of transactions */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LedgerTransactionPage'];
+        };
+      };
+    };
+  };
+  reverseLedgerTransaction: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Required for chip movements; retries with the same key never move chips twice. */
+        'Idempotency-Key': string;
+      };
+      path: {
+        clubId: components['parameters']['ClubId'];
+        txId: components['schemas']['Uuid'];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ReversalRequest'];
+      };
+    };
+    responses: {
+      /** @description Posted reversal */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LedgerTransaction'];
+        };
+      };
+      403: components['responses']['Error'];
+      409: components['responses']['Error'];
+    };
+  };
   listClubMembers: {
     parameters: {
       query?: {
@@ -1110,6 +1519,55 @@ export interface operations {
       };
       403: components['responses']['Error'];
       404: components['responses']['Error'];
+    };
+  };
+  getMyWallet: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        clubId: components['parameters']['ClubId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Wallet */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Wallet'];
+        };
+      };
+      403: components['responses']['Error'];
+    };
+  };
+  listMyWalletEntries: {
+    parameters: {
+      query?: {
+        /** @description Opaque cursor from a previous page's `nextCursor`. */
+        cursor?: components['parameters']['Cursor'];
+        limit?: components['parameters']['Limit'];
+      };
+      header?: never;
+      path: {
+        clubId: components['parameters']['ClubId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Page of entries */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['WalletEntryPage'];
+        };
+      };
     };
   };
   joinClubByCode: {
