@@ -5,6 +5,35 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added — M6 Web poker table
+
+- Web client (Next.js): register/login/logout, session restore from the
+  HttpOnly refresh cookie, clubs (create, join by code), club lobby (wallet,
+  tables, members, staff table creation and chip grants), profile with
+  device sign-out, and the poker table (seats around the felt, stacks, bets,
+  dealer/blind markers, own hole cards, face-down opponents, board, pot,
+  turn timer, legal-action bar with bet presets, buy-in dialog, sit out/in,
+  leave, action log, last-hand results, deck commitment).
+- Reference realtime client: HELLO/AUTH token refresh, exponential backoff
+  with jitter, resume with `lastSeenSeq`, idempotent command re-send after
+  reconnects, heartbeats; pure table-state reducer with strict seq ordering
+  and resync (ADR-012).
+- API client with single-flight, cross-tab (Web Locks) refresh-token rotation.
+- `make e2e` / `scripts/e2e.sh`: fresh database, all services started
+  natively, Playwright two-browser vertical slice (full hand, private cards,
+  reload mid-hand, table/wallet reconciliation) and auth-flow spec; CI job.
+- `go/cmd/devdb`: recreates the e2e database (refuses outside local/test).
+- Docs: `docs/web-client.md`, ADR-012.
+
+### Fixed
+
+- game-service: a graceful drain now waits until every table lease is
+  released before the process closes its database pool, so another node
+  adopts the tables immediately instead of after the lease TTL (previously
+  releases failed with "context canceled" at shutdown).
+- Web: logging out from a protected page no longer bounces through
+  `/login?next=…`.
+
 ### Added — M5 Realtime
 
 - realtime-gateway: WebSocket protocol (HELLO/WELCOME, AUTH token refresh,

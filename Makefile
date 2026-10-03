@@ -125,8 +125,8 @@ integration: ## Integration tests against real PostgreSQL + Redis (run `make dep
 	$(PNPM) test:integration
 
 .PHONY: e2e
-e2e: ## Browser end-to-end tests (requires the stack running: `make dev` or `make dev-local`)
-	$(PNPM) --filter @kofclub/web e2e
+e2e: ## Browser end-to-end tests: fresh DB, native services, Playwright (needs `make deps`)
+	./scripts/e2e.sh
 
 .PHONY: load-smoke
 load-smoke: ## Short synthetic load test against a running stack
