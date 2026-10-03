@@ -84,7 +84,7 @@ make dev-local  # run all services natively with live reload
 | `make typecheck`                                   | `tsc --noEmit` for all TS workspaces, `go build`                    |
 | `make test`                                        | Unit tests (Jest + `go test -race`)                                 |
 | `make integration`                                 | Integration tests against real PostgreSQL/Redis (`make deps` first) |
-| `make e2e`                                         | Browser end-to-end tests (Playwright) against a running stack       |
+| `make e2e`                                         | Browser E2E (Playwright): fresh DB, services started natively       |
 | `make migrate` / `migrate-down` / `migrate-status` | Schema migrations                                                   |
 | `make seed`                                        | Demo data                                                           |
 | `make contracts` / `contracts-check`               | Regenerate / verify generated contract types                        |
@@ -104,6 +104,7 @@ a managed secret store ([docs/security.md](docs/security.md)).
 - [docs/architecture.md](docs/architecture.md) — components, boundaries, data flow
 - [docs/game-engine.md](docs/game-engine.md) — poker rules, state machine, pots
 - [docs/realtime-protocol.md](docs/realtime-protocol.md) — WebSocket protocol
+- [docs/web-client.md](docs/web-client.md) — web client architecture, table UI, E2E tests
 - [docs/ledger.md](docs/ledger.md) — chip accounting
 - [docs/database.md](docs/database.md) — schema and migrations
 - [docs/security.md](docs/security.md) — auth, RBAC, secrets, logging rules

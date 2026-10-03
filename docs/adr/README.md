@@ -17,6 +17,7 @@ to the same thing.
 | [009](ADR-009-wire-conventions.md)                      | Wire conventions: camelCase JSON, `/v1`, UUIDv7, integer chips         | Accepted |
 | [010](ADR-010-web-first-client.md)                      | Web/PWA client first; Unity/native clients later on the same protocol  | Accepted |
 | [011](ADR-011-toolchain-versions.md)                    | Toolchain pins: NestJS 11 (CommonJS), TypeScript 5.9, Go 1.26          | Accepted |
+| [012](ADR-012-browser-session-realtime-client.md)       | Browser session handling and the reference realtime client             | Accepted |
 
 ## Template
 

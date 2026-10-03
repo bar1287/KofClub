@@ -63,6 +63,11 @@ Client rules (spec §8.1, §12.1):
 4. On reconnect: `HELLO`, then `SUBSCRIBE_TABLE` with `lastSeenSeq` for every table.
 5. Disable action buttons while the connection or table state is uncertain.
 
+The reference implementation of these rules is the web client's
+`apps/web/src/lib/realtime/client.ts` (connection, auth refresh, backoff,
+resume, command re-send with the same `requestId`) and
+`apps/web/src/lib/table/state.ts` (ordered reducer); see ADR-012.
+
 ## Commands
 
 ```json

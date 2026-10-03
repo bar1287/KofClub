@@ -1,0 +1,580 @@
+import type {
+  Card,
+  EventOf,
+  HandResult,
+  LegalAction,
+  Street,
+  TableEventMessage,
+  TableEventPayload,
+  TableInfo,
+  TablePhase,
+  TableSnapshot,
+  WinnerShare,
+} from '../types';
+
+/**
+ * Client-side mirror of one table, built only from server frames
+ * (docs/realtime-protocol.md, ADR-004). It is a *view* of authoritative
+ * state: a TABLE_SNAPSHOT replaces it entirely, and TABLE_EVENTs are applied
+ * strictly in seq order. Nothing here is ever sent back as truth — commands
+ * carry intent only and the server re-validates everything.
+ */
+export interface SeatState {
+  seat: number;
+  userId: string;
+  username: string;
+  stack: number;
+  sittingOut: boolean;
+  leaving: boolean;
+  inHand: boolean;
+  folded: boolean;
+  allIn: boolean;
+  streetBet: number;
+  shownCards?: Card[];
+  /** Hand description at showdown ("Two Pair, Kings and Fives"). */
+  shownDescription?: string;
+  /** Last action this street (for the seat badge). */
+  lastAction?: string;
+}
+
+export interface PotAward {
+  potIndex: number;
+  amount: number;
+  winners: WinnerShare[];
+  description: string;
+}
+
+export interface HandState {
+  handId: string;
+  handNo: number;
+  street: Street;
+  board: Card[];
+  pot: number;
+  currentBet: number;
+  minRaise: number;
+  bigBlind: number;
+  buttonSeat: number;
+  smallBlindSeat: number;
+  bigBlindSeat: number;
+  /** 0 when nobody is to act. */
+  toActSeat: number;
+  /** Turn deadline converted to the local clock (ms since epoch), or null. */
+  deadlineAt: number | null;
+  turnTimeoutMs: number;
+  /** Seq of the current TURN_STARTED (used as expectedSeq for commands). */
+  turnSeq: number;
+  deckCommitment: string;
+  awards: PotAward[];
+  /** Stacks at hand start; restores state when the hand is voided. */
+  startStacks: Record<number, number> | null;
+}
+
+export interface HandSummary {
+  handNo: number;
+  showdown: boolean;
+  results: HandResult[];
+  awards: PotAward[];
+}
+
+export interface LogEntry {
+  seq: number;
+  text: string;
+}
+
+export interface TableState {
+  tableId: string;
+  /** Last applied seq; -1 until the first snapshot. */
+  seq: number;
+  /** True once a snapshot has been applied. */
+  ready: boolean;
+  /** Continuity was lost; the client must resubscribe before trusting state. */
+  stale: boolean;
+  table: TableInfo | null;
+  phase: TablePhase;
+  /** Occupied seats keyed by seat number. */
+  seats: Record<number, SeatState>;
+  hand: HandState | null;
+  viewerId: string | null;
+  /** The viewer's seat (0 = not seated). */
+  mySeat: number;
+  holeCards: Card[];
+  legalActions: LegalAction[];
+  lastHand: HandSummary | null;
+  /** Presentation-only action log (not authoritative state). */
+  log: LogEntry[];
+}
+
+export type TableAction =
+  | { type: 'snapshot'; snapshot: TableSnapshot; receivedAt: number }
+  | { type: 'event'; message: TableEventMessage; receivedAt: number }
+  | { type: 'stale' }
+  /** SUBSCRIBED: the stream is continuous again (after a replay or snapshot). */
+  | { type: 'live'; seq: number }
+  | { type: 'leaving'; leaving: boolean };
+
+const LOG_LIMIT = 60;
+
+export function initialTableState(tableId: string, viewerId: string | null): TableState {
+  return {
+    tableId,
+    seq: -1,
+    ready: false,
+    stale: false,
+    table: null,
+    phase: 'WAITING_FOR_PLAYERS',
+    seats: {},
+    hand: null,
+    viewerId,
+    mySeat: 0,
+    holeCards: [],
+    legalActions: [],
+    lastHand: null,
+    log: [],
+  };
+}
+
+export function tableReducer(state: TableState, action: TableAction): TableState {
+  switch (action.type) {
+    case 'snapshot':
+      return applySnapshot(state, action.snapshot, action.receivedAt);
+    case 'event': {
+      const { message } = action;
+      if (!state.ready || message.seq <= state.seq) return state; // duplicate/overlap
+      if (message.seq !== state.seq + 1) return { ...state, stale: true }; // gap
+      const next = applyEvent(state, message, action.receivedAt);
+      return { ...next, seq: message.seq };
+    }
+    case 'stale':
+      return state.stale ? state : { ...state, stale: true };
+    case 'live':
+      // Only trust it when every event up to the subscription point was applied.
+      return state.stale && state.ready && action.seq === state.seq
+        ? { ...state, stale: false }
+        : state;
+    case 'leaving': {
+      const seat = state.seats[state.mySeat];
+      if (!seat) return state;
+      return {
+        ...state,
+        seats: { ...state.seats, [seat.seat]: { ...seat, leaving: action.leaving } },
+      };
+    }
+  }
+}
+
+/** A snapshot replaces local state (ADR-004); only the log is carried over. */
+export function applySnapshot(
+  state: TableState,
+  snap: TableSnapshot,
+  receivedAt: number,
+): TableState {
+  const seats: Record<number, SeatState> = {};
+  for (const s of snap.seats) {
+    seats[s.seat] = {
+      seat: s.seat,
+      userId: s.userId,
+      username: s.username,
+      stack: s.stack,
+      sittingOut: s.sittingOut,
+      leaving: s.leaving,
+      inHand: s.inHand,
+      folded: s.folded,
+      allIn: s.allIn,
+      streetBet: s.streetBet,
+      shownCards: s.shownCards,
+    };
+  }
+  let hand: HandState | null = null;
+  if (snap.hand) {
+    const h = snap.hand;
+    hand = {
+      handId: h.handId,
+      handNo: h.handNo,
+      street: h.street,
+      board: h.board,
+      pot: h.pot,
+      currentBet: h.currentBet,
+      minRaise: h.minRaise,
+      bigBlind: snap.table.bigBlind,
+      buttonSeat: h.buttonSeat,
+      smallBlindSeat: h.smallBlindSeat,
+      bigBlindSeat: h.bigBlindSeat,
+      toActSeat: h.toActSeat,
+      deadlineAt: h.actionDeadline
+        ? toLocalTime(h.actionDeadline, snap.serverTime, receivedAt)
+        : null,
+      turnTimeoutMs: snap.table.actionTimeoutMs,
+      turnSeq: h.turnSeq,
+      deckCommitment: h.deckCommitment,
+      awards: [],
+      startStacks: null,
+    };
+  }
+  const you = snap.you;
+  const log = state.ready
+    ? appendLog(state.log, { seq: snap.seq, text: 'State resynchronized.' })
+    : state.log;
+  return {
+    tableId: snap.tableId,
+    seq: snap.seq,
+    ready: true,
+    stale: false,
+    table: snap.table,
+    phase: snap.phase,
+    seats,
+    hand,
+    viewerId: you?.userId ?? state.viewerId,
+    mySeat: you?.seat ?? 0,
+    holeCards: you?.holeCards ?? [],
+    legalActions: you?.legalActions ?? [],
+    lastHand: state.lastHand,
+    log,
+  };
+}
+
+/** Converts a server timestamp to the local clock using the frame's server time. */
+function toLocalTime(serverTs: string, serverNow: string, receivedAt: number): number {
+  return receivedAt + (Date.parse(serverTs) - Date.parse(serverNow));
+}
+
+function appendLog(log: LogEntry[], entry: LogEntry): LogEntry[] {
+  const next = log.length >= LOG_LIMIT ? log.slice(log.length - LOG_LIMIT + 1) : log.slice();
+  next.push(entry);
+  return next;
+}
+
+function nameOf(state: TableState, seat: number): string {
+  return state.seats[seat]?.username ?? `Seat ${seat}`;
+}
+
+function updateSeat(
+  state: TableState,
+  seat: number,
+  patch: Partial<SeatState>,
+): Record<number, SeatState> {
+  const current = state.seats[seat];
+  if (!current) return state.seats;
+  return { ...state.seats, [seat]: { ...current, ...patch } };
+}
+
+function mapSeats(
+  seats: Record<number, SeatState>,
+  fn: (s: SeatState) => SeatState,
+): Record<number, SeatState> {
+  const out: Record<number, SeatState> = {};
+  for (const s of Object.values(seats)) out[s.seat] = fn(s);
+  return out;
+}
+
+function withHand(state: TableState, patch: Partial<HandState>): HandState | null {
+  return state.hand ? { ...state.hand, ...patch } : null;
+}
+
+const ACTION_VERB: Record<EventOf<'PLAYER_ACTED'>['action'], string> = {
+  FOLD: 'folds',
+  CHECK: 'checks',
+  CALL: 'calls',
+  BET: 'bets',
+  RAISE: 'raises to',
+};
+
+/** Applies one in-order event. Mirrors the game service's state transitions. */
+function applyEvent(state: TableState, msg: TableEventMessage, receivedAt: number): TableState {
+  const ev: TableEventPayload = msg.event;
+  const log = (text: string) => appendLog(state.log, { seq: msg.seq, text });
+  switch (ev.kind) {
+    case 'PLAYER_SEATED': {
+      const mine = ev.userId === state.viewerId;
+      return {
+        ...state,
+        seats: {
+          ...state.seats,
+          [ev.seat]: {
+            seat: ev.seat,
+            userId: ev.userId,
+            username: ev.username,
+            stack: ev.stack,
+            sittingOut: false,
+            leaving: false,
+            inHand: false,
+            folded: false,
+            allIn: false,
+            streetBet: 0,
+          },
+        },
+        mySeat: mine ? ev.seat : state.mySeat,
+        log: log(`${ev.username} sits down with ${ev.stack}.`),
+      };
+    }
+    case 'PLAYER_LEFT': {
+      const seats = { ...state.seats };
+      const name = nameOf(state, ev.seat);
+      delete seats[ev.seat];
+      const mine = ev.userId === state.viewerId;
+      return {
+        ...state,
+        seats,
+        mySeat: mine ? 0 : state.mySeat,
+        holeCards: mine ? [] : state.holeCards,
+        legalActions: mine ? [] : state.legalActions,
+        log: log(
+          ev.reason === 'BUSTED'
+            ? `${name} is out of chips and leaves.`
+            : `${name} leaves the table (${ev.cashOut} back to wallet).`,
+        ),
+      };
+    }
+    case 'PLAYER_SITTING_OUT': {
+      const name = nameOf(state, ev.seat);
+      const patch: Partial<SeatState> = { sittingOut: ev.sittingOut };
+      if (ev.reason === 'LEAVING') patch.leaving = true;
+      const why = ev.reason === 'TIMEOUTS' ? ' (timed out)' : '';
+      return {
+        ...state,
+        seats: updateSeat(state, ev.seat, patch),
+        log: log(ev.sittingOut ? `${name} sits out${why}.` : `${name} is back.`),
+      };
+    }
+    case 'HAND_STARTED': {
+      const startStacks: Record<number, number> = {};
+      for (const p of ev.players) startStacks[p.seat] = p.stack;
+      const seats = mapSeats(state.seats, (s) => {
+        const start = startStacks[s.seat];
+        return {
+          ...s,
+          stack: start ?? s.stack,
+          inHand: start !== undefined,
+          folded: false,
+          allIn: false,
+          streetBet: 0,
+          shownCards: undefined,
+          shownDescription: undefined,
+          lastAction: undefined,
+        };
+      });
+      return {
+        ...state,
+        phase: 'HAND_IN_PROGRESS',
+        seats,
+        hand: {
+          handId: ev.handId,
+          handNo: ev.handNo,
+          street: 'PREFLOP',
+          board: [],
+          pot: 0,
+          currentBet: 0,
+          minRaise: ev.bigBlind,
+          bigBlind: ev.bigBlind,
+          buttonSeat: ev.buttonSeat,
+          smallBlindSeat: ev.smallBlindSeat,
+          bigBlindSeat: ev.bigBlindSeat,
+          toActSeat: 0,
+          deadlineAt: null,
+          turnTimeoutMs: state.table?.actionTimeoutMs ?? 0,
+          turnSeq: state.hand?.turnSeq ?? 0,
+          deckCommitment: ev.deckCommitment,
+          awards: [],
+          startStacks,
+        },
+        holeCards: [],
+        legalActions: [],
+        log: log(`Hand #${ev.handNo} begins.`),
+      };
+    }
+    case 'BLIND_POSTED':
+      return {
+        ...state,
+        seats: updateSeat(state, ev.seat, {
+          stack: ev.stack,
+          streetBet: ev.amount,
+          allIn: ev.allIn,
+        }),
+        hand: withHand(state, {
+          pot: ev.pot,
+          currentBet: Math.max(state.hand?.currentBet ?? 0, ev.amount),
+        }),
+        log: log(
+          `${nameOf(state, ev.seat)} posts the ${ev.blind === 'SMALL' ? 'small' : 'big'} blind ${ev.amount}.`,
+        ),
+      };
+    case 'HOLE_CARDS_DEALT':
+      return { ...state, holeCards: ev.cards ?? state.holeCards };
+    case 'TURN_STARTED': {
+      const mine = ev.seat === state.mySeat && state.mySeat !== 0;
+      return {
+        ...state,
+        hand: withHand(state, {
+          toActSeat: ev.seat,
+          street: ev.street,
+          currentBet: ev.currentBet,
+          minRaise: ev.minRaise,
+          pot: ev.pot,
+          deadlineAt: toLocalTime(ev.deadline, msg.serverTime, receivedAt),
+          turnTimeoutMs: ev.timeoutMs,
+          turnSeq: msg.seq,
+        }),
+        legalActions: mine ? (ev.legalActions ?? []) : [],
+      };
+    }
+    case 'PLAYER_ACTED': {
+      const amount = ev.action === 'CALL' ? ev.added : ev.streetBet;
+      const label =
+        ev.action === 'FOLD' || ev.action === 'CHECK'
+          ? ACTION_VERB[ev.action]
+          : `${ACTION_VERB[ev.action]} ${amount}`;
+      const allIn = ev.allIn ? ' (all-in)' : '';
+      const timeout = ev.timeout ? ' (timeout)' : '';
+      return {
+        ...state,
+        seats: updateSeat(state, ev.seat, {
+          stack: ev.stack,
+          streetBet: ev.streetBet,
+          allIn: ev.allIn,
+          folded: ev.action === 'FOLD' || state.seats[ev.seat]?.folded === true,
+          lastAction: ev.allIn ? 'ALL-IN' : ev.action,
+        }),
+        hand: withHand(state, {
+          pot: ev.pot,
+          currentBet: Math.max(state.hand?.currentBet ?? 0, ev.streetBet),
+          toActSeat: 0,
+          deadlineAt: null,
+        }),
+        legalActions: ev.seat === state.mySeat ? [] : state.legalActions,
+        log: log(`${nameOf(state, ev.seat)} ${label}${allIn}${timeout}.`),
+      };
+    }
+    case 'UNCALLED_BET_RETURNED': {
+      const seat = state.seats[ev.seat];
+      return {
+        ...state,
+        seats: updateSeat(state, ev.seat, {
+          stack: ev.stack,
+          streetBet: Math.max(0, (seat?.streetBet ?? 0) - ev.amount),
+        }),
+        hand: withHand(state, { pot: ev.pot }),
+        log: log(`Uncalled ${ev.amount} returned to ${nameOf(state, ev.seat)}.`),
+      };
+    }
+    case 'STREET_DEALT':
+      return {
+        ...state,
+        seats: mapSeats(state.seats, (s) => ({ ...s, streetBet: 0, lastAction: undefined })),
+        hand: withHand(state, {
+          street: ev.street,
+          board: ev.board,
+          currentBet: 0,
+          toActSeat: 0,
+          deadlineAt: null,
+        }),
+        log: log(`${titleCase(ev.street)}: ${ev.cards.join(' ')}`),
+      };
+    case 'CARDS_REVEALED':
+      return {
+        ...state,
+        seats: updateSeat(state, ev.seat, {
+          shownCards: ev.cards,
+          shownDescription: ev.description,
+        }),
+        log: log(`${nameOf(state, ev.seat)} shows ${ev.cards.join(' ')} — ${ev.description}.`),
+      };
+    case 'POT_AWARDED': {
+      let seats = mapSeats(state.seats, (s) => ({ ...s, streetBet: 0 }));
+      for (const w of ev.winners) {
+        const s = seats[w.seat];
+        if (s) seats = { ...seats, [w.seat]: { ...s, stack: s.stack + w.amount } };
+      }
+      const award: PotAward = {
+        potIndex: ev.potIndex,
+        amount: ev.amount,
+        winners: ev.winners,
+        description: ev.description,
+      };
+      const potName = ev.potIndex === 0 ? 'the pot' : `side pot ${ev.potIndex}`;
+      const winners = ev.winners.map((w) => `${nameOf(state, w.seat)} (${w.amount})`).join(', ');
+      return {
+        ...state,
+        seats,
+        hand: withHand(state, {
+          pot: Math.max(0, (state.hand?.pot ?? 0) - ev.amount),
+          awards: [...(state.hand?.awards ?? []), award],
+          toActSeat: 0,
+          deadlineAt: null,
+        }),
+        log: log(
+          `${winners} win${ev.winners.length === 1 ? 's' : ''} ${potName} of ${ev.amount}${
+            ev.description ? ` with ${ev.description}` : ''
+          }.`,
+        ),
+      };
+    }
+    case 'HAND_COMPLETED': {
+      const byseat = new Map(ev.results.map((r) => [r.seat, r]));
+      const seats = mapSeats(state.seats, (s) => {
+        const r = byseat.get(s.seat);
+        const base = { ...s, lastAction: undefined };
+        return r && r.userId === s.userId ? { ...base, stack: r.stack, streetBet: 0 } : base;
+      });
+      return {
+        ...state,
+        // The server returns to WAITING_FOR_PLAYERS as part of settlement.
+        phase: 'WAITING_FOR_PLAYERS',
+        seats,
+        hand: withHand(state, {
+          street: 'COMPLETE',
+          board: ev.board,
+          pot: 0,
+          toActSeat: 0,
+          deadlineAt: null,
+        }),
+        legalActions: [],
+        lastHand: {
+          handNo: ev.handNo,
+          showdown: ev.showdown,
+          results: ev.results,
+          awards: state.hand?.awards ?? [],
+        },
+        log: log(`Hand #${ev.handNo} complete.`),
+      };
+    }
+    case 'HAND_VOIDED': {
+      const start = state.hand?.startStacks;
+      const base: TableState = {
+        ...state,
+        phase: 'WAITING_FOR_PLAYERS',
+        hand: null,
+        holeCards: [],
+        legalActions: [],
+        log: log(`Hand #${ev.handNo} was voided; stacks restored.`),
+      };
+      if (!start) return { ...base, stale: true }; // joined mid-hand: resync for stacks
+      return {
+        ...base,
+        seats: mapSeats(state.seats, (s) => ({
+          ...s,
+          stack: start[s.seat] ?? s.stack,
+          inHand: false,
+          folded: false,
+          allIn: false,
+          streetBet: 0,
+          shownCards: undefined,
+          shownDescription: undefined,
+          lastAction: undefined,
+        })),
+      };
+    }
+  }
+}
+
+function titleCase(s: string): string {
+  return s.charAt(0) + s.slice(1).toLowerCase();
+}
+
+/** Seats ordered by number. */
+export function seatList(state: TableState): SeatState[] {
+  return Object.values(state.seats).sort((a, b) => a.seat - b.seat);
+}
+
+/** Total chips at the table: stacks plus the pot (which includes this street's bets). */
+export function chipsInPlay(state: TableState): number {
+  return Object.values(state.seats).reduce((sum, s) => sum + s.stack, 0) + (state.hand?.pot ?? 0);
+}

@@ -8,6 +8,7 @@ Security controls from spec §9, and how they are implemented.
 | Access token            | EdDSA (Ed25519) JWT, 15 min, `iss`/`aud` enforced, `sid` claim                                                                                          | M1         |
 | Refresh token           | 256-bit opaque random, SHA-256 hashed at rest, rotation on every use, reuse detection revokes the session                                               | M1         |
 | Session/device tracking | `sessions` rows with device id, hashed IP, user agent, last seen; users can list/revoke                                                                 | M1         |
+| Browser session         | Access token in memory only; refresh token in an HttpOnly SameSite=Strict cookie scoped to `/v1/auth`; refreshes serialized across tabs (ADR-012)       | M6         |
 | WebSocket auth          | Access token in the first `HELLO` frame only; connection closed when the token expires unless re-authenticated                                          | M5         |
 | RBAC                    | PlatformAdmin, ClubOwner, ClubAdmin, ClubAgent, Member; checked server-side per request                                                                 | M1         |
 | Object authorization    | Every club/table query and command checks membership/status (tenant isolation)                                                                          | M1+        |
