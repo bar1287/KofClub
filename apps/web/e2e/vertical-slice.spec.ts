@@ -106,6 +106,22 @@ test('two players play a complete hand of Hold’em', async ({ browser }) => {
   await expect(alice.page.getByTestId('action-log')).toContainText('Hand #1 complete.');
   await snap(alice.page, '04-hand-complete');
 
+  // --- hand history: own cards, public record ---------------------------------
+  const history = await aliceCtx.newPage();
+  await history.goto('/hands');
+  await history.getByTestId('hand-list').getByRole('link', { name: '#1', exact: true }).click();
+  await expect(history.getByTestId('hand-title')).toHaveText('Hand #1');
+  await expect(history.getByTestId('my-hole-cards').locator('[data-card]')).toHaveCount(2);
+  expect(
+    await history
+      .getByTestId('my-hole-cards')
+      .locator('[data-card]')
+      .evaluateAll((els) => els.map((e) => e.getAttribute('data-card'))),
+  ).toEqual(aliceCards);
+  await expect(history.getByTestId('hand-actions')).toContainText('Hand #1 complete.');
+  await snap(history, '05-hand-history');
+  await history.close();
+
   // --- leave and reconcile wallets via the ledger -----------------------------
   await leave(alice, [alice, bob]);
   await leave(bob, [bob]);

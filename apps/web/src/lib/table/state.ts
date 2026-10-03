@@ -1,6 +1,6 @@
+import { describeEvent } from './describe';
 import type {
   Card,
-  EventOf,
   HandResult,
   LegalAction,
   Street,
@@ -70,6 +70,7 @@ export interface HandState {
 }
 
 export interface HandSummary {
+  handId: string;
   handNo: number;
   showdown: boolean;
   results: HandResult[];
@@ -270,18 +271,11 @@ function withHand(state: TableState, patch: Partial<HandState>): HandState | nul
   return state.hand ? { ...state.hand, ...patch } : null;
 }
 
-const ACTION_VERB: Record<EventOf<'PLAYER_ACTED'>['action'], string> = {
-  FOLD: 'folds',
-  CHECK: 'checks',
-  CALL: 'calls',
-  BET: 'bets',
-  RAISE: 'raises to',
-};
-
 /** Applies one in-order event. Mirrors the game service's state transitions. */
 function applyEvent(state: TableState, msg: TableEventMessage, receivedAt: number): TableState {
   const ev: TableEventPayload = msg.event;
-  const log = (text: string) => appendLog(state.log, { seq: msg.seq, text });
+  const text = describeEvent(ev, (seat) => nameOf(state, seat));
+  const log = () => (text ? appendLog(state.log, { seq: msg.seq, text }) : state.log);
   switch (ev.kind) {
     case 'PLAYER_SEATED': {
       const mine = ev.userId === state.viewerId;
@@ -303,12 +297,11 @@ function applyEvent(state: TableState, msg: TableEventMessage, receivedAt: numbe
           },
         },
         mySeat: mine ? ev.seat : state.mySeat,
-        log: log(`${ev.username} sits down with ${ev.stack}.`),
+        log: log(),
       };
     }
     case 'PLAYER_LEFT': {
       const seats = { ...state.seats };
-      const name = nameOf(state, ev.seat);
       delete seats[ev.seat];
       const mine = ev.userId === state.viewerId;
       return {
@@ -317,22 +310,16 @@ function applyEvent(state: TableState, msg: TableEventMessage, receivedAt: numbe
         mySeat: mine ? 0 : state.mySeat,
         holeCards: mine ? [] : state.holeCards,
         legalActions: mine ? [] : state.legalActions,
-        log: log(
-          ev.reason === 'BUSTED'
-            ? `${name} is out of chips and leaves.`
-            : `${name} leaves the table (${ev.cashOut} back to wallet).`,
-        ),
+        log: log(),
       };
     }
     case 'PLAYER_SITTING_OUT': {
-      const name = nameOf(state, ev.seat);
       const patch: Partial<SeatState> = { sittingOut: ev.sittingOut };
       if (ev.reason === 'LEAVING') patch.leaving = true;
-      const why = ev.reason === 'TIMEOUTS' ? ' (timed out)' : '';
       return {
         ...state,
         seats: updateSeat(state, ev.seat, patch),
-        log: log(ev.sittingOut ? `${name} sits out${why}.` : `${name} is back.`),
+        log: log(),
       };
     }
     case 'HAND_STARTED': {
@@ -378,7 +365,7 @@ function applyEvent(state: TableState, msg: TableEventMessage, receivedAt: numbe
         },
         holeCards: [],
         legalActions: [],
-        log: log(`Hand #${ev.handNo} begins.`),
+        log: log(),
       };
     }
     case 'BLIND_POSTED':
@@ -393,9 +380,7 @@ function applyEvent(state: TableState, msg: TableEventMessage, receivedAt: numbe
           pot: ev.pot,
           currentBet: Math.max(state.hand?.currentBet ?? 0, ev.amount),
         }),
-        log: log(
-          `${nameOf(state, ev.seat)} posts the ${ev.blind === 'SMALL' ? 'small' : 'big'} blind ${ev.amount}.`,
-        ),
+        log: log(),
       };
     case 'HOLE_CARDS_DEALT':
       return { ...state, holeCards: ev.cards ?? state.holeCards };
@@ -417,13 +402,6 @@ function applyEvent(state: TableState, msg: TableEventMessage, receivedAt: numbe
       };
     }
     case 'PLAYER_ACTED': {
-      const amount = ev.action === 'CALL' ? ev.added : ev.streetBet;
-      const label =
-        ev.action === 'FOLD' || ev.action === 'CHECK'
-          ? ACTION_VERB[ev.action]
-          : `${ACTION_VERB[ev.action]} ${amount}`;
-      const allIn = ev.allIn ? ' (all-in)' : '';
-      const timeout = ev.timeout ? ' (timeout)' : '';
       return {
         ...state,
         seats: updateSeat(state, ev.seat, {
@@ -440,7 +418,7 @@ function applyEvent(state: TableState, msg: TableEventMessage, receivedAt: numbe
           deadlineAt: null,
         }),
         legalActions: ev.seat === state.mySeat ? [] : state.legalActions,
-        log: log(`${nameOf(state, ev.seat)} ${label}${allIn}${timeout}.`),
+        log: log(),
       };
     }
     case 'UNCALLED_BET_RETURNED': {
@@ -452,7 +430,7 @@ function applyEvent(state: TableState, msg: TableEventMessage, receivedAt: numbe
           streetBet: Math.max(0, (seat?.streetBet ?? 0) - ev.amount),
         }),
         hand: withHand(state, { pot: ev.pot }),
-        log: log(`Uncalled ${ev.amount} returned to ${nameOf(state, ev.seat)}.`),
+        log: log(),
       };
     }
     case 'STREET_DEALT':
@@ -466,7 +444,7 @@ function applyEvent(state: TableState, msg: TableEventMessage, receivedAt: numbe
           toActSeat: 0,
           deadlineAt: null,
         }),
-        log: log(`${titleCase(ev.street)}: ${ev.cards.join(' ')}`),
+        log: log(),
       };
     case 'CARDS_REVEALED':
       return {
@@ -475,7 +453,7 @@ function applyEvent(state: TableState, msg: TableEventMessage, receivedAt: numbe
           shownCards: ev.cards,
           shownDescription: ev.description,
         }),
-        log: log(`${nameOf(state, ev.seat)} shows ${ev.cards.join(' ')} — ${ev.description}.`),
+        log: log(),
       };
     case 'POT_AWARDED': {
       let seats = mapSeats(state.seats, (s) => ({ ...s, streetBet: 0 }));
@@ -489,8 +467,6 @@ function applyEvent(state: TableState, msg: TableEventMessage, receivedAt: numbe
         winners: ev.winners,
         description: ev.description,
       };
-      const potName = ev.potIndex === 0 ? 'the pot' : `side pot ${ev.potIndex}`;
-      const winners = ev.winners.map((w) => `${nameOf(state, w.seat)} (${w.amount})`).join(', ');
       return {
         ...state,
         seats,
@@ -500,11 +476,7 @@ function applyEvent(state: TableState, msg: TableEventMessage, receivedAt: numbe
           toActSeat: 0,
           deadlineAt: null,
         }),
-        log: log(
-          `${winners} win${ev.winners.length === 1 ? 's' : ''} ${potName} of ${ev.amount}${
-            ev.description ? ` with ${ev.description}` : ''
-          }.`,
-        ),
+        log: log(),
       };
     }
     case 'HAND_COMPLETED': {
@@ -528,14 +500,21 @@ function applyEvent(state: TableState, msg: TableEventMessage, receivedAt: numbe
         }),
         legalActions: [],
         lastHand: {
+          handId: ev.handId,
           handNo: ev.handNo,
           showdown: ev.showdown,
           results: ev.results,
           awards: state.hand?.awards ?? [],
         },
-        log: log(`Hand #${ev.handNo} complete.`),
+        log: log(),
       };
     }
+    case 'TABLE_CLOSED':
+      return {
+        ...state,
+        table: state.table ? { ...state.table, status: 'CLOSED' } : state.table,
+        log: log(),
+      };
     case 'HAND_VOIDED': {
       const start = state.hand?.startStacks;
       const base: TableState = {
@@ -544,7 +523,7 @@ function applyEvent(state: TableState, msg: TableEventMessage, receivedAt: numbe
         hand: null,
         holeCards: [],
         legalActions: [],
-        log: log(`Hand #${ev.handNo} was voided; stacks restored.`),
+        log: log(),
       };
       if (!start) return { ...base, stale: true }; // joined mid-hand: resync for stacks
       return {
@@ -563,10 +542,6 @@ function applyEvent(state: TableState, msg: TableEventMessage, receivedAt: numbe
       };
     }
   }
-}
-
-function titleCase(s: string): string {
-  return s.charAt(0) + s.slice(1).toLowerCase();
 }
 
 /** Seats ordered by number. */

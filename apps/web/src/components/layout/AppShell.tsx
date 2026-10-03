@@ -18,7 +18,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           {status === 'authenticated' && (
             <>
               <Link href="/clubs">Clubs</Link>
+              <Link href="/hands">Hands</Link>
               <Link href="/profile">Profile</Link>
+              {user?.platformRole === 'PLATFORM_ADMIN' && <Link href="/admin">Admin</Link>}
             </>
           )}
         </nav>

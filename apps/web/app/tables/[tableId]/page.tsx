@@ -86,6 +86,12 @@ function TableRoom({ tableId }: { tableId: string }) {
         )}
       </div>
 
+      {table?.status === 'CLOSED' && (
+        <div className="alert info" style={{ marginBottom: 12 }} data-testid="table-closed">
+          This table is closed. No new hands are dealt and every seat is cashed out to the club
+          wallet when the current hand ends.
+        </div>
+      )}
       <div className="table-page">
         <div>
           <PokerTable
@@ -116,7 +122,9 @@ function TableRoom({ tableId }: { tableId: string }) {
           )}
           {state.lastHand && (
             <div className="panel" data-testid="last-hand">
-              <h3>Hand #{state.lastHand.handNo}</h3>
+              <h3>
+                <Link href={`/hands/${state.lastHand.handId}`}>Hand #{state.lastHand.handNo}</Link>
+              </h3>
               <table className="list small">
                 <tbody>
                   {state.lastHand.results.map((r) => (

@@ -18,6 +18,26 @@ export type CreateTableRequest = Api['CreateTableRequest'];
 export type SeatResult = Api['SeatResult'];
 export type LeaveResult = Api['LeaveResult'];
 export type ErrorBody = Api['ErrorBody'];
+export type Invite = Api['Invite'];
+export type InviteCreated = Api['InviteCreated'];
+export type CreateInviteRequest = Api['CreateInviteRequest'];
+export type AuditPage = Api['AuditPage'];
+export type AuditRecord = Api['AuditRecord'];
+export type LedgerSummary = Api['LedgerSummary'];
+export type MemberBalancePage = Api['MemberBalancePage'];
+export type LedgerTransactionPage = Api['LedgerTransactionPage'];
+export type CloseTableResult = Api['CloseTableResult'];
+export type PlatformOverview = Api['PlatformOverview'];
+export type AdminUser = Api['AdminUser'];
+export type AdminUserPage = Api['AdminUserPage'];
+export type AdminClub = Api['AdminClub'];
+export type AdminClubPage = Api['AdminClubPage'];
+export type RiskEvent = Api['RiskEvent'];
+export type RiskEventPage = Api['RiskEventPage'];
+export type HandSummaryRecord = Api['HandSummary'];
+export type HandSummaryPage = Api['HandSummaryPage'];
+export type HandDetail = Api['HandDetail'];
+export type HandParticipant = Api['HandParticipant'];
 
 /** Realtime (WebSocket) types, generated from realtime.yaml. */
 type Rt = Realtime.components['schemas'];

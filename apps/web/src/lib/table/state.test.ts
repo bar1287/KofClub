@@ -383,6 +383,20 @@ describe('action helpers', () => {
   });
 });
 
+describe('table closure', () => {
+  it('marks the table closed and removes cashed-out players', () => {
+    let s = play(ready(), [{ kind: 'TABLE_CLOSED' }]);
+    expect(s.table?.status).toBe('CLOSED');
+    s = play(s, [
+      { kind: 'PLAYER_LEFT', seat: 1, userId: ALICE, reason: 'TABLE_CLOSED', cashOut: 1000 },
+      { kind: 'PLAYER_LEFT', seat: 2, userId: BOB, reason: 'TABLE_CLOSED', cashOut: 1000 },
+    ]);
+    expect(seatList(s)).toEqual([]);
+    expect(s.mySeat).toBe(0);
+    expect(s.log.at(-1)?.text).toBe('bob is cashed out (1000 back to wallet).');
+  });
+});
+
 describe('resume', () => {
   it('clears staleness only when SUBSCRIBED matches the applied seq', () => {
     let s = tableReducer(ready(), { type: 'stale' });

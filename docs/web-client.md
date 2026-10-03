@@ -6,14 +6,17 @@ ADR-012 (session handling, realtime client, state model).
 
 ## Pages
 
-| Route                 | Purpose                                                                      |
-| --------------------- | ---------------------------------------------------------------------------- |
-| `/`                   | Landing                                                                      |
-| `/register`, `/login` | Account creation / sign-in (`?next=` only follows same-origin paths)         |
-| `/clubs`              | My clubs, create a club, join with a join/invite code                        |
-| `/clubs/[clubId]`     | Lobby: wallet, tables, members; staff (ADMIN+) create tables and grant chips |
-| `/tables/[tableId]`   | Poker table                                                                  |
-| `/profile`            | Signed-in devices (sessions) with remote sign-out                            |
+| Route                       | Purpose                                                                                                                                                  |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`                         | Landing                                                                                                                                                  |
+| `/register`, `/login`       | Account creation / sign-in (`?next=` only follows same-origin paths)                                                                                     |
+| `/clubs`                    | My clubs, create a club, join with a join/invite code                                                                                                    |
+| `/clubs/[clubId]`           | Lobby: wallet, tables, members; staff (ADMIN+) create tables and grant chips                                                                             |
+| `/tables/[tableId]`         | Poker table                                                                                                                                              |
+| `/profile`                  | Signed-in devices (sessions) with remote sign-out                                                                                                        |
+| `/hands`, `/hands/[handId]` | Hand history: results, board, own cards, shown cards, public action log (ADR-008)                                                                        |
+| `/clubs/[clubId]/admin`     | Club console (AGENT+): members/roles/bans/ownership, invites, chips & ledger (grants, deductions, reversals), tables (close), hands, audit log, settings |
+| `/admin`                    | Platform console (PLATFORM_ADMIN): overview, accounts, clubs, risk cases, audit log                                                                      |
 
 Protected pages render through `RequireAuth`, which redirects anonymous
 visitors to `/login?next=…`. Role checks in the UI only hide controls; the

@@ -56,6 +56,11 @@ function ClubLobby({ clubId }: { clubId: string }) {
         </h1>
         <span className="badge">{club.myRole}</span>
         <span className="spacer" />
+        {atLeast(club.myRole, 'AGENT') && (
+          <Link className="btn small" href={`/clubs/${club.id}/admin`}>
+            Manage club
+          </Link>
+        )}
         {club.joinCode && (
           <span className="muted small">
             Join code:{' '}

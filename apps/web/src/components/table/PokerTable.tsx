@@ -14,6 +14,7 @@ function centerMessage(state: TableState): string | null {
   const seated = Object.keys(state.seats).length;
   const hand = state.hand;
   if (hand && hand.street !== 'COMPLETE') return null;
+  if (state.table?.status === 'CLOSED') return 'This table is closed.';
   if (seated < 2) return 'Waiting for players…';
   const active = Object.values(state.seats).filter((s) => !s.sittingOut && s.stack > 0).length;
   if (active < 2) return 'Waiting for players to sit in…';
