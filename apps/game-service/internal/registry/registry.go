@@ -50,6 +50,9 @@ type Registry struct {
 	actors     map[string]*entry
 	activating map[string]chan struct{}
 	draining   bool
+	// watchers counts actors whose lease has not been released yet, so a
+	// drain can hand every table over before the process exits.
+	watchers sync.WaitGroup
 }
 
 // New creates a registry.
@@ -130,6 +133,7 @@ func (r *Registry) activate(ctx context.Context, tableID string) (*table.Actor, 
 	e := &entry{actor: actor, lease: l}
 	r.mu.Lock()
 	r.actors[tableID] = e
+	r.watchers.Add(1) // under mu: Drain waits for activations before Wait
 	r.mu.Unlock()
 	r.log.Info("table_activated", slog.String("table_id", tableID), slog.Int64("epoch", l.Epoch))
 	go r.watch(tableID, e)
@@ -138,6 +142,7 @@ func (r *Registry) activate(ctx context.Context, tableID string) (*table.Actor, 
 
 // watch removes a stopped actor and releases its lease unless it was lost.
 func (r *Registry) watch(tableID string, e *entry) {
+	defer r.watchers.Done()
 	<-e.actor.Done()
 	r.mu.Lock()
 	if cur, ok := r.actors[tableID]; ok && cur == e {
@@ -249,6 +254,11 @@ func (r *Registry) Drain(ctx context.Context) {
 	r.mu.Lock()
 	r.draining = true
 	r.mu.Unlock()
+	// No activation starts once draining is set; let in-flight ones finish
+	// so their actors are drained too.
+	for r.activationsInFlight() > 0 && ctx.Err() == nil {
+		time.Sleep(10 * time.Millisecond)
+	}
 	entries := r.snapshotEntries()
 	for _, e := range entries {
 		e.actor.Drain()
@@ -260,11 +270,25 @@ func (r *Registry) Drain(ctx context.Context) {
 			e.actor.Stop(ctx.Err())
 		}
 	}
-	// Give watchers a moment to release leases.
-	deadline := time.Now().Add(2 * time.Second)
-	for time.Now().Before(deadline) && len(r.snapshotEntries()) > 0 {
-		time.Sleep(20 * time.Millisecond)
+	// Release every lease before returning: the process closes its database
+	// pool right after the drain, and released tables can be adopted by
+	// another node immediately instead of after the lease TTL.
+	released := make(chan struct{})
+	go func() {
+		r.watchers.Wait()
+		close(released)
+	}()
+	select {
+	case <-released:
+	case <-time.After(6 * time.Second):
+		r.log.Warn("drain_lease_release_timeout")
 	}
+}
+
+func (r *Registry) activationsInFlight() int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return len(r.activating)
 }
 
 // StopAll stops every actor immediately (tests / crash simulation): leases
