@@ -7,23 +7,23 @@ with the repository at the end of every task.
 
 ## Current milestone
 
-**M2 — Pure Hold'em engine** (next). M0 and M1 are complete.
+**M3 — Ledger** (next). M0, M1 and M2 are complete.
 
 ## Milestones (spec §16)
 
-| Milestone                | Status  | Notes                                                                                                                              |
-| ------------------------ | ------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| M0 — Foundation          | ✅ Done | Monorepo, Makefile, Compose, CI, migrations, contracts + codegen, health checks                                                    |
-| M1 — Identity + Clubs    | ✅ Done | Argon2id, EdDSA JWT, refresh rotation + reuse detection, sessions, clubs/invites/roles/bans, RBAC, audit, rate limits, idempotency |
-| M2 — Pure Hold'em engine | ⏳ Next |                                                                                                                                    |
-| M3 — Ledger              | Pending |                                                                                                                                    |
-| M4 — Table service       | Pending |                                                                                                                                    |
-| M5 — Realtime            | Pending |                                                                                                                                    |
-| M6 — Web poker table     | Pending |                                                                                                                                    |
-| M7 — History + Admin     | Pending |                                                                                                                                    |
-| M8 — Hardening           | Pending |                                                                                                                                    |
-| M9 — Omaha               | Pending |                                                                                                                                    |
-| M10 — Tournaments        | Pending |                                                                                                                                    |
+| Milestone                | Status  | Notes                                                                                                                                           |
+| ------------------------ | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0 — Foundation          | ✅ Done | Monorepo, Makefile, Compose, CI, migrations, contracts + codegen, health checks                                                                 |
+| M1 — Identity + Clubs    | ✅ Done | Argon2id, EdDSA JWT, refresh rotation + reuse detection, sessions, clubs/invites/roles/bans, RBAC, audit, rate limits, idempotency              |
+| M2 — Pure Hold'em engine | ✅ Done | `go/poker`: crypto shuffle, evaluator (exhaustive tests), NL betting state machine, side pots, odd chips, table/button; 12k-hand property tests |
+| M3 — Ledger              | ⏳ Next |                                                                                                                                                 |
+| M4 — Table service       | Pending |                                                                                                                                                 |
+| M5 — Realtime            | Pending |                                                                                                                                                 |
+| M6 — Web poker table     | Pending |                                                                                                                                                 |
+| M7 — History + Admin     | Pending |                                                                                                                                                 |
+| M8 — Hardening           | Pending |                                                                                                                                                 |
+| M9 — Omaha               | Pending |                                                                                                                                                 |
+| M10 — Tournaments        | Pending |                                                                                                                                                 |
 
 ## Current architecture
 
@@ -64,6 +64,7 @@ make dev   # full stack in Docker; all /health/ready endpoints return ok
 - Rate limiter fails open when Redis is down (documented tradeoff; Argon2 cost still bounds brute force).
 - Ownership transfer and club suspension/closure endpoints not yet implemented (M7 admin).
 - Demo seed passwords are fixed for local convenience (seed refuses `APP_ENV=production`).
+- Engine simplifications (documented in docs/game-engine.md): no antes/straddles, no dead button or missed-blind tracking, no mucking at showdown.
 
 ## Implemented API (control-api, `/v1`)
 
@@ -78,5 +79,5 @@ Canonical contract: `packages/contracts/openapi/control-api.yaml`
 
 ## Next tasks
 
-1. M2: `go/poker` — cards, crypto shuffle, evaluator with exhaustive tests.
-2. M2: Hold'em hand state machine (blinds, streets, legal actions, all-in, min-raise, heads-up rules), pots/side pots/odd chips, button rotation; 10k+ randomized property-test hands.
+1. M3: ledger migration (`ledger_accounts`, `ledger_transactions`, `ledger_entries`), `ledger_post()` SQL function enforcing zero-sum, idempotency (`external_ref`), non-negative balances, append-only entries.
+2. M3: control-api ledger module (club treasury grants/deductions, balances, history), `go/ledger-client` for the game service (buy-in, cash-out, hand settlement inside caller transactions); concurrency/idempotency tests.

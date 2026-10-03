@@ -5,6 +5,20 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added — M2 Pure Hold'em engine
+
+- `go/poker`: card model, crypto-secure Fisher–Yates shuffle with unbiased
+  sampling, deck commitment hash.
+- Bitmask 7-card evaluator with best-five selection; exhaustive 5-card and
+  opt-in exhaustive 7-card verification; reference cross-check.
+- No-limit Hold'em state machine: blinds (incl. heads-up and short blinds),
+  dealing, streets, legal-action model, min-raise and incomplete-all-in
+  reopening rules, uncalled-bet return, all-in runouts, showdown, side pots,
+  split pots with odd-chip rule, timeout default action, typed errors.
+- `Table`: seating, sitting out, button rotation, joining between hands,
+  hand abort with stack restoration, restore from durable state.
+- Property tests over 12,000 random hands and dependency-boundary test.
+
 ### Added — M1 Identity + Clubs
 
 - Migrations: `users`, `sessions`, `session_refresh_tokens`, `audit_log`,
