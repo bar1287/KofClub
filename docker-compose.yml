@@ -1,0 +1,172 @@
+# Local development topology (spec §13): postgres, redis, migrate (one-shot),
+# game-service, realtime-gateway, control-api, worker, web.
+#
+#   make dev     -> builds and starts everything, applying migrations first
+#   make down    -> stops everything (data volume is kept)
+#
+# Values come from .env (created by scripts/init-env.sh). Hostnames are
+# overridden here so containers talk to each other over the compose network.
+name: kofclub
+
+x-app-env: &app-env
+  APP_ENV: ${APP_ENV:-local}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+  REDIS_URL: redis://redis:6379/0
+  GAME_SERVICE_URL: http://game-service:4200
+  INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    # Redis is never the sole durable store (ADR-005); persistence disabled locally.
+    command: ['redis-server', '--save', '', '--appendonly', 'no']
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  migrate:
+    build:
+      context: .
+      dockerfile: infra/docker/go.Dockerfile
+      target: migrate
+    command: ['up']
+    environment:
+      <<: *app-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+
+  game-service:
+    build:
+      context: .
+      dockerfile: infra/docker/go.Dockerfile
+      target: game-service
+    environment:
+      <<: *app-env
+      GAME_SERVICE_PORT: 4200
+      GAME_NODE_ID: ${GAME_NODE_ID:-game-local-1}
+      GAME_NODE_ADVERTISE_URL: http://game-service:4200
+      DECK_ENCRYPTION_KEY_B64: ${DECK_ENCRYPTION_KEY_B64}
+    ports:
+      - '${GAME_SERVICE_PORT:-4200}:4200'
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:4200/health/ready']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  realtime-gateway:
+    build:
+      context: .
+      dockerfile: infra/docker/go.Dockerfile
+      target: realtime-gateway
+    environment:
+      <<: *app-env
+      REALTIME_PORT: 4100
+      AUTH_JWT_PUBLIC_KEY_B64: ${AUTH_JWT_PUBLIC_KEY_B64}
+      AUTH_JWT_ISSUER: ${AUTH_JWT_ISSUER}
+      AUTH_JWT_AUDIENCE: ${AUTH_JWT_AUDIENCE}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+    ports:
+      - '${REALTIME_PORT:-4100}:4100'
+    depends_on:
+      redis:
+        condition: service_healthy
+      game-service:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:4100/health/ready']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  control-api:
+    build:
+      context: .
+      dockerfile: infra/docker/node.Dockerfile
+      target: control-api
+    env_file: .env
+    environment:
+      <<: *app-env
+      CONTROL_API_PORT: 4000
+    ports:
+      - '${CONTROL_API_PORT:-4000}:4000'
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:4000/health/ready']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  worker:
+    build:
+      context: .
+      dockerfile: infra/docker/node.Dockerfile
+      target: worker
+    environment:
+      <<: *app-env
+      WORKER_PORT: 4300
+    ports:
+      - '${WORKER_PORT:-4300}:4300'
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:4300/health/ready']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  web:
+    build:
+      context: .
+      dockerfile: infra/docker/node.Dockerfile
+      target: web
+      args:
+        # NEXT_PUBLIC_* values are inlined into the browser bundle at build time.
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_REALTIME_URL: ${NEXT_PUBLIC_REALTIME_URL}
+    environment:
+      APP_ENV: ${APP_ENV:-local}
+    ports:
+      - '${WEB_PORT:-3000}:3000'
+    depends_on:
+      control-api:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3000/health/ready']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  pgdata:

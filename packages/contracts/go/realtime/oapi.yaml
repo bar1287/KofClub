@@ -1,0 +1,9 @@
+# oapi-codegen configuration: generate model types only.
+package: realtime
+generate:
+  models: true
+output: types.gen.go
+output-options:
+  skip-prune: true
+compatibility:
+  always-prefix-enum-values: true

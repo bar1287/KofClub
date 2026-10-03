@@ -1,0 +1,188 @@
+openapi: 3.0.3
+info:
+  title: KofClub Control API
+  version: 0.1.0
+  description: |
+    Control-plane HTTP API (accounts, clubs, roles, table configuration,
+    virtual-chip ledger administration, hand history).
+
+    Conventions (see docs/adr/ADR-009-wire-conventions.md):
+    - All endpoints are versioned under `/v1` (health probes are unversioned).
+    - JSON bodies use camelCase; enums are UPPERCASE strings.
+    - Identifiers are UUID strings (UUIDv7 preferred).
+    - Timestamps are UTC RFC 3339 strings.
+    - Chip amounts are integers (int64). Floating point is never used.
+    - Every response carries an `X-Request-Id` header; clients may send one.
+    - State-changing requests that may be retried accept an `Idempotency-Key` header.
+    - Errors always use the `ErrorEnvelope` shape with a machine-readable `code`.
+
+    Virtual chips have no monetary value. This API intentionally contains no
+    deposit, withdrawal, cash-out or payment functionality (ADR-006).
+servers:
+  - url: http://localhost:4000
+    description: Local development
+tags:
+  - name: health
+    description: Liveness/readiness probes
+paths:
+  /health/live:
+    get:
+      tags: [health]
+      operationId: getHealthLive
+      summary: Liveness probe
+      responses:
+        '200':
+          description: Process is serving HTTP
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+  /health/ready:
+    get:
+      tags: [health]
+      operationId: getHealthReady
+      summary: Readiness probe (checks PostgreSQL and Redis)
+      responses:
+        '200':
+          description: All dependencies reachable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+        '503':
+          description: A dependency is unavailable or the service is draining
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    RequestId:
+      name: X-Request-Id
+      in: header
+      required: false
+      description: Client-supplied correlation id (echoed back).
+      schema:
+        type: string
+        maxLength: 128
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: Unique key making a retried state-changing request a no-op.
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 128
+  responses:
+    Error:
+      description: Machine-readable error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+  schemas:
+    Uuid:
+      type: string
+      format: uuid
+    Timestamp:
+      type: string
+      format: date-time
+      description: UTC RFC 3339 timestamp
+    ChipAmount:
+      type: integer
+      format: int64
+      description: Integer amount of virtual chips (no monetary value).
+    HealthStatus:
+      type: object
+      required: [status, service]
+      properties:
+        status:
+          type: string
+          enum: [ok, unavailable, draining]
+        service:
+          type: string
+        checks:
+          type: object
+          additionalProperties:
+            type: string
+    ErrorCode:
+      type: string
+      description: |
+        Stable machine-readable error codes shared by HTTP and realtime APIs.
+        Clients must branch on `code`, never on `message`.
+      enum:
+        # generic
+        - VALIDATION_FAILED
+        - NOT_FOUND
+        - CONFLICT
+        - RATE_LIMITED
+        - INTERNAL
+        - SERVICE_UNAVAILABLE
+        - IDEMPOTENCY_CONFLICT
+        # auth
+        - AUTH_REQUIRED
+        - AUTH_INVALID_CREDENTIALS
+        - AUTH_TOKEN_INVALID
+        - AUTH_TOKEN_EXPIRED
+        - AUTH_REFRESH_INVALID
+        - AUTH_REFRESH_REUSED
+        - AUTH_SESSION_REVOKED
+        - ACCOUNT_SUSPENDED
+        - EMAIL_TAKEN
+        - USERNAME_TAKEN
+        - FORBIDDEN
+        # clubs
+        - CLUB_NOT_FOUND
+        - NOT_CLUB_MEMBER
+        - CLUB_BANNED
+        - ALREADY_CLUB_MEMBER
+        - INVITE_INVALID
+        - ROLE_CHANGE_NOT_ALLOWED
+        # ledger
+        - INSUFFICIENT_CHIPS
+        - LEDGER_INVARIANT_VIOLATION
+        # tables / game
+        - TABLE_NOT_FOUND
+        - TABLE_CLOSED
+        - TABLE_FULL
+        - SEAT_TAKEN
+        - ALREADY_SEATED
+        - PLAYER_NOT_SEATED
+        - INVALID_BUY_IN
+        - NOT_YOUR_TURN
+        - ILLEGAL_ACTION
+        - INVALID_RAISE
+        - HAND_NOT_ACTIVE
+        - STALE_GAME_STATE
+        - ACTION_ALREADY_PROCESSED
+        - TABLE_UNAVAILABLE
+        # history
+        - HAND_NOT_FOUND
+        # tournaments (phase 3)
+        - TOURNAMENT_NOT_OPEN
+    ErrorBody:
+      type: object
+      required: [code, message, requestId]
+      properties:
+        code:
+          $ref: '#/components/schemas/ErrorCode'
+        message:
+          type: string
+          description: Human-readable summary (not for programmatic use).
+        requestId:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorBody'

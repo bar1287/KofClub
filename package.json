@@ -1,0 +1,27 @@
+{
+  "name": "kofclub",
+  "private": true,
+  "description": "KofClub — private-club social poker platform (virtual chips only).",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build:packages": "pnpm -r --filter \"./packages/**\" run build",
+    "build": "pnpm -r run build",
+    "lint": "eslint . --max-warnings=0",
+    "fmt": "prettier --write .",
+    "fmt:check": "prettier --check .",
+    "typecheck": "pnpm -r run typecheck",
+    "test": "pnpm -r run test",
+    "test:integration": "pnpm -r run test:integration"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.12.0",
+    "globals": "^17.13.0",
+    "prettier": "^3.6.2",
+    "typescript": "5.9.3",
+    "typescript-eslint": "^8.46.0"
+  }
+}

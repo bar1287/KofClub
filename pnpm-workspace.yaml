@@ -1,0 +1,11 @@
+packages:
+  - 'apps/control-api'
+  - 'apps/web'
+  - 'apps/worker'
+  - 'packages/*'
+onlyBuiltDependencies:
+  - argon2
+  - '@swc/core'
+  - esbuild
+  - sharp
+  - unrs-resolver

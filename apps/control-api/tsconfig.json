@@ -1,0 +1,9 @@
+{
+  "extends": "@kofclub/config/tsconfig.nest.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist",
+    "baseUrl": "."
+  },
+  "include": ["src", "test"]
+}

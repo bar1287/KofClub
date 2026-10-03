@@ -1,0 +1,61 @@
+import type { components } from './generated/control-api';
+
+/** Machine-readable error code (generated from the OpenAPI ErrorCode enum). */
+export type ErrorCode = components['schemas']['ErrorCode'];
+export type ErrorBody = components['schemas']['ErrorBody'];
+export type ErrorEnvelope = components['schemas']['ErrorEnvelope'];
+
+/**
+ * Runtime list of every error code. The `satisfies` clause makes the build
+ * fail when this object and the OpenAPI enum drift apart in either direction.
+ */
+export const ErrorCodes = {
+  VALIDATION_FAILED: 'VALIDATION_FAILED',
+  NOT_FOUND: 'NOT_FOUND',
+  CONFLICT: 'CONFLICT',
+  RATE_LIMITED: 'RATE_LIMITED',
+  INTERNAL: 'INTERNAL',
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+  IDEMPOTENCY_CONFLICT: 'IDEMPOTENCY_CONFLICT',
+  AUTH_REQUIRED: 'AUTH_REQUIRED',
+  AUTH_INVALID_CREDENTIALS: 'AUTH_INVALID_CREDENTIALS',
+  AUTH_TOKEN_INVALID: 'AUTH_TOKEN_INVALID',
+  AUTH_TOKEN_EXPIRED: 'AUTH_TOKEN_EXPIRED',
+  AUTH_REFRESH_INVALID: 'AUTH_REFRESH_INVALID',
+  AUTH_REFRESH_REUSED: 'AUTH_REFRESH_REUSED',
+  AUTH_SESSION_REVOKED: 'AUTH_SESSION_REVOKED',
+  ACCOUNT_SUSPENDED: 'ACCOUNT_SUSPENDED',
+  EMAIL_TAKEN: 'EMAIL_TAKEN',
+  USERNAME_TAKEN: 'USERNAME_TAKEN',
+  FORBIDDEN: 'FORBIDDEN',
+  CLUB_NOT_FOUND: 'CLUB_NOT_FOUND',
+  NOT_CLUB_MEMBER: 'NOT_CLUB_MEMBER',
+  CLUB_BANNED: 'CLUB_BANNED',
+  ALREADY_CLUB_MEMBER: 'ALREADY_CLUB_MEMBER',
+  INVITE_INVALID: 'INVITE_INVALID',
+  ROLE_CHANGE_NOT_ALLOWED: 'ROLE_CHANGE_NOT_ALLOWED',
+  INSUFFICIENT_CHIPS: 'INSUFFICIENT_CHIPS',
+  LEDGER_INVARIANT_VIOLATION: 'LEDGER_INVARIANT_VIOLATION',
+  TABLE_NOT_FOUND: 'TABLE_NOT_FOUND',
+  TABLE_CLOSED: 'TABLE_CLOSED',
+  TABLE_FULL: 'TABLE_FULL',
+  SEAT_TAKEN: 'SEAT_TAKEN',
+  ALREADY_SEATED: 'ALREADY_SEATED',
+  PLAYER_NOT_SEATED: 'PLAYER_NOT_SEATED',
+  INVALID_BUY_IN: 'INVALID_BUY_IN',
+  NOT_YOUR_TURN: 'NOT_YOUR_TURN',
+  ILLEGAL_ACTION: 'ILLEGAL_ACTION',
+  INVALID_RAISE: 'INVALID_RAISE',
+  HAND_NOT_ACTIVE: 'HAND_NOT_ACTIVE',
+  STALE_GAME_STATE: 'STALE_GAME_STATE',
+  ACTION_ALREADY_PROCESSED: 'ACTION_ALREADY_PROCESSED',
+  TABLE_UNAVAILABLE: 'TABLE_UNAVAILABLE',
+  HAND_NOT_FOUND: 'HAND_NOT_FOUND',
+  TOURNAMENT_NOT_OPEN: 'TOURNAMENT_NOT_OPEN',
+} as const satisfies { [K in ErrorCode]: K };
+
+export const ALL_ERROR_CODES: readonly ErrorCode[] = Object.values(ErrorCodes);
+
+export function isErrorCode(value: unknown): value is ErrorCode {
+  return typeof value === 'string' && (ALL_ERROR_CODES as readonly string[]).includes(value);
+}

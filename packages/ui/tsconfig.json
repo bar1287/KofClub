@@ -1,0 +1,12 @@
+{
+  "extends": "@kofclub/config/tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["DOM", "ES2023"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "types": []
+  },
+  "include": ["src"]
+}

@@ -1,0 +1,93 @@
+openapi: 3.0.3
+info:
+  title: KofClub Realtime Protocol
+  version: 0.1.0
+  description: |
+    Message schemas for the WebSocket protocol between clients and the
+    realtime-gateway (docs/realtime-protocol.md). This document has no HTTP
+    paths: it is a schema container so that TypeScript and Go types are
+    generated from one canonical definition.
+
+    Every frame is a JSON object with a `type` discriminator. Field names are
+    camelCase, enums are UPPERCASE strings, chip amounts are integers.
+servers:
+  - url: ws://localhost:4100/ws
+    description: Local development
+paths: {}
+components:
+  schemas:
+    ClientMessageType:
+      type: string
+      enum: [HELLO, SUBSCRIBE_TABLE, UNSUBSCRIBE_TABLE, COMMAND, PING, PONG]
+    ServerMessageType:
+      type: string
+      enum:
+        [WELCOME, TABLE_SNAPSHOT, TABLE_EVENT, COMMAND_RESULT, RESYNC_REQUIRED, ERROR, PING, PONG]
+    Hello:
+      type: object
+      description: First client frame. Authenticates the connection.
+      required: [type, accessToken, clientVersion]
+      properties:
+        type:
+          type: string
+          enum: [HELLO]
+        accessToken:
+          type: string
+        clientVersion:
+          type: string
+        deviceId:
+          type: string
+          maxLength: 128
+    Welcome:
+      type: object
+      required: [type, connectionId, userId, heartbeatIntervalMs, serverTime]
+      properties:
+        type:
+          type: string
+          enum: [WELCOME]
+        connectionId:
+          type: string
+        userId:
+          type: string
+          format: uuid
+        heartbeatIntervalMs:
+          type: integer
+        serverTime:
+          type: string
+          format: date-time
+    Ping:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [PING]
+        nonce:
+          type: string
+    Pong:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [PONG]
+        nonce:
+          type: string
+    ProtocolError:
+      type: object
+      description: Connection-level error (not tied to a table command).
+      required: [type, code, message]
+      properties:
+        type:
+          type: string
+          enum: [ERROR]
+        code:
+          type: string
+          description: An ErrorCode value from the control-api contract.
+        message:
+          type: string
+        requestId:
+          type: string
+        tableId:
+          type: string
+          format: uuid
