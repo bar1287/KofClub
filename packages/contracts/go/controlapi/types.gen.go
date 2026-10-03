@@ -9,6 +9,96 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for ClubMyRole.
+const (
+	ClubMyRoleADMIN       ClubMyRole = "ADMIN"
+	ClubMyRoleAGENT       ClubMyRole = "AGENT"
+	ClubMyRoleLessThannil ClubMyRole = "<nil>"
+	ClubMyRoleMEMBER      ClubMyRole = "MEMBER"
+	ClubMyRoleOWNER       ClubMyRole = "OWNER"
+)
+
+// Valid indicates whether the value is a known member of the ClubMyRole enum.
+func (e ClubMyRole) Valid() bool {
+	switch e {
+	case ClubMyRoleADMIN:
+		return true
+	case ClubMyRoleAGENT:
+		return true
+	case ClubMyRoleLessThannil:
+		return true
+	case ClubMyRoleMEMBER:
+		return true
+	case ClubMyRoleOWNER:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ClubRole.
+const (
+	ClubRoleADMIN  ClubRole = "ADMIN"
+	ClubRoleAGENT  ClubRole = "AGENT"
+	ClubRoleMEMBER ClubRole = "MEMBER"
+	ClubRoleOWNER  ClubRole = "OWNER"
+)
+
+// Valid indicates whether the value is a known member of the ClubRole enum.
+func (e ClubRole) Valid() bool {
+	switch e {
+	case ClubRoleADMIN:
+		return true
+	case ClubRoleAGENT:
+		return true
+	case ClubRoleMEMBER:
+		return true
+	case ClubRoleOWNER:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ClubStatus.
+const (
+	ClubStatusACTIVE    ClubStatus = "ACTIVE"
+	ClubStatusCLOSED    ClubStatus = "CLOSED"
+	ClubStatusSUSPENDED ClubStatus = "SUSPENDED"
+)
+
+// Valid indicates whether the value is a known member of the ClubStatus enum.
+func (e ClubStatus) Valid() bool {
+	switch e {
+	case ClubStatusACTIVE:
+		return true
+	case ClubStatusCLOSED:
+		return true
+	case ClubStatusSUSPENDED:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateInviteRequestRole.
+const (
+	CreateInviteRequestRoleAGENT  CreateInviteRequestRole = "AGENT"
+	CreateInviteRequestRoleMEMBER CreateInviteRequestRole = "MEMBER"
+)
+
+// Valid indicates whether the value is a known member of the CreateInviteRequestRole enum.
+func (e CreateInviteRequestRole) Valid() bool {
+	switch e {
+	case CreateInviteRequestRoleAGENT:
+		return true
+	case CreateInviteRequestRoleMEMBER:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ErrorCode.
 const (
 	ErrorCodeACCOUNTSUSPENDED         ErrorCode = "ACCOUNT_SUSPENDED"
@@ -168,8 +258,309 @@ func (e HealthStatusStatus) Valid() bool {
 	}
 }
 
+// Defines values for InviteRole.
+const (
+	InviteRoleAGENT  InviteRole = "AGENT"
+	InviteRoleMEMBER InviteRole = "MEMBER"
+)
+
+// Valid indicates whether the value is a known member of the InviteRole enum.
+func (e InviteRole) Valid() bool {
+	switch e {
+	case InviteRoleAGENT:
+		return true
+	case InviteRoleMEMBER:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for InviteStatus.
+const (
+	InviteStatusACTIVE    InviteStatus = "ACTIVE"
+	InviteStatusEXHAUSTED InviteStatus = "EXHAUSTED"
+	InviteStatusEXPIRED   InviteStatus = "EXPIRED"
+	InviteStatusREVOKED   InviteStatus = "REVOKED"
+)
+
+// Valid indicates whether the value is a known member of the InviteStatus enum.
+func (e InviteStatus) Valid() bool {
+	switch e {
+	case InviteStatusACTIVE:
+		return true
+	case InviteStatusEXHAUSTED:
+		return true
+	case InviteStatusEXPIRED:
+		return true
+	case InviteStatusREVOKED:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for MemberStatus.
+const (
+	MemberStatusACTIVE MemberStatus = "ACTIVE"
+	MemberStatusBANNED MemberStatus = "BANNED"
+	MemberStatusLEFT   MemberStatus = "LEFT"
+)
+
+// Valid indicates whether the value is a known member of the MemberStatus enum.
+func (e MemberStatus) Valid() bool {
+	switch e {
+	case MemberStatusACTIVE:
+		return true
+	case MemberStatusBANNED:
+		return true
+	case MemberStatusLEFT:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PlatformRole.
+const (
+	PlatformRolePLATFORMADMIN PlatformRole = "PLATFORM_ADMIN"
+	PlatformRoleUSER          PlatformRole = "USER"
+)
+
+// Valid indicates whether the value is a known member of the PlatformRole enum.
+func (e PlatformRole) Valid() bool {
+	switch e {
+	case PlatformRolePLATFORMADMIN:
+		return true
+	case PlatformRoleUSER:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateMemberRequestRole.
+const (
+	UpdateMemberRequestRoleADMIN  UpdateMemberRequestRole = "ADMIN"
+	UpdateMemberRequestRoleAGENT  UpdateMemberRequestRole = "AGENT"
+	UpdateMemberRequestRoleMEMBER UpdateMemberRequestRole = "MEMBER"
+)
+
+// Valid indicates whether the value is a known member of the UpdateMemberRequestRole enum.
+func (e UpdateMemberRequestRole) Valid() bool {
+	switch e {
+	case UpdateMemberRequestRoleADMIN:
+		return true
+	case UpdateMemberRequestRoleAGENT:
+		return true
+	case UpdateMemberRequestRoleMEMBER:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateMemberRequestStatus.
+const (
+	UpdateMemberRequestStatusACTIVE UpdateMemberRequestStatus = "ACTIVE"
+	UpdateMemberRequestStatusBANNED UpdateMemberRequestStatus = "BANNED"
+)
+
+// Valid indicates whether the value is a known member of the UpdateMemberRequestStatus enum.
+func (e UpdateMemberRequestStatus) Valid() bool {
+	switch e {
+	case UpdateMemberRequestStatusACTIVE:
+		return true
+	case UpdateMemberRequestStatusBANNED:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UserStatus.
+const (
+	UserStatusACTIVE    UserStatus = "ACTIVE"
+	UserStatusDELETED   UserStatus = "DELETED"
+	UserStatusSUSPENDED UserStatus = "SUSPENDED"
+)
+
+// Valid indicates whether the value is a known member of the UserStatus enum.
+func (e UserStatus) Valid() bool {
+	switch e {
+	case UserStatusACTIVE:
+		return true
+	case UserStatusDELETED:
+		return true
+	case UserStatusSUSPENDED:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AuthTransport.
+const (
+	AuthTransportBody   AuthTransport = "body"
+	AuthTransportCookie AuthTransport = "cookie"
+)
+
+// Valid indicates whether the value is a known member of the AuthTransport enum.
+func (e AuthTransport) Valid() bool {
+	switch e {
+	case AuthTransportBody:
+		return true
+	case AuthTransportCookie:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for LoginParamsXAuthTransport.
+const (
+	LoginParamsXAuthTransportBody   LoginParamsXAuthTransport = "body"
+	LoginParamsXAuthTransportCookie LoginParamsXAuthTransport = "cookie"
+)
+
+// Valid indicates whether the value is a known member of the LoginParamsXAuthTransport enum.
+func (e LoginParamsXAuthTransport) Valid() bool {
+	switch e {
+	case LoginParamsXAuthTransportBody:
+		return true
+	case LoginParamsXAuthTransportCookie:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RefreshParamsXAuthTransport.
+const (
+	RefreshParamsXAuthTransportBody   RefreshParamsXAuthTransport = "body"
+	RefreshParamsXAuthTransportCookie RefreshParamsXAuthTransport = "cookie"
+)
+
+// Valid indicates whether the value is a known member of the RefreshParamsXAuthTransport enum.
+func (e RefreshParamsXAuthTransport) Valid() bool {
+	switch e {
+	case RefreshParamsXAuthTransportBody:
+		return true
+	case RefreshParamsXAuthTransportCookie:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RegisterParamsXAuthTransport.
+const (
+	RegisterParamsXAuthTransportBody   RegisterParamsXAuthTransport = "body"
+	RegisterParamsXAuthTransportCookie RegisterParamsXAuthTransport = "cookie"
+)
+
+// Valid indicates whether the value is a known member of the RegisterParamsXAuthTransport enum.
+func (e RegisterParamsXAuthTransport) Valid() bool {
+	switch e {
+	case RegisterParamsXAuthTransportBody:
+		return true
+	case RegisterParamsXAuthTransportCookie:
+		return true
+	default:
+		return false
+	}
+}
+
+// AuditPage defines model for AuditPage.
+type AuditPage struct {
+	Items      []AuditRecord `json:"items"`
+	NextCursor *string       `json:"nextCursor"`
+}
+
+// AuditRecord defines model for AuditRecord.
+type AuditRecord struct {
+	Action        string                  `json:"action"`
+	ActorUserId   *openapi_types.UUID     `json:"actorUserId"`
+	ActorUsername *string                 `json:"actorUsername"`
+	After         *map[string]interface{} `json:"after"`
+	Before        *map[string]interface{} `json:"before"`
+	ClubId        *openapi_types.UUID     `json:"clubId"`
+
+	// CreatedAt UTC RFC 3339 timestamp
+	CreatedAt  Timestamp `json:"createdAt"`
+	Id         Uuid      `json:"id"`
+	ObjectId   *string   `json:"objectId"`
+	ObjectType string    `json:"objectType"`
+	RequestId  *string   `json:"requestId"`
+}
+
+// AuthResult defines model for AuthResult.
+type AuthResult struct {
+	// AccessToken EdDSA JWT, ~15 minutes
+	AccessToken string `json:"accessToken"`
+
+	// AccessTokenExpiresAt UTC RFC 3339 timestamp
+	AccessTokenExpiresAt Timestamp `json:"accessTokenExpiresAt"`
+
+	// RefreshToken Opaque token; omitted when cookie transport is used
+	RefreshToken *string `json:"refreshToken,omitempty"`
+
+	// RefreshTokenExpiresAt UTC RFC 3339 timestamp
+	RefreshTokenExpiresAt Timestamp `json:"refreshTokenExpiresAt"`
+	SessionId             Uuid      `json:"sessionId"`
+	User                  User      `json:"user"`
+}
+
 // ChipAmount Integer amount of virtual chips (no monetary value).
 type ChipAmount = int64
+
+// Club defines model for Club.
+type Club struct {
+	// CreatedAt UTC RFC 3339 timestamp
+	CreatedAt   Timestamp `json:"createdAt"`
+	Description *string   `json:"description"`
+	Id          Uuid      `json:"id"`
+
+	// JoinCode Visible to AGENT and above only.
+	JoinCode    *string `json:"joinCode,omitempty"`
+	MemberCount *int    `json:"memberCount,omitempty"`
+
+	// MyRole Null when viewed through platform-admin oversight.
+	MyRole      *ClubMyRole `json:"myRole"`
+	Name        string      `json:"name"`
+	OwnerUserId Uuid        `json:"ownerUserId"`
+	Status      ClubStatus  `json:"status"`
+}
+
+// ClubMyRole Null when viewed through platform-admin oversight.
+type ClubMyRole string
+
+// ClubList defines model for ClubList.
+type ClubList struct {
+	Items []Club `json:"items"`
+}
+
+// ClubRole defines model for ClubRole.
+type ClubRole string
+
+// ClubStatus defines model for ClubStatus.
+type ClubStatus string
+
+// CreateClubRequest defines model for CreateClubRequest.
+type CreateClubRequest struct {
+	Description *string `json:"description,omitempty"`
+	Name        string  `json:"name"`
+}
+
+// CreateInviteRequest defines model for CreateInviteRequest.
+type CreateInviteRequest struct {
+	ExpiresInHours *int                     `json:"expiresInHours,omitempty"`
+	MaxUses        *int                     `json:"maxUses,omitempty"`
+	Role           *CreateInviteRequestRole `json:"role,omitempty"`
+}
+
+// CreateInviteRequestRole defines model for CreateInviteRequest.Role.
+type CreateInviteRequestRole string
 
 // ErrorBody defines model for ErrorBody.
 type ErrorBody struct {
@@ -202,17 +593,246 @@ type HealthStatus struct {
 // HealthStatusStatus defines model for HealthStatus.Status.
 type HealthStatusStatus string
 
+// Invite defines model for Invite.
+type Invite struct {
+	ClubId Uuid `json:"clubId"`
+
+	// CreatedAt UTC RFC 3339 timestamp
+	CreatedAt Timestamp `json:"createdAt"`
+
+	// ExpiresAt UTC RFC 3339 timestamp
+	ExpiresAt Timestamp    `json:"expiresAt"`
+	Id        Uuid         `json:"id"`
+	MaxUses   int          `json:"maxUses"`
+	RevokedAt *time.Time   `json:"revokedAt"`
+	Role      InviteRole   `json:"role"`
+	Status    InviteStatus `json:"status"`
+	UseCount  int          `json:"useCount"`
+}
+
+// InviteRole defines model for Invite.Role.
+type InviteRole string
+
+// InviteStatus defines model for Invite.Status.
+type InviteStatus string
+
+// InviteCreated defines model for InviteCreated.
+type InviteCreated struct {
+	// Code Plaintext invite code, returned only once.
+	Code   string `json:"code"`
+	Invite Invite `json:"invite"`
+}
+
+// InviteList defines model for InviteList.
+type InviteList struct {
+	Items []Invite `json:"items"`
+}
+
+// JoinClubRequest defines model for JoinClubRequest.
+type JoinClubRequest struct {
+	// Code Club join code (8 chars) or invite code (12 chars); case-insensitive.
+	Code string `json:"code"`
+}
+
+// LoginRequest defines model for LoginRequest.
+type LoginRequest struct {
+	DeviceId *string `json:"deviceId,omitempty"`
+
+	// Login Email or username
+	Login    string `json:"login"`
+	Password string `json:"password"`
+}
+
+// Member defines model for Member.
+type Member struct {
+	// JoinedAt UTC RFC 3339 timestamp
+	JoinedAt Timestamp    `json:"joinedAt"`
+	Role     ClubRole     `json:"role"`
+	Status   MemberStatus `json:"status"`
+	UserId   Uuid         `json:"userId"`
+	Username string       `json:"username"`
+}
+
+// MemberPage defines model for MemberPage.
+type MemberPage struct {
+	Items      []Member `json:"items"`
+	NextCursor *string  `json:"nextCursor"`
+}
+
+// MemberStatus defines model for MemberStatus.
+type MemberStatus string
+
+// PlatformRole defines model for PlatformRole.
+type PlatformRole string
+
+// RefreshRequest defines model for RefreshRequest.
+type RefreshRequest struct {
+	RefreshToken *string `json:"refreshToken,omitempty"`
+}
+
+// RegisterRequest defines model for RegisterRequest.
+type RegisterRequest struct {
+	DeviceId *string             `json:"deviceId,omitempty"`
+	Email    openapi_types.Email `json:"email"`
+	Password string              `json:"password"`
+	Username string              `json:"username"`
+}
+
+// Session defines model for Session.
+type Session struct {
+	// CreatedAt UTC RFC 3339 timestamp
+	CreatedAt Timestamp `json:"createdAt"`
+	Current   bool      `json:"current"`
+	DeviceId  *string   `json:"deviceId"`
+
+	// ExpiresAt UTC RFC 3339 timestamp
+	ExpiresAt Timestamp `json:"expiresAt"`
+	Id        Uuid      `json:"id"`
+
+	// LastUsedAt UTC RFC 3339 timestamp
+	LastUsedAt Timestamp `json:"lastUsedAt"`
+	UserAgent  *string   `json:"userAgent"`
+}
+
+// SessionList defines model for SessionList.
+type SessionList struct {
+	Items []Session `json:"items"`
+}
+
 // Timestamp UTC RFC 3339 timestamp
 type Timestamp = time.Time
+
+// UpdateMemberRequest defines model for UpdateMemberRequest.
+type UpdateMemberRequest struct {
+	Role   *UpdateMemberRequestRole   `json:"role,omitempty"`
+	Status *UpdateMemberRequestStatus `json:"status,omitempty"`
+}
+
+// UpdateMemberRequestRole defines model for UpdateMemberRequest.Role.
+type UpdateMemberRequestRole string
+
+// UpdateMemberRequestStatus defines model for UpdateMemberRequest.Status.
+type UpdateMemberRequestStatus string
+
+// User defines model for User.
+type User struct {
+	// CreatedAt UTC RFC 3339 timestamp
+	CreatedAt    Timestamp           `json:"createdAt"`
+	Email        openapi_types.Email `json:"email"`
+	Id           Uuid                `json:"id"`
+	PlatformRole PlatformRole        `json:"platformRole"`
+	Status       UserStatus          `json:"status"`
+	Username     string              `json:"username"`
+}
+
+// UserStatus defines model for UserStatus.
+type UserStatus string
 
 // Uuid defines model for Uuid.
 type Uuid = openapi_types.UUID
 
+// AuthTransport defines model for AuthTransport.
+type AuthTransport string
+
+// ClubId defines model for ClubId.
+type ClubId = Uuid
+
+// Cursor defines model for Cursor.
+type Cursor = string
+
 // IdempotencyKey defines model for IdempotencyKey.
 type IdempotencyKey = string
+
+// Limit defines model for Limit.
+type Limit = int
 
 // RequestId defines model for RequestId.
 type RequestId = string
 
 // Error defines model for Error.
 type Error = ErrorEnvelope
+
+// LoginParams defines parameters for Login.
+type LoginParams struct {
+	// XAuthTransport `cookie` makes the API deliver the refresh token in an HttpOnly
+	// SameSite=Strict cookie (`kof_rt`, path `/v1/auth`) instead of the body.
+	XAuthTransport *LoginParamsXAuthTransport `json:"X-Auth-Transport,omitempty"`
+}
+
+// LoginParamsXAuthTransport defines parameters for Login.
+type LoginParamsXAuthTransport string
+
+// RefreshParams defines parameters for Refresh.
+type RefreshParams struct {
+	// XAuthTransport `cookie` makes the API deliver the refresh token in an HttpOnly
+	// SameSite=Strict cookie (`kof_rt`, path `/v1/auth`) instead of the body.
+	XAuthTransport *RefreshParamsXAuthTransport `json:"X-Auth-Transport,omitempty"`
+}
+
+// RefreshParamsXAuthTransport defines parameters for Refresh.
+type RefreshParamsXAuthTransport string
+
+// RegisterParams defines parameters for Register.
+type RegisterParams struct {
+	// XAuthTransport `cookie` makes the API deliver the refresh token in an HttpOnly
+	// SameSite=Strict cookie (`kof_rt`, path `/v1/auth`) instead of the body.
+	XAuthTransport *RegisterParamsXAuthTransport `json:"X-Auth-Transport,omitempty"`
+}
+
+// RegisterParamsXAuthTransport defines parameters for Register.
+type RegisterParamsXAuthTransport string
+
+// CreateClubParams defines parameters for CreateClub.
+type CreateClubParams struct {
+	// IdempotencyKey Unique key making a retried state-changing request a no-op.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// ListClubAuditLogParams defines parameters for ListClubAuditLog.
+type ListClubAuditLogParams struct {
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Cursor Opaque cursor from a previous page's `nextCursor`.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+}
+
+// CreateClubInviteParams defines parameters for CreateClubInvite.
+type CreateClubInviteParams struct {
+	// IdempotencyKey Unique key making a retried state-changing request a no-op.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// ListClubMembersParams defines parameters for ListClubMembers.
+type ListClubMembersParams struct {
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Cursor Opaque cursor from a previous page's `nextCursor`.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Status Filter by status (staff only; members always see ACTIVE).
+	Status *MemberStatus `form:"status,omitempty" json:"status,omitempty"`
+}
+
+// LoginJSONRequestBody defines body for Login for application/json ContentType.
+type LoginJSONRequestBody = LoginRequest
+
+// RefreshJSONRequestBody defines body for Refresh for application/json ContentType.
+type RefreshJSONRequestBody = RefreshRequest
+
+// RegisterJSONRequestBody defines body for Register for application/json ContentType.
+type RegisterJSONRequestBody = RegisterRequest
+
+// CreateClubJSONRequestBody defines body for CreateClub for application/json ContentType.
+type CreateClubJSONRequestBody = CreateClubRequest
+
+// JoinClubByCodeJSONRequestBody defines body for JoinClubByCode for application/json ContentType.
+type JoinClubByCodeJSONRequestBody = JoinClubRequest
+
+// CreateClubInviteJSONRequestBody defines body for CreateClubInvite for application/json ContentType.
+type CreateClubInviteJSONRequestBody = CreateInviteRequest
+
+// JoinClubJSONRequestBody defines body for JoinClub for application/json ContentType.
+type JoinClubJSONRequestBody = JoinClubRequest
+
+// UpdateClubMemberJSONRequestBody defines body for UpdateClubMember for application/json ContentType.
+type UpdateClubMemberJSONRequestBody = UpdateMemberRequest

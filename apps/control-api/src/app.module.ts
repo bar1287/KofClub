@@ -1,5 +1,6 @@
 import { DynamicModule, Module } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
+import { CommonModule } from './common/common.module';
 import { AppErrorFilter } from './common/errors/error.filter';
 import { LoggingModule } from './common/logging/logger.module';
 import type { AppConfig } from './config/config';
@@ -8,6 +9,10 @@ import { HealthModule } from './health/health.module';
 import { DatabaseModule } from './infra/database/database.module';
 import { RedisModule } from './infra/redis/redis.module';
 import { MetricsModule } from './metrics/metrics.module';
+import { AuditModule } from './modules/audit/audit.module';
+import { ClubsModule } from './modules/clubs/clubs.module';
+import { IdentityModule } from './modules/identity/identity.module';
+import { RiskModule } from './modules/risk/risk.module';
 
 @Module({})
 export class AppModule {
@@ -20,7 +25,12 @@ export class AppModule {
         DatabaseModule,
         RedisModule,
         MetricsModule,
+        CommonModule,
         HealthModule,
+        AuditModule,
+        RiskModule,
+        IdentityModule,
+        ClubsModule,
       ],
       providers: [{ provide: APP_FILTER, useClass: AppErrorFilter }],
     };

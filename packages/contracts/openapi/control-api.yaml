@@ -24,6 +24,12 @@ servers:
 tags:
   - name: health
     description: Liveness/readiness probes
+  - name: auth
+    description: Registration, login, token refresh, logout
+  - name: me
+    description: Current user profile and sessions
+  - name: clubs
+    description: Clubs, memberships, roles, invites, audit
 paths:
   /health/live:
     get:
@@ -55,6 +61,431 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HealthStatus'
+  /v1/auth/register:
+    post:
+      tags: [auth]
+      operationId: register
+      summary: Create an account and a first session
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/AuthTransport'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResult'
+        '400':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+  /v1/auth/login:
+    post:
+      tags: [auth]
+      operationId: login
+      summary: Issue access + refresh tokens
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/AuthTransport'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResult'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+  /v1/auth/refresh:
+    post:
+      tags: [auth]
+      operationId: refresh
+      summary: Rotate the refresh token (reuse revokes the session)
+      description: |
+        The refresh token is read from the body or, for browser clients, from
+        the HttpOnly `kof_rt` cookie. Presenting an already-rotated token
+        revokes the session (`AUTH_REFRESH_REUSED`).
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/AuthTransport'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: New token pair
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResult'
+        '401':
+          $ref: '#/components/responses/Error'
+  /v1/auth/logout:
+    post:
+      tags: [auth]
+      operationId: logout
+      summary: Revoke the current session
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Session revoked
+        '401':
+          $ref: '#/components/responses/Error'
+  /v1/me:
+    get:
+      tags: [me]
+      operationId: getMe
+      summary: Current profile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Error'
+  /v1/me/sessions:
+    get:
+      tags: [me]
+      operationId: listMySessions
+      summary: List active sessions/devices
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Sessions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionList'
+        '401':
+          $ref: '#/components/responses/Error'
+  /v1/me/sessions/{sessionId}:
+    delete:
+      tags: [me]
+      operationId: revokeMySession
+      summary: Revoke one of my sessions
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Uuid'
+      responses:
+        '204':
+          description: Revoked
+        '404':
+          $ref: '#/components/responses/Error'
+  /v1/clubs:
+    post:
+      tags: [clubs]
+      operationId: createClub
+      summary: Create a club (caller becomes OWNER)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateClubRequest'
+      responses:
+        '201':
+          description: Club created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Club'
+        '400':
+          $ref: '#/components/responses/Error'
+    get:
+      tags: [clubs]
+      operationId: listMyClubs
+      summary: Clubs I am an active member of
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Clubs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClubList'
+  /v1/clubs/join:
+    post:
+      tags: [clubs]
+      operationId: joinClubByCode
+      summary: Join a club with a club join code or an invite code
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JoinClubRequest'
+      responses:
+        '200':
+          description: Joined
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Club'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+  /v1/clubs/{clubId}:
+    parameters:
+      - $ref: '#/components/parameters/ClubId'
+    get:
+      tags: [clubs]
+      operationId: getClub
+      summary: Club details
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Club
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Club'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+  /v1/clubs/{clubId}/join:
+    parameters:
+      - $ref: '#/components/parameters/ClubId'
+    post:
+      tags: [clubs]
+      operationId: joinClub
+      summary: Join this club by join code or invite code
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JoinClubRequest'
+      responses:
+        '200':
+          description: Joined
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Club'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+  /v1/clubs/{clubId}/leave:
+    parameters:
+      - $ref: '#/components/parameters/ClubId'
+    post:
+      tags: [clubs]
+      operationId: leaveClub
+      summary: Leave the club (owners cannot leave)
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Left
+        '403':
+          $ref: '#/components/responses/Error'
+  /v1/clubs/{clubId}/join-code/rotate:
+    parameters:
+      - $ref: '#/components/parameters/ClubId'
+    post:
+      tags: [clubs]
+      operationId: rotateClubJoinCode
+      summary: Replace the club join code (ADMIN+)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Club with the new join code
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Club'
+        '403':
+          $ref: '#/components/responses/Error'
+  /v1/clubs/{clubId}/members:
+    parameters:
+      - $ref: '#/components/parameters/ClubId'
+    get:
+      tags: [clubs]
+      operationId: listClubMembers
+      summary: Members (keyset-paginated)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+        - name: status
+          in: query
+          required: false
+          description: Filter by status (staff only; members always see ACTIVE).
+          schema:
+            $ref: '#/components/schemas/MemberStatus'
+      responses:
+        '200':
+          description: Page of members
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemberPage'
+        '403':
+          $ref: '#/components/responses/Error'
+  /v1/clubs/{clubId}/members/{userId}:
+    parameters:
+      - $ref: '#/components/parameters/ClubId'
+      - name: userId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+    patch:
+      tags: [clubs]
+      operationId: updateClubMember
+      summary: Change a member's role or status (ban/unban)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMemberRequest'
+      responses:
+        '200':
+          description: Updated member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Member'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+  /v1/clubs/{clubId}/invites:
+    parameters:
+      - $ref: '#/components/parameters/ClubId'
+    post:
+      tags: [clubs]
+      operationId: createClubInvite
+      summary: Create an invite code (AGENT+; AGENT-role invites need ADMIN+)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInviteRequest'
+      responses:
+        '201':
+          description: Invite created; the code is only returned once
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InviteCreated'
+        '403':
+          $ref: '#/components/responses/Error'
+    get:
+      tags: [clubs]
+      operationId: listClubInvites
+      summary: List invites (codes are never returned)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Invites
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InviteList'
+        '403':
+          $ref: '#/components/responses/Error'
+  /v1/clubs/{clubId}/invites/{inviteId}:
+    parameters:
+      - $ref: '#/components/parameters/ClubId'
+      - name: inviteId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+    delete:
+      tags: [clubs]
+      operationId: revokeClubInvite
+      summary: Revoke an invite
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Revoked
+        '404':
+          $ref: '#/components/responses/Error'
+  /v1/clubs/{clubId}/audit-log:
+    parameters:
+      - $ref: '#/components/parameters/ClubId'
+    get:
+      tags: [clubs]
+      operationId: listClubAuditLog
+      summary: Privileged-action audit log (ADMIN+, platform admins)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Page of audit records
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditPage'
+        '403':
+          $ref: '#/components/responses/Error'
 components:
   securitySchemes:
     bearerAuth:
@@ -62,6 +493,39 @@ components:
       scheme: bearer
       bearerFormat: JWT
   parameters:
+    ClubId:
+      name: clubId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 50
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      description: Opaque cursor from a previous page's `nextCursor`.
+      schema:
+        type: string
+        maxLength: 512
+    AuthTransport:
+      name: X-Auth-Transport
+      in: header
+      required: false
+      description: |
+        `cookie` makes the API deliver the refresh token in an HttpOnly
+        SameSite=Strict cookie (`kof_rt`, path `/v1/auth`) instead of the body.
+      schema:
+        type: string
+        enum: [cookie, body]
     RequestId:
       name: X-Request-Id
       in: header
@@ -98,6 +562,347 @@ components:
       type: integer
       format: int64
       description: Integer amount of virtual chips (no monetary value).
+    PlatformRole:
+      type: string
+      enum: [USER, PLATFORM_ADMIN]
+    UserStatus:
+      type: string
+      enum: [ACTIVE, SUSPENDED, DELETED]
+    User:
+      type: object
+      additionalProperties: false
+      required: [id, email, username, status, platformRole, createdAt]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        email:
+          type: string
+          format: email
+        username:
+          type: string
+        status:
+          $ref: '#/components/schemas/UserStatus'
+        platformRole:
+          $ref: '#/components/schemas/PlatformRole'
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+    RegisterRequest:
+      type: object
+      additionalProperties: false
+      required: [email, username, password]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        username:
+          type: string
+          pattern: '^[A-Za-z0-9_]{3,24}$'
+        password:
+          type: string
+          minLength: 10
+          maxLength: 128
+        deviceId:
+          type: string
+          maxLength: 128
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [login, password]
+      properties:
+        login:
+          type: string
+          description: Email or username
+        password:
+          type: string
+        deviceId:
+          type: string
+          maxLength: 128
+    RefreshRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        refreshToken:
+          type: string
+    AuthResult:
+      type: object
+      additionalProperties: false
+      required: [user, sessionId, accessToken, accessTokenExpiresAt, refreshTokenExpiresAt]
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        sessionId:
+          $ref: '#/components/schemas/Uuid'
+        accessToken:
+          type: string
+          description: EdDSA JWT, ~15 minutes
+        accessTokenExpiresAt:
+          $ref: '#/components/schemas/Timestamp'
+        refreshToken:
+          type: string
+          description: Opaque token; omitted when cookie transport is used
+        refreshTokenExpiresAt:
+          $ref: '#/components/schemas/Timestamp'
+    Session:
+      type: object
+      additionalProperties: false
+      required: [id, deviceId, userAgent, createdAt, lastUsedAt, expiresAt, current]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        deviceId:
+          type: string
+          nullable: true
+        userAgent:
+          type: string
+          nullable: true
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        lastUsedAt:
+          $ref: '#/components/schemas/Timestamp'
+        expiresAt:
+          $ref: '#/components/schemas/Timestamp'
+        current:
+          type: boolean
+    SessionList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Session'
+    ClubRole:
+      type: string
+      enum: [OWNER, ADMIN, AGENT, MEMBER]
+    ClubStatus:
+      type: string
+      enum: [ACTIVE, SUSPENDED, CLOSED]
+    MemberStatus:
+      type: string
+      enum: [ACTIVE, BANNED, LEFT]
+    Club:
+      type: object
+      additionalProperties: false
+      required: [id, name, description, status, ownerUserId, createdAt, myRole]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/ClubStatus'
+        ownerUserId:
+          $ref: '#/components/schemas/Uuid'
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        myRole:
+          type: string
+          enum: [OWNER, ADMIN, AGENT, MEMBER, null]
+          nullable: true
+          description: Null when viewed through platform-admin oversight.
+        memberCount:
+          type: integer
+        joinCode:
+          type: string
+          description: Visible to AGENT and above only.
+    ClubList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Club'
+    CreateClubRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 64
+        description:
+          type: string
+          maxLength: 500
+    JoinClubRequest:
+      type: object
+      additionalProperties: false
+      required: [code]
+      properties:
+        code:
+          type: string
+          description: Club join code (8 chars) or invite code (12 chars); case-insensitive.
+    Member:
+      type: object
+      additionalProperties: false
+      required: [userId, username, role, status, joinedAt]
+      properties:
+        userId:
+          $ref: '#/components/schemas/Uuid'
+        username:
+          type: string
+        role:
+          $ref: '#/components/schemas/ClubRole'
+        status:
+          $ref: '#/components/schemas/MemberStatus'
+        joinedAt:
+          $ref: '#/components/schemas/Timestamp'
+    MemberPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Member'
+        nextCursor:
+          type: string
+          nullable: true
+    UpdateMemberRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        role:
+          type: string
+          enum: [ADMIN, AGENT, MEMBER]
+        status:
+          type: string
+          enum: [ACTIVE, BANNED]
+    Invite:
+      type: object
+      additionalProperties: false
+      required: [id, clubId, role, maxUses, useCount, expiresAt, revokedAt, createdAt, status]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        clubId:
+          $ref: '#/components/schemas/Uuid'
+        role:
+          type: string
+          enum: [MEMBER, AGENT]
+        maxUses:
+          type: integer
+        useCount:
+          type: integer
+        expiresAt:
+          $ref: '#/components/schemas/Timestamp'
+        revokedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        status:
+          type: string
+          enum: [ACTIVE, EXPIRED, EXHAUSTED, REVOKED]
+    InviteCreated:
+      type: object
+      additionalProperties: false
+      required: [invite, code]
+      properties:
+        invite:
+          $ref: '#/components/schemas/Invite'
+        code:
+          type: string
+          description: Plaintext invite code, returned only once.
+    InviteList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Invite'
+    CreateInviteRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        role:
+          type: string
+          enum: [MEMBER, AGENT]
+          default: MEMBER
+        maxUses:
+          type: integer
+          minimum: 1
+          maximum: 10000
+          default: 1
+        expiresInHours:
+          type: integer
+          minimum: 1
+          maximum: 720
+          default: 72
+    AuditRecord:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          id,
+          actorUserId,
+          actorUsername,
+          clubId,
+          action,
+          objectType,
+          objectId,
+          before,
+          after,
+          requestId,
+          createdAt,
+        ]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        actorUserId:
+          type: string
+          format: uuid
+          nullable: true
+        actorUsername:
+          type: string
+          nullable: true
+        clubId:
+          type: string
+          format: uuid
+          nullable: true
+        action:
+          type: string
+        objectType:
+          type: string
+        objectId:
+          type: string
+          nullable: true
+        before:
+          type: object
+          additionalProperties: true
+          nullable: true
+        after:
+          type: object
+          additionalProperties: true
+          nullable: true
+        requestId:
+          type: string
+          nullable: true
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+    AuditPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditRecord'
+        nextCursor:
+          type: string
+          nullable: true
     HealthStatus:
       type: object
       required: [status, service]

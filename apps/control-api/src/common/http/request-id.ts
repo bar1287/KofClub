@@ -12,10 +12,15 @@ export function newRequestId(): string {
  * Accepts a well-formed client-supplied request id (for end-to-end
  * correlation) or generates one; always echoes it in the response.
  */
+const RESOLVED = Symbol('kofclub.requestId');
+
 export function resolveRequestId(req: IncomingMessage, res: ServerResponse): string {
+  const cached = (req as IncomingMessage & { [RESOLVED]?: string })[RESOLVED];
+  if (cached) return cached;
   const header = req.headers[REQUEST_ID_HEADER];
   const candidate = Array.isArray(header) ? header[0] : header;
   const id = candidate && VALID_REQUEST_ID.test(candidate) ? candidate : newRequestId();
+  (req as IncomingMessage & { [RESOLVED]?: string })[RESOLVED] = id;
   res.setHeader(REQUEST_ID_HEADER, id);
   return id;
 }

@@ -33,9 +33,24 @@ ephemeral data.
 
 ## Schema overview
 
-| Migration         | Tables                                              |
-| ----------------- | --------------------------------------------------- |
-| 000001_foundation | extensions (`citext`, `pgcrypto`), helper functions |
+| Migration                     | Tables                                                                            |
+| ----------------------------- | --------------------------------------------------------------------------------- |
+| 000001_foundation             | extensions (`citext`, `pgcrypto`), helper functions                               |
+| 000002_identity               | `users`, `sessions`, `session_refresh_tokens`                                     |
+| 000003_audit_risk_idempotency | `audit_log` (append-only), `risk_events` (evidence immutable), `idempotency_keys` |
+| 000004_clubs                  | `clubs`, `club_members` (one OWNER per club), `club_invites` (hashed codes)       |
 
 (The table is extended by each milestone; see the migration files for
 authoritative definitions.)
+
+## Notable constraints
+
+- `users.email` / `users.username` are `citext` with unique constraints
+  (case-insensitive uniqueness); usernames match `^[A-Za-z0-9_]{3,24}$`.
+- `sessions.refresh_hash` stores SHA-256 of the current refresh token only;
+  rotated hashes go to `session_refresh_tokens` for reuse detection.
+- `club_members_single_owner` partial unique index guarantees one OWNER.
+- `club_invites.code_hash` stores SHA-256 of the invite code; `use_count`
+  can never exceed `max_uses` (CHECK constraint, incremented under a row lock).
+- Keyset pagination cursors carry full-precision `timestamptz::text`
+  (JavaScript `Date` truncates microseconds, which would repeat rows).

@@ -42,3 +42,14 @@ endpoints live under `/internal/v1` and are never exposed by the edge.
 Suspicious-login and abuse signals are written as structured security
 events (`security_event` log lines + `security_events_total` metric) and,
 where relevant, `risk_events` rows for later review (spec §11).
+
+## Suspicious-login signals (M1)
+
+- `NEW_DEVICE_LOGIN` risk event when a login comes from a device id and
+  network never seen for the account before (and the account has history).
+- `REFRESH_TOKEN_REUSE` risk event (session revoked) when a rotated refresh
+  token is presented again.
+- `security_event` log lines + `security_events_total{type}` metric for
+  register, login success/failure/blocked, new device, refresh reuse, rate
+  limiting and rate-limiter degradation. Logs never contain passwords,
+  tokens or raw IPs.

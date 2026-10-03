@@ -7,23 +7,23 @@ with the repository at the end of every task.
 
 ## Current milestone
 
-**M1 — Identity + Clubs** (next). M0 is complete.
+**M2 — Pure Hold'em engine** (next). M0 and M1 are complete.
 
 ## Milestones (spec §16)
 
-| Milestone                | Status  | Notes                                                                           |
-| ------------------------ | ------- | ------------------------------------------------------------------------------- |
-| M0 — Foundation          | ✅ Done | Monorepo, Makefile, Compose, CI, migrations, contracts + codegen, health checks |
-| M1 — Identity + Clubs    | ⏳ Next |                                                                                 |
-| M2 — Pure Hold'em engine | Pending |                                                                                 |
-| M3 — Ledger              | Pending |                                                                                 |
-| M4 — Table service       | Pending |                                                                                 |
-| M5 — Realtime            | Pending |                                                                                 |
-| M6 — Web poker table     | Pending |                                                                                 |
-| M7 — History + Admin     | Pending |                                                                                 |
-| M8 — Hardening           | Pending |                                                                                 |
-| M9 — Omaha               | Pending |                                                                                 |
-| M10 — Tournaments        | Pending |                                                                                 |
+| Milestone                | Status  | Notes                                                                                                                              |
+| ------------------------ | ------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| M0 — Foundation          | ✅ Done | Monorepo, Makefile, Compose, CI, migrations, contracts + codegen, health checks                                                    |
+| M1 — Identity + Clubs    | ✅ Done | Argon2id, EdDSA JWT, refresh rotation + reuse detection, sessions, clubs/invites/roles/bans, RBAC, audit, rate limits, idempotency |
+| M2 — Pure Hold'em engine | ⏳ Next |                                                                                                                                    |
+| M3 — Ledger              | Pending |                                                                                                                                    |
+| M4 — Table service       | Pending |                                                                                                                                    |
+| M5 — Realtime            | Pending |                                                                                                                                    |
+| M6 — Web poker table     | Pending |                                                                                                                                    |
+| M7 — History + Admin     | Pending |                                                                                                                                    |
+| M8 — Hardening           | Pending |                                                                                                                                    |
+| M9 — Omaha               | Pending |                                                                                                                                    |
+| M10 — Tournaments        | Pending |                                                                                                                                    |
 
 ## Current architecture
 
@@ -61,8 +61,22 @@ make dev   # full stack in Docker; all /health/ready endpoints return ok
 - NestJS pinned to 11 (v12 is ESM-only; needs ESM + Vitest migration) — ADR-011.
 - Node Docker images copy the whole workspace into the build stage; image size not optimized.
 - OpenTelemetry tracing not yet wired (request ids propagate; traces planned for M8).
+- Rate limiter fails open when Redis is down (documented tradeoff; Argon2 cost still bounds brute force).
+- Ownership transfer and club suspension/closure endpoints not yet implemented (M7 admin).
+- Demo seed passwords are fixed for local convenience (seed refuses `APP_ENV=production`).
+
+## Implemented API (control-api, `/v1`)
+
+Auth: `POST /auth/register|login|refresh|logout`. Me: `GET /me`,
+`GET /me/sessions`, `DELETE /me/sessions/{id}`. Clubs: `POST|GET /clubs`,
+`POST /clubs/join`, `GET /clubs/{id}`, `POST /clubs/{id}/join|leave`,
+`POST /clubs/{id}/join-code/rotate`, `GET /clubs/{id}/members`,
+`PATCH /clubs/{id}/members/{userId}`, `POST|GET /clubs/{id}/invites`,
+`DELETE /clubs/{id}/invites/{inviteId}`, `GET /clubs/{id}/audit-log`.
+Canonical contract: `packages/contracts/openapi/control-api.yaml`
+(integration tests validate responses against it).
 
 ## Next tasks
 
-1. M1: identity schema (users, sessions, refresh tokens), Argon2id, register/login/refresh/logout, `/v1/me`, sessions list/revoke.
-2. M1: clubs (create/join by code or invite, members, roles/status), RBAC guards, audit log, rate limiting.
+1. M2: `go/poker` — cards, crypto shuffle, evaluator with exhaustive tests.
+2. M2: Hold'em hand state machine (blinds, streets, legal actions, all-in, min-raise, heads-up rules), pots/side pots/odd chips, button rotation; 10k+ randomized property-test hands.

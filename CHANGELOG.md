@@ -5,6 +5,30 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added — M1 Identity + Clubs
+
+- Migrations: `users`, `sessions`, `session_refresh_tokens`, `audit_log`,
+  `risk_events`, `idempotency_keys`, `clubs`, `club_members`, `club_invites`.
+- Auth: register/login/refresh/logout with Argon2id, EdDSA access tokens,
+  rotating opaque refresh tokens with reuse detection (session revocation),
+  optional HttpOnly cookie transport for browsers, session listing/revocation.
+- Clubs: create, list, details, join by club code or invite code, leave,
+  join-code rotation, members (keyset pagination), role/status changes with a
+  role hierarchy, invites (hashed, expiring, max uses, revocable).
+- RBAC permission matrix (OWNER/ADMIN/AGENT/MEMBER + platform-admin read-only
+  oversight) and central tenant-isolation check.
+- Append-only audit log for privileged actions; risk events for new-device
+  logins and refresh-token reuse; security-event metrics.
+- Redis rate limiting (IP, account and endpoint dimensions) and generic
+  `Idempotency-Key` support for mutations.
+- OpenAPI contract for all M1 endpoints; integration tests validate responses
+  against it. Demo seed (`make seed`). Worker job purging idempotency keys.
+
+### Fixed
+
+- Keyset pagination cursors now keep microsecond precision (rows were
+  repeated across pages).
+
 ### Added — M0 Foundation
 
 - Monorepo layout per spec §5: pnpm workspace + single Go module.

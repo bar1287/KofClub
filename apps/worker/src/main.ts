@@ -3,6 +3,7 @@ import { Pool } from 'pg';
 import pino from 'pino';
 import { loadConfig } from './config';
 import { Job, runJobs } from './jobs';
+import { purgeIdempotencyKeys } from './purge-jobs';
 
 async function main(): Promise<void> {
   const config = loadConfig();
@@ -19,7 +20,7 @@ async function main(): Promise<void> {
   let draining = false;
 
   // Jobs are registered here as milestones add them (see docs/architecture.md).
-  const jobs: Job[] = [];
+  const jobs: Job[] = [purgeIdempotencyKeys(pool)];
 
   const server = createServer(async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
