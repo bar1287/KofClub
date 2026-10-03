@@ -8,6 +8,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/bar1287/kofclub/go/observability"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	"io"
 	"log/slog"
 	"sync"
@@ -85,6 +89,9 @@ type Actor struct {
 	draining    bool
 	// closeAnnounced is set once TABLE_CLOSED was published by this actor.
 	closeAnnounced bool
+	// traceCtx is the trace context of the request being processed (nil for
+	// timer-driven work such as turn timeouts and hand starts).
+	traceCtx context.Context
 }
 
 // Start restores the table from durable state and starts its goroutine.
@@ -197,7 +204,14 @@ func call[T any](ctx context.Context, a *Actor, fn func() (T, error)) (T, error)
 	ch := make(chan result, 1)
 	var zero T
 	select {
-	case a.inbox <- func() { v, err := fn(); ch <- result{v, err} }:
+	case a.inbox <- func() {
+		// The actor goroutine is single-threaded: expose the caller's trace
+		// context to spans started while fn runs (commit, broadcast).
+		a.traceCtx = ctx
+		v, err := fn()
+		a.traceCtx = nil
+		ch <- result{v, err}
+	}:
 	case <-a.stopCh:
 		return zero, ErrStopped
 	case <-ctx.Done():
@@ -235,7 +249,19 @@ func (a *Actor) commit(next *poker.Table, drafts []draft, work func(ctx context.
 	}
 	lastSeq := a.seq + int64(len(drafts))
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	parent := a.traceCtx
+	if parent == nil {
+		parent = context.Background()
+	}
+	kinds := make([]string, len(drafts))
+	for i, d := range drafts {
+		kinds[i] = d.kind
+	}
+	// One fenced transaction: events, runtime and any ledger postings.
+	spanCtx, span := observability.Tracer().Start(parent, "table.persist", trace.WithAttributes(
+		attribute.String("table.id", a.cfg.ID), attribute.Int("events.count", len(drafts)),
+		attribute.StringSlice("events.kinds", kinds), attribute.Int64("lease.epoch", a.fence.Epoch)))
+	ctx, cancel := context.WithTimeout(spanCtx, 10*time.Second)
 	defer cancel()
 	err := a.deps.Store.InFencedTx(ctx, a.fence, func(tx pgx.Tx) error {
 		if work != nil {
@@ -251,8 +277,11 @@ func (a *Actor) commit(next *poker.Table, drafts []draft, work func(ctx context.
 		})
 	})
 	if err != nil {
+		span.SetStatus(codes.Error, "persist failed")
+		span.End()
 		return nil, a.persistFailure(err)
 	}
+	span.End()
 
 	a.table = next
 	a.seq = lastSeq
@@ -262,7 +291,10 @@ func (a *Actor) commit(next *poker.Table, drafts []draft, work func(ctx context.
 			a.turnSeq = ev.Seq
 		}
 	}
+	_, bspan := observability.Tracer().Start(parent, "table.broadcast", trace.WithAttributes(
+		attribute.Int("subscribers", len(a.subs)), attribute.Int64("seq.last", lastSeq)))
 	a.publish(events)
+	bspan.End()
 	return events, nil
 }
 

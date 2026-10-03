@@ -5,6 +5,34 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added — M8 Hardening
+
+- Chaos drill (`tests/chaos`, in `make integration`): SIGKILL a game node
+  mid-hand; another node adopts the table and finishes the same hand with
+  identical state, a gap-free event log and exact chip conservation.
+- Load smoke (`make load-smoke`): bots over the real HTTP/WebSocket APIs;
+  latency percentiles, rejections, resyncs and a ledger reconciliation check.
+- Backup/restore scripts and drill (`make backup-restore-check`).
+- OpenTelemetry tracing (ADR-014): one trace per player action from
+  WebSocket ingress through the game command, fenced persistence and ledger
+  posting to the broadcast; control-api → game-service traces; `trace_id` in
+  logs; Jaeger in `make observability`; `make trace-check` verifies the span
+  tree.
+- Security: per-request nonce CSP, COOP, HSTS (staging/production),
+  `TRUST_PROXY`, `make audit` (npm + govulncheck), gitleaks in CI,
+  docs/security-review.md.
+- CI: security, ops-drills and Compose + browser E2E jobs.
+- Runbooks: backup/restore, failover drill; docs/performance.md.
+
+### Fixed
+
+- Docker Compose: the gateway had no `CONTROL_API_INTERNAL_URL`, so every
+  table subscription in the containerized stack was refused.
+- HTTP metrics were labelled `route="unmatched"` for every request (the
+  pattern was read from the wrong request copy).
+- Behind a load balancer, per-IP rate limits would have applied to all users
+  together (`trust proxy` was hard-coded to loopback).
+
 ### Added — M7 History + Admin
 
 - Hand history: `GET /v1/me/hands`, `GET /v1/hands/{id}`,

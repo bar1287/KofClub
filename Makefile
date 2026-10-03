@@ -74,8 +74,12 @@ seed: ## Load demo data (users, club, table, chip grants)
 	$(PNPM) --filter @kofclub/control-api seed
 
 .PHONY: observability
-observability: ## Start Prometheus (http://localhost:9090) and Grafana dashboards (http://localhost:3001)
-	docker compose --profile observability up -d prometheus grafana
+observability: ## Start Prometheus (:9090), Jaeger (:16686) and Grafana (:3001); see docs/observability.md
+	docker compose --profile observability up -d prometheus jaeger grafana
+
+.PHONY: trace-check
+trace-check: ## Verify end-to-end tracing: Jaeger + short load smoke + span-tree check (needs Docker, `make deps`)
+	./scripts/trace-check.sh
 
 .PHONY: platform-admin
 platform-admin: ## Grant the platform-admin role: make platform-admin ADMIN_USER=<username> [ACTION=revoke]

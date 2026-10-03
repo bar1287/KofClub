@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/bar1287/kofclub/go/observability"
 	"net/http"
 	"net/url"
 	"sync"
@@ -62,6 +63,7 @@ func (c *HTTPChecker) CheckTable(ctx context.Context, userID, tableID string) (D
 		return Decision{}, err
 	}
 	req.Header.Set("Authorization", "Bearer "+c.token)
+	observability.InjectTrace(ctx, req.Header)
 	res, err := c.client.Do(req)
 	if err != nil {
 		return Decision{}, err

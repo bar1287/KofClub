@@ -43,6 +43,11 @@ func run() error {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	stopTracing, err := observability.InitTracing(ctx, serviceName, cfg.Env, cfg.NodeID)
+	if err != nil {
+		return fmt.Errorf("tracing: %w", err)
+	}
+	defer func() { _ = stopTracing(context.Background()) }()
 	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
 	if err != nil {
 		return fmt.Errorf("database pool: %w", err)

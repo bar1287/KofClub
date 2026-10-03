@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/bar1287/kofclub/go/observability"
 	"net/http"
 	"strings"
 	"sync"
@@ -80,6 +81,7 @@ func (c *Client) do(ctx context.Context, method, tableID, path string, body any,
 		}
 		req.Header.Set("Authorization", "Bearer "+c.token)
 		req.Header.Set("Content-Type", "application/json")
+		observability.InjectTrace(ctx, req.Header)
 		res, err := c.http.Do(req)
 		if err != nil {
 			c.setRoute(tableID, "") // node may be gone: fall back to default routing

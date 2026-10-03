@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/bar1287/kofclub/go/observability"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"log/slog"
 	"regexp"
 	"sync"
@@ -389,10 +392,20 @@ func (c *Conn) handleCommand(ctx context.Context, data []byte) {
 			Error: &protocol.CommandError{Code: "VALIDATION_FAILED", Message: "COMMAND requires requestId/tableId UUIDs and a valid command.kind"}})
 		return
 	}
+	// One trace per player action: WebSocket ingress -> game command ->
+	// persistence -> broadcast (the game service continues it).
+	ctx, span := observability.Tracer().Start(ctx, "ws.command", trace.WithSpanKind(trace.SpanKindServer),
+		trace.WithAttributes(attribute.String("table.id", m.TableID), attribute.String("command.kind", m.Command.Kind),
+			attribute.String("command.request_id", m.RequestID), attribute.String("ws.connection_id", c.id)))
+	defer span.End()
 	result := func(res protocol.CommandResult) {
 		res.Type, res.RequestID, res.TableID = protocol.TypeCommandResult, m.RequestID, m.TableID
 		c.enqueue(protocol.TypeCommandResult, res)
 		c.hub.metrics.CommandRTT.Observe(time.Since(start).Seconds())
+		span.SetAttributes(attribute.Bool("command.accepted", res.Accepted), attribute.Bool("command.duplicate", res.Duplicate))
+		if res.Error != nil {
+			span.SetAttributes(attribute.String("error.code", res.Error.Code))
+		}
 	}
 	if !c.allowCommand() {
 		result(protocol.CommandResult{Error: &protocol.CommandError{Code: "RATE_LIMITED", Message: "too many commands"}})

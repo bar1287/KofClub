@@ -1,3 +1,5 @@
+// Must stay the first import: tracing instruments modules as they load.
+import { tracing } from './tracing';
 import { createApp } from './app.factory';
 import { loadConfig } from './config/config';
 import { HealthService } from './health/health.service';
@@ -16,6 +18,7 @@ async function bootstrap(): Promise<void> {
     console.warn(`control-api: ${signal} received, draining for ${config.DRAIN_DELAY_MS}ms`);
     await new Promise((r) => setTimeout(r, config.DRAIN_DELAY_MS));
     await app.close();
+    await tracing?.shutdown().catch(() => undefined); // flush pending spans
     process.exit(0);
   };
   process.on('SIGTERM', () => void shutdown('SIGTERM'));

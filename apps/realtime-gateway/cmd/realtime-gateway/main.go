@@ -39,6 +39,12 @@ func run() error {
 	logger := observability.NewLogger(serviceName, cfg.Env, cfg.LogLevel)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	host, _ := os.Hostname()
+	stopTracing, err := observability.InitTracing(ctx, serviceName, cfg.Env, host)
+	if err != nil {
+		return fmt.Errorf("tracing: %w", err)
+	}
+	defer func() { _ = stopTracing(context.Background()) }()
 
 	redisOpts, err := redis.ParseURL(cfg.RedisURL)
 	if err != nil {

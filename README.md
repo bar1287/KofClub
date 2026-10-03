@@ -88,9 +88,12 @@ make dev-local  # run all services natively with live reload
 | `make migrate` / `migrate-down` / `migrate-status` | Schema migrations                                                   |
 | `make seed`                                        | Demo data                                                           |
 | `make platform-admin ADMIN_USER=<name>`            | Grant the platform-admin role (operator CLI, audited)               |
-| `make observability`                               | Prometheus (:9090) + Grafana dashboards (:3001)                     |
+| `make observability`                               | Prometheus (:9090), Jaeger (:16686), Grafana (:3001)                |
 | `make contracts` / `contracts-check`               | Regenerate / verify generated contract types                        |
-| `make load-smoke`                                  | Short synthetic load test                                           |
+| `make load-smoke`                                  | Bots play on a fresh stack; latency report + ledger check           |
+| `make backup-restore-check`                        | Restore drill: dump, restore into a fresh DB, verify equivalence    |
+| `make trace-check`                                 | Verify end-to-end OpenTelemetry traces (Jaeger)                     |
+| `make audit`                                       | Known-vulnerability audit (npm + Go)                                |
 | `make ci`                                          | Everything CI runs except integration tests                         |
 
 ## Configuration
@@ -109,6 +112,8 @@ a managed secret store ([docs/security.md](docs/security.md)).
 - [docs/web-client.md](docs/web-client.md) — web client architecture, table UI, E2E tests
 - [docs/observability.md](docs/observability.md) — metrics, dashboards, alerts
 - [docs/runbooks](docs/runbooks/README.md) — what to do when an alert fires
+- [docs/performance.md](docs/performance.md) — load baseline
+- [docs/security-review.md](docs/security-review.md) — M8 security review
 - [docs/ledger.md](docs/ledger.md) — chip accounting
 - [docs/database.md](docs/database.md) — schema and migrations
 - [docs/security.md](docs/security.md) — auth, RBAC, secrets, logging rules

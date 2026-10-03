@@ -7,9 +7,15 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // RequestIDHeader is the header used to propagate correlation ids.
@@ -61,9 +67,11 @@ func (s *statusRecorder) WriteHeader(code int) {
 // (required for WebSocket hijacking).
 func (s *statusRecorder) Unwrap() http.ResponseWriter { return s.ResponseWriter }
 
-// Middleware assigns/propagates a request id, attaches a request-scoped
-// logger, records metrics and writes one structured access-log line per
-// request (health and metrics probes are logged at debug level).
+// Middleware assigns/propagates a request id, continues the caller's trace
+// (W3C traceparent) in a server span, attaches a request-scoped logger
+// (with trace_id when traced), records metrics and writes one structured
+// access-log line per request (health and metrics probes are logged at
+// debug level and not traced).
 func Middleware(base *slog.Logger, metrics *HTTPMetrics, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -72,15 +80,40 @@ func Middleware(base *slog.Logger, metrics *HTTPMetrics, next http.Handler) http
 			rid = NewRequestID()
 		}
 		w.Header().Set(RequestIDHeader, rid)
+		ctx := r.Context()
+		var span trace.Span
+		// Long-lived WebSocket connections are not one span; their commands
+		// are traced individually.
+		if !isProbe(r.URL.Path) && !strings.EqualFold(r.Header.Get("Upgrade"), "websocket") {
+			ctx = otel.GetTextMapPropagator().Extract(ctx, propagation.HeaderCarrier(r.Header))
+			ctx, span = Tracer().Start(ctx, r.Method, trace.WithSpanKind(trace.SpanKindServer),
+				trace.WithAttributes(attribute.String("http.request.method", r.Method), attribute.String("request.id", rid)))
+		}
 		logger := base.With(slog.String("request_id", rid))
-		ctx := WithLogger(WithRequestID(r.Context(), rid), logger)
+		if id := TraceID(ctx); id != "" {
+			logger = logger.With(slog.String("trace_id", id))
+		}
+		ctx = WithLogger(WithRequestID(ctx, rid), logger)
 		rec := &statusRecorder{ResponseWriter: w, code: http.StatusOK}
 
-		next.ServeHTTP(rec, r.WithContext(ctx))
+		req := r.WithContext(ctx)
+		next.ServeHTTP(rec, req)
 
-		route := r.Pattern
+		// The mux records the matched pattern on the request it routed.
+		route := req.Pattern
+		if route == "" {
+			route = r.Pattern
+		}
 		if route == "" {
 			route = "unmatched"
+		}
+		if span != nil {
+			span.SetName(route)
+			span.SetAttributes(attribute.String("http.route", route), attribute.Int("http.response.status_code", rec.code))
+			if rec.code >= 500 {
+				span.SetStatus(codes.Error, http.StatusText(rec.code))
+			}
+			span.End()
 		}
 		elapsed := time.Since(start)
 		if metrics != nil {

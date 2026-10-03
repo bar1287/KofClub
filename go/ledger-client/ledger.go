@@ -13,6 +13,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/bar1287/kofclub/go/observability"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -108,7 +112,16 @@ func MapError(err error) error {
 }
 
 // Post records a balanced transaction inside the caller's transaction.
-func Post(ctx context.Context, q Querier, p Posting) (Result, error) {
+func Post(ctx context.Context, q Querier, p Posting) (res Result, err error) {
+	ctx, span := observability.Tracer().Start(ctx, "ledger.post", trace.WithAttributes(
+		attribute.String("ledger.kind", string(p.Kind)), attribute.Int("ledger.entries", len(p.Entries))))
+	defer func() {
+		if err != nil {
+			span.SetStatus(codes.Error, "ledger post failed")
+		}
+		span.SetAttributes(attribute.Bool("ledger.created", res.Created))
+		span.End()
+	}()
 	if p.TxID == "" {
 		id, err := uuid.NewV7()
 		if err != nil {
@@ -130,7 +143,6 @@ func Post(ctx context.Context, q Querier, p Posting) (Result, error) {
 	if p.Metadata == nil {
 		meta = []byte("{}")
 	}
-	var res Result
 	err = q.QueryRow(ctx,
 		`SELECT tx_id::text, created FROM ledger_post($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
 		p.TxID, p.ExternalRef, string(p.Kind), p.ClubID, p.ActorType, nullable(p.ActorUserID),

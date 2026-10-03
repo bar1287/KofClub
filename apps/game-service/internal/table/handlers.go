@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/bar1287/kofclub/go/observability"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"log/slog"
 	"time"
 
@@ -240,7 +243,13 @@ type CommandResult struct {
 // seat command (SIT_OUT/SIT_IN). Repeating a command id returns the
 // original result without re-applying it.
 func (a *Actor) Command(ctx context.Context, req CommandRequest) (CommandResult, error) {
+	// Spans carry ids and the action kind only, never cards (ADR-008).
+	ctx, span := observability.Tracer().Start(ctx, "table.command", trace.WithAttributes(
+		attribute.String("table.id", a.cfg.ID), attribute.String("command.kind", req.Kind),
+		attribute.String("command.id", req.CommandID)))
+	defer span.End()
 	res, err := call(ctx, a, func() (CommandResult, error) { return a.handleCommand(req), nil })
+	span.SetAttributes(attribute.Bool("command.accepted", res.Accepted), attribute.Bool("command.duplicate", res.Duplicate))
 	if err != nil {
 		return CommandResult{}, err
 	}

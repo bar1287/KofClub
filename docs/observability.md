@@ -8,7 +8,7 @@ contain hole cards, deck order, passwords, tokens or raw IPs (ADR-008).
 
 ```bash
 make dev             # the stack
-make observability   # Prometheus http://localhost:9090, Grafana http://localhost:3001
+make observability   # Prometheus :9090, Jaeger :16686, Grafana :3001
 ```
 
 Grafana starts with the provisioned **KofClub — platform overview**
@@ -41,5 +41,31 @@ links to a runbook in [docs/runbooks](runbooks/README.md):
 LedgerInvariantViolation, GamePersistFailures, HandsVoided, ServiceDown,
 HttpErrorRate, HighActionLatency, WebSocketResyncStorm, TableLeaseLosses.
 
-Tracing (OpenTelemetry) is planned for M8; request ids already propagate
-from the edge through control-api to the game service.
+## Traces
+
+OpenTelemetry traces follow spec §14: HTTP/WS ingress → game command →
+DB/ledger → broadcast. W3C trace context propagates through control-api
+(Node SDK: HTTP, Express, NestJS, pg, ioredis, fetch), the realtime gateway
+and the game service (Go). One player action is one trace:
+
+```
+realtime-gateway  ws.command                       (table.id, command.kind)
+game-service        POST /internal/v1/tables/{tableId}/commands
+game-service          table.command
+game-service            table.persist              (fenced transaction; events.kinds)
+game-service              ledger.post              (HAND_SETTLEMENT at hand end)
+game-service            table.broadcast
+```
+
+Spans are exported only when `OTEL_EXPORTER_OTLP_ENDPOINT` is set (standard
+`OTEL_TRACES_SAMPLER*` variables control sampling); request logs then carry
+`trace_id`. Locally, `make observability` starts Jaeger (UI on
+http://localhost:16686, also a Grafana data source); run services natively
+with `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318`, or set
+`COMPOSE_OTEL_ENDPOINT=http://jaeger:4318` for the Compose stack.
+`make trace-check` (CI) runs a load smoke against Jaeger and verifies the
+span tree above.
+
+Privacy: span attributes carry ids, action kinds, event kinds and counts —
+never cards, tokens, headers, request bodies, SQL parameter values or Redis
+arguments (tested in `apps/game-service/internal/table/tracing_integration_test.go`).
