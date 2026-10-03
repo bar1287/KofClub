@@ -18,6 +18,7 @@ to the same thing.
 | [010](ADR-010-web-first-client.md)                      | Web/PWA client first; Unity/native clients later on the same protocol  | Accepted |
 | [011](ADR-011-toolchain-versions.md)                    | Toolchain pins: NestJS 11 (CommonJS), TypeScript 5.9, Go 1.26          | Accepted |
 | [012](ADR-012-browser-session-realtime-client.md)       | Browser session handling and the reference realtime client             | Accepted |
+| [013](ADR-013-history-admin-policies.md)                | Hand history, table closure and administrative enforcement             | Accepted |
 
 ## Template
 

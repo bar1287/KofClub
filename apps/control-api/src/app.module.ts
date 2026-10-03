@@ -12,6 +12,8 @@ import { MetricsModule } from './metrics/metrics.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { ClubsModule } from './modules/clubs/clubs.module';
 import { IdentityModule } from './modules/identity/identity.module';
+import { AdminModule } from './modules/admin/admin.module';
+import { HistoryModule } from './modules/history/history.module';
 import { InternalModule } from './modules/internal/internal.module';
 import { LedgerModule } from './modules/ledger/ledger.module';
 import { RiskModule } from './modules/risk/risk.module';
@@ -36,6 +38,8 @@ export class AppModule {
         ClubsModule,
         LedgerModule,
         TablesModule,
+        HistoryModule,
+        AdminModule,
         InternalModule,
       ],
       providers: [{ provide: APP_FILTER, useClass: AppErrorFilter }],

@@ -248,3 +248,28 @@ func (s *Store) InFencedTx(ctx context.Context, f Fence, fn func(tx pgx.Tx) erro
 		return fn(tx)
 	})
 }
+
+// SealedHoleCards returns a participant's encrypted hole cards and the
+// hand's status (ErrNotFound when the user was not dealt into the hand).
+func (s *Store) SealedHoleCards(ctx context.Context, handID, userID string) ([]byte, string, error) {
+	var enc []byte
+	var status string
+	err := s.Pool.QueryRow(ctx, `
+		SELECT hp.hole_cards_enc, h.status
+		  FROM hand_players hp JOIN hands h ON h.id = hp.hand_id
+		 WHERE hp.hand_id = $1 AND hp.user_id = $2`, handID, userID).Scan(&enc, &status)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, "", ErrNotFound
+	}
+	return enc, status, err
+}
+
+// TableStatus reads the table's directory status (OPEN | CLOSED).
+func (s *Store) TableStatus(ctx context.Context, tableID string) (string, error) {
+	var status string
+	err := s.Pool.QueryRow(ctx, `SELECT status FROM tables WHERE id = $1`, tableID).Scan(&status)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", ErrNotFound
+	}
+	return status, err
+}

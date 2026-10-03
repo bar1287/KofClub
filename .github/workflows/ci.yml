@@ -73,6 +73,8 @@ jobs:
       - name: Migrations apply, roll back and re-apply
         run: |
           go run ./go/cmd/migrate up
+          go run ./go/cmd/migrate down 1
+          go run ./go/cmd/migrate up
           go run ./go/cmd/migrate version
       - run: make integration
 

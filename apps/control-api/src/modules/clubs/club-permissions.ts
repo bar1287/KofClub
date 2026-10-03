@@ -14,6 +14,7 @@ export type ClubPermission =
   | 'CHIPS_MANAGE'
   | 'LEDGER_VIEW'
   | 'AUDIT_VIEW'
+  | 'HANDS_VIEW'
   | 'CLUB_MANAGE';
 
 /** Minimum club role required for each permission (spec §9 RBAC). */
@@ -26,6 +27,8 @@ const MINIMUM_ROLE: Record<ClubPermission, ClubRole> = {
   CHIPS_MANAGE: 'ADMIN',
   LEDGER_VIEW: 'ADMIN',
   AUDIT_VIEW: 'ADMIN',
+  // Club-wide hand history (public record only, ADR-008).
+  HANDS_VIEW: 'ADMIN',
   CLUB_MANAGE: 'OWNER',
 };
 
@@ -35,6 +38,7 @@ const PLATFORM_ADMIN_PERMISSIONS: ReadonlySet<ClubPermission> = new Set([
   'MEMBERS_VIEW',
   'LEDGER_VIEW',
   'AUDIT_VIEW',
+  'HANDS_VIEW',
 ]);
 
 export function roleHasPermission(role: ClubRole, permission: ClubPermission): boolean {

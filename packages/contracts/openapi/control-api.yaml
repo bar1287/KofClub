@@ -34,6 +34,10 @@ tags:
     description: Virtual-chip wallets and club chip administration (no monetary value)
   - name: tables
     description: Table directory, seating (buy-in) and leaving (cash-out)
+  - name: history
+    description: Hand history with the ADR-008 visibility policy
+  - name: admin
+    description: Platform administration (PLATFORM_ADMIN only)
 paths:
   /health/live:
     get:
@@ -287,6 +291,57 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Club'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+    patch:
+      tags: [clubs]
+      operationId: updateClub
+      summary: Rename the club or edit its description (OWNER)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateClubRequest'
+      responses:
+        '200':
+          description: Updated club
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Club'
+        '400':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+  /v1/clubs/{clubId}/transfer-ownership:
+    parameters:
+      - $ref: '#/components/parameters/ClubId'
+    post:
+      tags: [clubs]
+      operationId: transferClubOwnership
+      summary: Hand the club to another active member (OWNER); the previous owner becomes ADMIN
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferOwnershipRequest'
+      responses:
+        '200':
+          description: Club after the transfer (viewed by the previous owner)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Club'
+        '400':
+          $ref: '#/components/responses/Error'
         '403':
           $ref: '#/components/responses/Error'
         '404':
@@ -796,6 +851,32 @@ paths:
                 $ref: '#/components/schemas/LeaveResult'
         '409':
           $ref: '#/components/responses/Error'
+  /v1/tables/{tableId}/close:
+    parameters:
+      - $ref: '#/components/parameters/TableId'
+    post:
+      tags: [tables]
+      operationId: closeTable
+      summary: Close the table for good (ADMIN+); seated players are cashed out to their wallets
+      description: |
+        No new hands are dealt. When no hand is in progress every seat is
+        cashed out immediately (status CLOSED); otherwise after the current
+        hand (status CLOSING). Safe to retry.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Closure applied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloseTableResult'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
   /v1/tables/{tableId}/state:
     parameters:
       - $ref: '#/components/parameters/TableId'
@@ -814,6 +895,305 @@ paths:
                 $ref: './realtime.yaml#/components/schemas/TableSnapshot'
         '403':
           $ref: '#/components/responses/Error'
+  /v1/me/hands:
+    get:
+      tags: [history]
+      operationId: listMyHands
+      summary: Hands I was dealt into (finished hands, newest first)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Page of hand summaries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HandSummaryPage'
+        '401':
+          $ref: '#/components/responses/Error'
+  /v1/hands/{handId}:
+    parameters:
+      - $ref: '#/components/parameters/HandId'
+    get:
+      tags: [history]
+      operationId: getHand
+      summary: Visible hand record (ADR-008 visibility policy)
+      description: |
+        Participants see the public action log, the board, cards shown at
+        showdown and their own hole cards. Club staff (ADMIN+) and platform
+        admins see the same public record without anyone's unrevealed cards.
+        Anyone else receives HAND_NOT_FOUND.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Hand
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HandDetail'
+        '404':
+          $ref: '#/components/responses/Error'
+  /v1/clubs/{clubId}/hands:
+    parameters:
+      - $ref: '#/components/parameters/ClubId'
+    get:
+      tags: [history]
+      operationId: listClubHands
+      summary: Finished hands in a club (ADMIN+ audit view, newest first)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tableId
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/Uuid'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Page of hand summaries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HandSummaryPage'
+        '403':
+          $ref: '#/components/responses/Error'
+  /v1/admin/overview:
+    get:
+      tags: [admin]
+      operationId: adminOverview
+      summary: Platform operational overview (PLATFORM_ADMIN)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformOverview'
+        '403':
+          $ref: '#/components/responses/Error'
+  /v1/admin/users:
+    get:
+      tags: [admin]
+      operationId: adminSearchUsers
+      summary: Search accounts (PLATFORM_ADMIN)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: false
+          description: Case-insensitive prefix (username/email for users, name for clubs).
+          schema:
+            type: string
+            maxLength: 64
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserPage'
+        '400':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+  /v1/admin/users/{userId}:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+    patch:
+      tags: [admin]
+      operationId: adminSetUserStatus
+      summary: Suspend or reinstate an account; suspension revokes every session (PLATFORM_ADMIN)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAccountStatusRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUser'
+        '400':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+  /v1/admin/clubs:
+    get:
+      tags: [admin]
+      operationId: adminSearchClubs
+      summary: Search clubs (PLATFORM_ADMIN)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: false
+          description: Case-insensitive prefix (username/email for users, name for clubs).
+          schema:
+            type: string
+            maxLength: 64
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminClubPage'
+        '400':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+  /v1/admin/clubs/{clubId}:
+    parameters:
+      - $ref: '#/components/parameters/ClubId'
+    patch:
+      tags: [admin]
+      operationId: adminSetClubStatus
+      summary: Suspend (view-only) or reinstate a club (PLATFORM_ADMIN)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAccountStatusRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminClub'
+        '400':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+  /v1/admin/audit-log:
+    get:
+      tags: [admin]
+      operationId: adminAuditLog
+      summary: Platform-wide audit log (PLATFORM_ADMIN)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: clubId
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/Uuid'
+        - name: actorUserId
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/Uuid'
+        - name: action
+          in: query
+          required: false
+          schema:
+            type: string
+            pattern: '^[A-Z_]{3,64}$'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditPage'
+        '400':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+  /v1/admin/risk-events:
+    get:
+      tags: [admin]
+      operationId: adminRiskEvents
+      summary: Risk cases awaiting (OPEN) or after (REVIEWED) review (PLATFORM_ADMIN)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [OPEN, REVIEWED]
+            default: OPEN
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RiskEventPage'
+        '400':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+  /v1/admin/risk-events/{eventId}:
+    parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+    patch:
+      tags: [admin]
+      operationId: adminReviewRiskEvent
+      summary: Record a review disposition (evidence stays immutable) (PLATFORM_ADMIN)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewRiskEventRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RiskEvent'
+        '400':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
 components:
   securitySchemes:
     bearerAuth:
@@ -823,6 +1203,12 @@ components:
   parameters:
     TableId:
       name: tableId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    HandId:
+      name: handId
       in: path
       required: true
       schema:
@@ -1065,6 +1451,26 @@ components:
         description:
           type: string
           maxLength: 500
+    UpdateClubRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 64
+        description:
+          type: string
+          nullable: true
+          maxLength: 500
+    TransferOwnershipRequest:
+      type: object
+      additionalProperties: false
+      required: [userId]
+      properties:
+        userId:
+          $ref: '#/components/schemas/Uuid'
     JoinClubRequest:
       type: object
       additionalProperties: false
@@ -1585,6 +1991,20 @@ components:
         seq:
           type: integer
           format: int64
+    CloseTableResult:
+      type: object
+      additionalProperties: false
+      required: [tableId, status, seated]
+      properties:
+        tableId:
+          $ref: '#/components/schemas/Uuid'
+        status:
+          type: string
+          enum: [CLOSED, CLOSING]
+          description: CLOSING while a hand finishes; seats are then cashed out.
+        seated:
+          type: integer
+          description: Players still seated (0 once CLOSED).
     LeaveResult:
       type: object
       additionalProperties: false
@@ -1597,6 +2017,402 @@ components:
           enum: [LEFT, LEAVING_AFTER_HAND]
         cashOut:
           $ref: '#/components/schemas/ChipAmount'
+    HandSummary:
+      type: object
+      description: No additionalProperties restriction because HandDetail extends it (allOf).
+      required:
+        [
+          id,
+          tableId,
+          tableName,
+          clubId,
+          clubName,
+          handNo,
+          status,
+          smallBlind,
+          bigBlind,
+          board,
+          pot,
+          playerCount,
+          myNet,
+          startedAt,
+          endedAt,
+        ]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        tableId:
+          $ref: '#/components/schemas/Uuid'
+        tableName:
+          type: string
+        clubId:
+          $ref: '#/components/schemas/Uuid'
+        clubName:
+          type: string
+        handNo:
+          type: integer
+          format: int64
+        status:
+          type: string
+          enum: [COMPLETED, VOIDED]
+        smallBlind:
+          $ref: '#/components/schemas/ChipAmount'
+        bigBlind:
+          $ref: '#/components/schemas/ChipAmount'
+        board:
+          type: array
+          items:
+            $ref: './realtime.yaml#/components/schemas/Card'
+        pot:
+          $ref: '#/components/schemas/ChipAmount'
+        playerCount:
+          type: integer
+        myNet:
+          type: integer
+          format: int64
+          nullable: true
+          description: The viewer's result; null when the viewer did not play or the hand was voided.
+        startedAt:
+          $ref: '#/components/schemas/Timestamp'
+        endedAt:
+          $ref: '#/components/schemas/Timestamp'
+    HandSummaryPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/HandSummary'
+        nextCursor:
+          type: string
+          nullable: true
+    HandParticipant:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          seat,
+          userId,
+          username,
+          startingStack,
+          endingStack,
+          contributed,
+          won,
+          net,
+          folded,
+          shownCards,
+        ]
+      properties:
+        seat:
+          type: integer
+        userId:
+          $ref: '#/components/schemas/Uuid'
+        username:
+          type: string
+        startingStack:
+          $ref: '#/components/schemas/ChipAmount'
+        endingStack:
+          type: integer
+          format: int64
+          nullable: true
+        contributed:
+          type: integer
+          format: int64
+          nullable: true
+        won:
+          type: integer
+          format: int64
+          nullable: true
+        net:
+          type: integer
+          format: int64
+          nullable: true
+        folded:
+          type: boolean
+          nullable: true
+        shownCards:
+          type: array
+          nullable: true
+          description: Cards revealed at showdown (public); null when not shown.
+          items:
+            $ref: './realtime.yaml#/components/schemas/Card'
+    HandEventRecord:
+      type: object
+      additionalProperties: false
+      required: [seq, createdAt, event]
+      properties:
+        seq:
+          type: integer
+          format: int64
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        event:
+          $ref: './realtime.yaml#/components/schemas/TableEventPayload'
+    HandDetail:
+      allOf:
+        - $ref: '#/components/schemas/HandSummary'
+        - type: object
+          required:
+            [buttonSeat, deckCommitment, voidReason, players, myHoleCards, events, viewerRole]
+          properties:
+            buttonSeat:
+              type: integer
+            deckCommitment:
+              type: string
+              description: SHA-256 commitment to the shuffled deck (internal audit).
+            voidReason:
+              type: string
+              nullable: true
+            players:
+              type: array
+              items:
+                $ref: '#/components/schemas/HandParticipant'
+            myHoleCards:
+              type: array
+              nullable: true
+              description: The viewer's own hole cards; null for non-participants.
+              items:
+                $ref: './realtime.yaml#/components/schemas/Card'
+            events:
+              type: array
+              description: Public action log of the hand (never contains unrevealed cards).
+              items:
+                $ref: '#/components/schemas/HandEventRecord'
+            viewerRole:
+              type: string
+              enum: [PARTICIPANT, CLUB_STAFF, PLATFORM_ADMIN]
+    PlatformOverview:
+      type: object
+      additionalProperties: false
+      required: [users, clubs, tables, hands, sessions, risk, ledger, generatedAt]
+      properties:
+        users:
+          type: object
+          additionalProperties: false
+          required: [total, suspended, platformAdmins]
+          properties:
+            total: { type: integer }
+            suspended: { type: integer }
+            platformAdmins: { type: integer }
+        clubs:
+          type: object
+          additionalProperties: false
+          required: [total, active, suspended]
+          properties:
+            total: { type: integer }
+            active: { type: integer }
+            suspended: { type: integer }
+        tables:
+          type: object
+          additionalProperties: false
+          required: [open, seatedPlayers]
+          properties:
+            open: { type: integer }
+            seatedPlayers: { type: integer }
+        hands:
+          type: object
+          additionalProperties: false
+          required: [inProgress, completedLast24h, voidedLast24h]
+          properties:
+            inProgress: { type: integer }
+            completedLast24h: { type: integer }
+            voidedLast24h: { type: integer }
+        sessions:
+          type: object
+          additionalProperties: false
+          required: [active]
+          properties:
+            active: { type: integer }
+        risk:
+          type: object
+          additionalProperties: false
+          required: [openEvents, highSeverityOpen]
+          properties:
+            openEvents: { type: integer }
+            highSeverityOpen: { type: integer }
+        ledger:
+          type: object
+          additionalProperties: false
+          required: [invariantViolations]
+          properties:
+            invariantViolations:
+              type: integer
+              description: Must always be 0; anything else pages the on-call (docs/runbooks).
+        generatedAt:
+          $ref: '#/components/schemas/Timestamp'
+    AdminUser:
+      type: object
+      additionalProperties: false
+      required: [id, username, email, status, platformRole, createdAt, clubCount, activeSessions]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        username:
+          type: string
+        email:
+          type: string
+        status:
+          $ref: '#/components/schemas/UserStatus'
+        platformRole:
+          $ref: '#/components/schemas/PlatformRole'
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        clubCount:
+          type: integer
+        activeSessions:
+          type: integer
+    AdminUserPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminUser'
+        nextCursor:
+          type: string
+          nullable: true
+    AdminClub:
+      type: object
+      additionalProperties: false
+      required: [id, name, status, ownerUserId, ownerUsername, memberCount, openTables, createdAt]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/ClubStatus'
+        ownerUserId:
+          $ref: '#/components/schemas/Uuid'
+        ownerUsername:
+          type: string
+        memberCount:
+          type: integer
+        openTables:
+          type: integer
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+    AdminClubPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminClub'
+        nextCursor:
+          type: string
+          nullable: true
+    UpdateAccountStatusRequest:
+      type: object
+      additionalProperties: false
+      required: [status, reason]
+      properties:
+        status:
+          type: string
+          enum: [ACTIVE, SUSPENDED]
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 500
+          description: Recorded in the audit log.
+    RiskEvent:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          id,
+          subjectUserId,
+          subjectUsername,
+          clubId,
+          type,
+          severity,
+          score,
+          featureValues,
+          evidenceRefs,
+          createdAt,
+          reviewedAt,
+          reviewedBy,
+          reviewedByUsername,
+          disposition,
+          reviewNote,
+        ]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        subjectUserId:
+          type: string
+          format: uuid
+          nullable: true
+        subjectUsername:
+          type: string
+          nullable: true
+        clubId:
+          type: string
+          format: uuid
+          nullable: true
+        type:
+          type: string
+        severity:
+          type: string
+          enum: [LOW, MEDIUM, HIGH]
+        score:
+          type: integer
+        featureValues:
+          type: object
+          additionalProperties: true
+        evidenceRefs:
+          type: array
+          items: {}
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        reviewedAt:
+          type: string
+          format: date-time
+          nullable: true
+        reviewedBy:
+          type: string
+          format: uuid
+          nullable: true
+        reviewedByUsername:
+          type: string
+          nullable: true
+        disposition:
+          type: string
+          enum: [DISMISSED, CONFIRMED, ESCALATED, null]
+          nullable: true
+        reviewNote:
+          type: string
+          nullable: true
+    RiskEventPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/RiskEvent'
+        nextCursor:
+          type: string
+          nullable: true
+    ReviewRiskEventRequest:
+      type: object
+      additionalProperties: false
+      required: [disposition, note]
+      properties:
+        disposition:
+          type: string
+          enum: [DISMISSED, CONFIRMED, ESCALATED]
+        note:
+          type: string
+          minLength: 3
+          maxLength: 1000
     HealthStatus:
       type: object
       required: [status, service]

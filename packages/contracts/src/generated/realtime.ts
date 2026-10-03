@@ -260,7 +260,7 @@ export type components = {
        */
       kind: 'PLAYER_LEFT';
       /** @enum {string} */
-      reason: 'LEFT' | 'BUSTED';
+      reason: 'LEFT' | 'BUSTED' | 'TABLE_CLOSED';
       seat: number;
       /** Format: uuid */
       userId: string;
@@ -397,6 +397,18 @@ export type components = {
       /** @enum {string} */
       type: 'SUBSCRIBE_TABLE';
     };
+    /**
+     * @description The table accepts no new hands or players. Seated players are cashed
+     *     out to their club wallets (PLAYER_LEFT reason TABLE_CLOSED) as soon as
+     *     no hand is in progress.
+     */
+    TableClosedEvent: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: 'TABLE_CLOSED';
+    };
     TableEventMessage: {
       event: components['schemas']['TableEventPayload'];
       /** Format: uuid */
@@ -425,7 +437,8 @@ export type components = {
       | components['schemas']['CardsRevealedEvent']
       | components['schemas']['PotAwardedEvent']
       | components['schemas']['HandCompletedEvent']
-      | components['schemas']['HandVoidedEvent'];
+      | components['schemas']['HandVoidedEvent']
+      | components['schemas']['TableClosedEvent'];
     TableInfo: {
       /** Format: int64 */
       actionTimeoutMs: number;

@@ -14,10 +14,13 @@ describe('club permissions', () => {
     expect(roleHasPermission('ADMIN', 'CHIPS_MANAGE')).toBe(true);
     expect(roleHasPermission('ADMIN', 'CLUB_MANAGE')).toBe(false);
     expect(roleHasPermission('OWNER', 'CLUB_MANAGE')).toBe(true);
+    expect(roleHasPermission('AGENT', 'HANDS_VIEW')).toBe(false);
+    expect(roleHasPermission('ADMIN', 'HANDS_VIEW')).toBe(true);
   });
 
   it('gives platform admins read-only oversight', () => {
     expect(platformAdminHasPermission('PLATFORM_ADMIN', 'AUDIT_VIEW')).toBe(true);
+    expect(platformAdminHasPermission('PLATFORM_ADMIN', 'HANDS_VIEW')).toBe(true);
     expect(platformAdminHasPermission('PLATFORM_ADMIN', 'CHIPS_MANAGE')).toBe(false);
     expect(platformAdminHasPermission('USER', 'CLUB_VIEW')).toBe(false);
   });

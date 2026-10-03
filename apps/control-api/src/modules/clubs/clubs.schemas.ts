@@ -8,6 +8,20 @@ export const createClubSchema = z
   .strict();
 export type CreateClubInput = z.infer<typeof createClubSchema>;
 
+export const updateClubSchema = z
+  .object({
+    name: z.string().trim().min(3).max(64).optional(),
+    description: z.string().trim().max(500).nullable().optional(),
+  })
+  .strict()
+  .refine((v) => v.name !== undefined || v.description !== undefined, {
+    message: 'name or description required',
+  });
+export type UpdateClubInput = z.infer<typeof updateClubSchema>;
+
+export const transferOwnershipSchema = z.object({ userId: z.string().uuid() }).strict();
+export type TransferOwnershipInput = z.infer<typeof transferOwnershipSchema>;
+
 /** Accepts codes typed by humans: case-insensitive, spaces/dashes ignored. */
 export const joinCodeSchema = z
   .string()

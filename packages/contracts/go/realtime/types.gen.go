@@ -383,8 +383,9 @@ func (e PlayerLeftEventKind) Valid() bool {
 
 // Defines values for PlayerLeftEventReason.
 const (
-	PlayerLeftEventReasonBUSTED PlayerLeftEventReason = "BUSTED"
-	PlayerLeftEventReasonLEFT   PlayerLeftEventReason = "LEFT"
+	PlayerLeftEventReasonBUSTED      PlayerLeftEventReason = "BUSTED"
+	PlayerLeftEventReasonLEFT        PlayerLeftEventReason = "LEFT"
+	PlayerLeftEventReasonTABLECLOSED PlayerLeftEventReason = "TABLE_CLOSED"
 )
 
 // Valid indicates whether the value is a known member of the PlayerLeftEventReason enum.
@@ -393,6 +394,8 @@ func (e PlayerLeftEventReason) Valid() bool {
 	case PlayerLeftEventReasonBUSTED:
 		return true
 	case PlayerLeftEventReasonLEFT:
+		return true
+	case PlayerLeftEventReasonTABLECLOSED:
 		return true
 	default:
 		return false
@@ -648,6 +651,21 @@ const (
 func (e SubscribedType) Valid() bool {
 	switch e {
 	case SubscribedTypeSUBSCRIBED:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TableClosedEventKind.
+const (
+	TableClosedEventKindTABLECLOSED TableClosedEventKind = "TABLE_CLOSED"
+)
+
+// Valid indicates whether the value is a known member of the TableClosedEventKind enum.
+func (e TableClosedEventKind) Valid() bool {
+	switch e {
+	case TableClosedEventKindTABLECLOSED:
 		return true
 	default:
 		return false
@@ -1204,6 +1222,16 @@ type SubscribedMode string
 
 // SubscribedType defines model for Subscribed.Type.
 type SubscribedType string
+
+// TableClosedEvent The table accepts no new hands or players. Seated players are cashed
+// out to their club wallets (PLAYER_LEFT reason TABLE_CLOSED) as soon as
+// no hand is in progress.
+type TableClosedEvent struct {
+	Kind TableClosedEventKind `json:"kind"`
+}
+
+// TableClosedEventKind defines model for TableClosedEvent.Kind.
+type TableClosedEventKind string
 
 // TableEventMessage defines model for TableEventMessage.
 type TableEventMessage struct {
@@ -1818,6 +1846,40 @@ func (t *TableEventPayload) MergeHandVoidedEvent(v HandVoidedEvent) error {
 	return err
 }
 
+// AsTableClosedEvent returns the union data inside the TableEventPayload as a TableClosedEvent
+func (t TableEventPayload) AsTableClosedEvent() (TableClosedEvent, error) {
+	var body TableClosedEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromTableClosedEvent overwrites any union data inside the TableEventPayload as the provided TableClosedEvent
+func (t *TableEventPayload) FromTableClosedEvent(v TableClosedEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"TABLE_CLOSED"}`))
+	t.union = b
+	return err
+}
+
+// MergeTableClosedEvent performs a merge with any union data inside the TableEventPayload, using the provided TableClosedEvent
+func (t *TableEventPayload) MergeTableClosedEvent(v TableClosedEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"TABLE_CLOSED"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
 func (t TableEventPayload) Discriminator() (string, error) {
 	var discriminator struct {
 		Discriminator string `json:"kind"`
@@ -1856,6 +1918,8 @@ func (t TableEventPayload) ValueByDiscriminator() (interface{}, error) {
 		return t.AsPotAwardedEvent()
 	case "STREET_DEALT":
 		return t.AsStreetDealtEvent()
+	case "TABLE_CLOSED":
+		return t.AsTableClosedEvent()
 	case "TURN_STARTED":
 		return t.AsTurnStartedEvent()
 	case "UNCALLED_BET_RETURNED":

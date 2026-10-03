@@ -28,6 +28,9 @@ func (a *Actor) startHand() {
 	if h := a.table.Hand(); (h != nil && !h.IsComplete()) || a.draining || a.cfg.Status != "OPEN" || !a.table.CanStartHand() {
 		return
 	}
+	if a.refreshStatus(); a.cfg.Status != "OPEN" {
+		return
+	}
 	deck, err := poker.NewShuffledDeck(a.deps.Rand)
 	if err != nil {
 		a.log.Error("shuffle_failed", slog.String("error", err.Error()))
@@ -228,6 +231,9 @@ func (a *Actor) onHandFinished() {
 		}
 	}
 	a.log.Info("hand_completed", slog.String("hand_id", a.handID))
+	if err := a.closeIfIdle(); err != nil {
+		a.log.Warn("table_close_failed", slog.String("error", err.Error()))
+	}
 	a.stopIfIdleDrained()
 }
 

@@ -15,6 +15,10 @@ import {
   joinClubSchema,
   ListMembersQuery,
   listMembersQuerySchema,
+  TransferOwnershipInput,
+  transferOwnershipSchema,
+  UpdateClubInput,
+  updateClubSchema,
   UpdateMemberInput,
   updateMemberSchema,
 } from './clubs.schemas';
@@ -64,6 +68,27 @@ export class ClubsController {
     @Param('clubId', new ZodPipe(uuidSchema)) clubId: string,
   ): Promise<ClubDto> {
     return this.clubs.get(auth, clubId);
+  }
+
+  @Patch(':clubId')
+  update(
+    @CurrentAuth() auth: AuthContext,
+    @Param('clubId', new ZodPipe(uuidSchema)) clubId: string,
+    @Body(new ZodPipe(updateClubSchema)) body: UpdateClubInput,
+    @Ctx() ctx: RequestContext,
+  ): Promise<ClubDto> {
+    return this.clubs.update(auth, clubId, body, ctx);
+  }
+
+  @Post(':clubId/transfer-ownership')
+  @HttpCode(200)
+  transferOwnership(
+    @CurrentAuth() auth: AuthContext,
+    @Param('clubId', new ZodPipe(uuidSchema)) clubId: string,
+    @Body(new ZodPipe(transferOwnershipSchema)) body: TransferOwnershipInput,
+    @Ctx() ctx: RequestContext,
+  ): Promise<ClubDto> {
+    return this.clubs.transferOwnership(auth, clubId, body, ctx);
   }
 
   @Post(':clubId/join')

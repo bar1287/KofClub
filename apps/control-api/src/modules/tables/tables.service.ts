@@ -20,6 +20,12 @@ export interface SeatResultDto {
   seq: number;
 }
 
+export interface CloseResultDto {
+  tableId: string;
+  status: 'CLOSED' | 'CLOSING';
+  seated: number;
+}
+
 export interface LeaveResultDto {
   tableId: string;
   status: 'LEFT' | 'LEAVING_AFTER_HAND';
@@ -90,7 +96,11 @@ export class TablesService {
     idempotencyKey: string | undefined,
     ctx: RequestContext,
   ): Promise<SeatResultDto> {
-    const table = await this.requireTable(auth, tableId);
+    const table = await this.repo.find(tableId);
+    if (!table) throw new AppError('TABLE_NOT_FOUND', 'Table not found');
+    const { club } = await this.access.require(table.clubId, auth, 'CLUB_VIEW');
+    // A suspended club is view-only: no new buy-ins (leaving stays possible).
+    if (club.status !== 'ACTIVE') throw new AppError('FORBIDDEN', 'Club is suspended');
     if (table.status !== 'OPEN') throw new AppError('TABLE_CLOSED', 'Table is closed');
     const res = await this.game.post<{ seatNo: number; stack: number; seq: number }>(
       tableId,
@@ -122,6 +132,37 @@ export class TablesService {
       ctx.requestId,
     );
     return { tableId, status: res.status, cashOut: res.cashOut };
+  }
+
+  /**
+   * Closes a table for good. The directory row becomes CLOSED (so no seat
+   * can be taken through any path), then the owning game node stops dealing
+   * and cashes every seat out to the club wallet once no hand is running.
+   * Safe to retry: a repeated call re-notifies the game node.
+   */
+  async close(auth: AuthContext, tableId: string, ctx: RequestContext): Promise<CloseResultDto> {
+    const table = await this.repo.find(tableId);
+    if (!table) throw new AppError('TABLE_NOT_FOUND', 'Table not found');
+    await this.db.tx(async (q) => {
+      await this.access.require(table.clubId, auth, 'TABLES_MANAGE', q);
+      if (await this.repo.markClosed(q, tableId)) {
+        await this.audit.record(q, ctx, {
+          action: 'TABLE_CLOSED',
+          objectType: 'table',
+          objectId: tableId,
+          clubId: table.clubId,
+          before: { status: 'OPEN' },
+          after: { status: 'CLOSED' },
+        });
+      }
+    });
+    const res = await this.game.post<{ status: 'CLOSED' | 'CLOSING'; seated: number }>(
+      tableId,
+      'close',
+      {},
+      ctx.requestId,
+    );
+    return { tableId, status: res.status, seated: res.seated };
   }
 
   async state(auth: AuthContext, tableId: string, ctx: RequestContext): Promise<unknown> {

@@ -16,6 +16,8 @@ Security controls from spec §9, and how they are implemented.
 | Replay protection       | Command `commandId` dedupe per table; refresh-token rotation                                                                                            | M1/M5      |
 | Audit                   | Append-only `audit_log` for privileged actions                                                                                                          | M1         |
 | Secrets                 | Environment variables locally; managed secret store in deployed environments; nothing secret in git                                                     | M0         |
+| Hand history            | ADR-008/013: participants see public record + own cards (decrypted by the game plane); staff see the public record only; others get 404                 | M7         |
+| Platform admins         | Created only by the operator CLI (`make platform-admin`); role read from PostgreSQL per request; every admin action audited                             | M7         |
 | Card privacy            | ADR-008: no unrevealed cards outside the game node; encrypted at rest                                                                                   | M4         |
 | Logging ban             | Never log hole cards (before hand completion), deck order, passwords, refresh tokens, Authorization headers, private user data. pino redaction + review | M0+        |
 | Transport               | TLS 1.2+ terminated at the edge/load balancer; HSTS on the web tier                                                                                     | deployment |

@@ -6,8 +6,27 @@ package controlapi
 import (
 	"time"
 
+	externalRef0 "github.com/bar1287/kofclub/packages/contracts/go/realtime"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
+
+// Defines values for CloseTableResultStatus.
+const (
+	CloseTableResultStatusCLOSED  CloseTableResultStatus = "CLOSED"
+	CloseTableResultStatusCLOSING CloseTableResultStatus = "CLOSING"
+)
+
+// Valid indicates whether the value is a known member of the CloseTableResultStatus enum.
+func (e CloseTableResultStatus) Valid() bool {
+	switch e {
+	case CloseTableResultStatusCLOSED:
+		return true
+	case CloseTableResultStatusCLOSING:
+		return true
+	default:
+		return false
+	}
+}
 
 // Defines values for ClubMyRole.
 const (
@@ -237,6 +256,63 @@ func (e ErrorCode) Valid() bool {
 	}
 }
 
+// Defines values for HandDetailStatus.
+const (
+	HandDetailStatusCOMPLETED HandDetailStatus = "COMPLETED"
+	HandDetailStatusVOIDED    HandDetailStatus = "VOIDED"
+)
+
+// Valid indicates whether the value is a known member of the HandDetailStatus enum.
+func (e HandDetailStatus) Valid() bool {
+	switch e {
+	case HandDetailStatusCOMPLETED:
+		return true
+	case HandDetailStatusVOIDED:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for HandDetailViewerRole.
+const (
+	HandDetailViewerRoleCLUBSTAFF     HandDetailViewerRole = "CLUB_STAFF"
+	HandDetailViewerRolePARTICIPANT   HandDetailViewerRole = "PARTICIPANT"
+	HandDetailViewerRolePLATFORMADMIN HandDetailViewerRole = "PLATFORM_ADMIN"
+)
+
+// Valid indicates whether the value is a known member of the HandDetailViewerRole enum.
+func (e HandDetailViewerRole) Valid() bool {
+	switch e {
+	case HandDetailViewerRoleCLUBSTAFF:
+		return true
+	case HandDetailViewerRolePARTICIPANT:
+		return true
+	case HandDetailViewerRolePLATFORMADMIN:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for HandSummaryStatus.
+const (
+	HandSummaryStatusCOMPLETED HandSummaryStatus = "COMPLETED"
+	HandSummaryStatusVOIDED    HandSummaryStatus = "VOIDED"
+)
+
+// Valid indicates whether the value is a known member of the HandSummaryStatus enum.
+func (e HandSummaryStatus) Valid() bool {
+	switch e {
+	case HandSummaryStatusCOMPLETED:
+		return true
+	case HandSummaryStatusVOIDED:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for HealthStatusStatus.
 const (
 	HealthStatusStatusDraining    HealthStatusStatus = "draining"
@@ -435,6 +511,72 @@ func (e PlatformRole) Valid() bool {
 	}
 }
 
+// Defines values for ReviewRiskEventRequestDisposition.
+const (
+	ReviewRiskEventRequestDispositionCONFIRMED ReviewRiskEventRequestDisposition = "CONFIRMED"
+	ReviewRiskEventRequestDispositionDISMISSED ReviewRiskEventRequestDisposition = "DISMISSED"
+	ReviewRiskEventRequestDispositionESCALATED ReviewRiskEventRequestDisposition = "ESCALATED"
+)
+
+// Valid indicates whether the value is a known member of the ReviewRiskEventRequestDisposition enum.
+func (e ReviewRiskEventRequestDisposition) Valid() bool {
+	switch e {
+	case ReviewRiskEventRequestDispositionCONFIRMED:
+		return true
+	case ReviewRiskEventRequestDispositionDISMISSED:
+		return true
+	case ReviewRiskEventRequestDispositionESCALATED:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RiskEventDisposition.
+const (
+	RiskEventDispositionCONFIRMED   RiskEventDisposition = "CONFIRMED"
+	RiskEventDispositionDISMISSED   RiskEventDisposition = "DISMISSED"
+	RiskEventDispositionESCALATED   RiskEventDisposition = "ESCALATED"
+	RiskEventDispositionLessThannil RiskEventDisposition = "<nil>"
+)
+
+// Valid indicates whether the value is a known member of the RiskEventDisposition enum.
+func (e RiskEventDisposition) Valid() bool {
+	switch e {
+	case RiskEventDispositionCONFIRMED:
+		return true
+	case RiskEventDispositionDISMISSED:
+		return true
+	case RiskEventDispositionESCALATED:
+		return true
+	case RiskEventDispositionLessThannil:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RiskEventSeverity.
+const (
+	RiskEventSeverityHIGH   RiskEventSeverity = "HIGH"
+	RiskEventSeverityLOW    RiskEventSeverity = "LOW"
+	RiskEventSeverityMEDIUM RiskEventSeverity = "MEDIUM"
+)
+
+// Valid indicates whether the value is a known member of the RiskEventSeverity enum.
+func (e RiskEventSeverity) Valid() bool {
+	switch e {
+	case RiskEventSeverityHIGH:
+		return true
+	case RiskEventSeverityLOW:
+		return true
+	case RiskEventSeverityMEDIUM:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for TableGameType.
 const (
 	TableGameTypeNLHE TableGameType = "NLHE"
@@ -495,6 +637,24 @@ func (e TableDetailStatus) Valid() bool {
 	case TableDetailStatusCLOSED:
 		return true
 	case TableDetailStatusOPEN:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateAccountStatusRequestStatus.
+const (
+	UpdateAccountStatusRequestStatusACTIVE    UpdateAccountStatusRequestStatus = "ACTIVE"
+	UpdateAccountStatusRequestStatusSUSPENDED UpdateAccountStatusRequestStatus = "SUSPENDED"
+)
+
+// Valid indicates whether the value is a known member of the UpdateAccountStatusRequestStatus enum.
+func (e UpdateAccountStatusRequestStatus) Valid() bool {
+	switch e {
+	case UpdateAccountStatusRequestStatusACTIVE:
+		return true
+	case UpdateAccountStatusRequestStatusSUSPENDED:
 		return true
 	default:
 		return false
@@ -579,6 +739,24 @@ func (e AuthTransport) Valid() bool {
 	}
 }
 
+// Defines values for AdminRiskEventsParamsStatus.
+const (
+	AdminRiskEventsParamsStatusOPEN     AdminRiskEventsParamsStatus = "OPEN"
+	AdminRiskEventsParamsStatusREVIEWED AdminRiskEventsParamsStatus = "REVIEWED"
+)
+
+// Valid indicates whether the value is a known member of the AdminRiskEventsParamsStatus enum.
+func (e AdminRiskEventsParamsStatus) Valid() bool {
+	switch e {
+	case AdminRiskEventsParamsStatusOPEN:
+		return true
+	case AdminRiskEventsParamsStatusREVIEWED:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for LoginParamsXAuthTransport.
 const (
 	LoginParamsXAuthTransportBody   LoginParamsXAuthTransport = "body"
@@ -633,6 +811,45 @@ func (e RegisterParamsXAuthTransport) Valid() bool {
 	}
 }
 
+// AdminClub defines model for AdminClub.
+type AdminClub struct {
+	// CreatedAt UTC RFC 3339 timestamp
+	CreatedAt     Timestamp  `json:"createdAt"`
+	Id            Uuid       `json:"id"`
+	MemberCount   int        `json:"memberCount"`
+	Name          string     `json:"name"`
+	OpenTables    int        `json:"openTables"`
+	OwnerUserId   Uuid       `json:"ownerUserId"`
+	OwnerUsername string     `json:"ownerUsername"`
+	Status        ClubStatus `json:"status"`
+}
+
+// AdminClubPage defines model for AdminClubPage.
+type AdminClubPage struct {
+	Items      []AdminClub `json:"items"`
+	NextCursor *string     `json:"nextCursor"`
+}
+
+// AdminUser defines model for AdminUser.
+type AdminUser struct {
+	ActiveSessions int `json:"activeSessions"`
+	ClubCount      int `json:"clubCount"`
+
+	// CreatedAt UTC RFC 3339 timestamp
+	CreatedAt    Timestamp    `json:"createdAt"`
+	Email        string       `json:"email"`
+	Id           Uuid         `json:"id"`
+	PlatformRole PlatformRole `json:"platformRole"`
+	Status       UserStatus   `json:"status"`
+	Username     string       `json:"username"`
+}
+
+// AdminUserPage defines model for AdminUserPage.
+type AdminUserPage struct {
+	Items      []AdminUser `json:"items"`
+	NextCursor *string     `json:"nextCursor"`
+}
+
 // AuditPage defines model for AuditPage.
 type AuditPage struct {
 	Items      []AuditRecord `json:"items"`
@@ -682,6 +899,19 @@ type ChipMovementRequest struct {
 	Note   *string `json:"note,omitempty"`
 	UserId Uuid    `json:"userId"`
 }
+
+// CloseTableResult defines model for CloseTableResult.
+type CloseTableResult struct {
+	// Seated Players still seated (0 once CLOSED).
+	Seated int `json:"seated"`
+
+	// Status CLOSING while a hand finishes; seats are then cashed out.
+	Status  CloseTableResultStatus `json:"status"`
+	TableId Uuid                   `json:"tableId"`
+}
+
+// CloseTableResultStatus CLOSING while a hand finishes; seats are then cashed out.
+type CloseTableResultStatus string
 
 // Club defines model for Club.
 type Club struct {
@@ -769,6 +999,122 @@ type ErrorCode string
 // ErrorEnvelope defines model for ErrorEnvelope.
 type ErrorEnvelope struct {
 	Error ErrorBody `json:"error"`
+}
+
+// HandDetail defines model for HandDetail.
+type HandDetail struct {
+	// BigBlind Integer amount of virtual chips (no monetary value).
+	BigBlind   ChipAmount          `json:"bigBlind"`
+	Board      []externalRef0.Card `json:"board"`
+	ButtonSeat int                 `json:"buttonSeat"`
+	ClubId     Uuid                `json:"clubId"`
+	ClubName   string              `json:"clubName"`
+
+	// DeckCommitment SHA-256 commitment to the shuffled deck (internal audit).
+	DeckCommitment string `json:"deckCommitment"`
+
+	// EndedAt UTC RFC 3339 timestamp
+	EndedAt Timestamp `json:"endedAt"`
+
+	// Events Public action log of the hand (never contains unrevealed cards).
+	Events []HandEventRecord `json:"events"`
+	HandNo int64             `json:"handNo"`
+	Id     Uuid              `json:"id"`
+
+	// MyHoleCards The viewer's own hole cards; null for non-participants.
+	MyHoleCards *[]externalRef0.Card `json:"myHoleCards"`
+
+	// MyNet The viewer's result; null when the viewer did not play or the hand was voided.
+	MyNet       *int64            `json:"myNet"`
+	PlayerCount int               `json:"playerCount"`
+	Players     []HandParticipant `json:"players"`
+
+	// Pot Integer amount of virtual chips (no monetary value).
+	Pot ChipAmount `json:"pot"`
+
+	// SmallBlind Integer amount of virtual chips (no monetary value).
+	SmallBlind ChipAmount `json:"smallBlind"`
+
+	// StartedAt UTC RFC 3339 timestamp
+	StartedAt  Timestamp            `json:"startedAt"`
+	Status     HandDetailStatus     `json:"status"`
+	TableId    Uuid                 `json:"tableId"`
+	TableName  string               `json:"tableName"`
+	ViewerRole HandDetailViewerRole `json:"viewerRole"`
+	VoidReason *string              `json:"voidReason"`
+}
+
+// HandDetailStatus defines model for HandDetail.Status.
+type HandDetailStatus string
+
+// HandDetailViewerRole defines model for HandDetail.ViewerRole.
+type HandDetailViewerRole string
+
+// HandEventRecord defines model for HandEventRecord.
+type HandEventRecord struct {
+	// CreatedAt UTC RFC 3339 timestamp
+	CreatedAt Timestamp `json:"createdAt"`
+
+	// Event Ordered table event (discriminated by kind). Private fields only appear in the recipient's copy.
+	Event externalRef0.TableEventPayload `json:"event"`
+	Seq   int64                          `json:"seq"`
+}
+
+// HandParticipant defines model for HandParticipant.
+type HandParticipant struct {
+	Contributed *int64 `json:"contributed"`
+	EndingStack *int64 `json:"endingStack"`
+	Folded      *bool  `json:"folded"`
+	Net         *int64 `json:"net"`
+	Seat        int    `json:"seat"`
+
+	// ShownCards Cards revealed at showdown (public); null when not shown.
+	ShownCards *[]externalRef0.Card `json:"shownCards"`
+
+	// StartingStack Integer amount of virtual chips (no monetary value).
+	StartingStack ChipAmount `json:"startingStack"`
+	UserId        Uuid       `json:"userId"`
+	Username      string     `json:"username"`
+	Won           *int64     `json:"won"`
+}
+
+// HandSummary No additionalProperties restriction because HandDetail extends it (allOf).
+type HandSummary struct {
+	// BigBlind Integer amount of virtual chips (no monetary value).
+	BigBlind ChipAmount          `json:"bigBlind"`
+	Board    []externalRef0.Card `json:"board"`
+	ClubId   Uuid                `json:"clubId"`
+	ClubName string              `json:"clubName"`
+
+	// EndedAt UTC RFC 3339 timestamp
+	EndedAt Timestamp `json:"endedAt"`
+	HandNo  int64     `json:"handNo"`
+	Id      Uuid      `json:"id"`
+
+	// MyNet The viewer's result; null when the viewer did not play or the hand was voided.
+	MyNet       *int64 `json:"myNet"`
+	PlayerCount int    `json:"playerCount"`
+
+	// Pot Integer amount of virtual chips (no monetary value).
+	Pot ChipAmount `json:"pot"`
+
+	// SmallBlind Integer amount of virtual chips (no monetary value).
+	SmallBlind ChipAmount `json:"smallBlind"`
+
+	// StartedAt UTC RFC 3339 timestamp
+	StartedAt Timestamp         `json:"startedAt"`
+	Status    HandSummaryStatus `json:"status"`
+	TableId   Uuid              `json:"tableId"`
+	TableName string            `json:"tableName"`
+}
+
+// HandSummaryStatus defines model for HandSummary.Status.
+type HandSummaryStatus string
+
+// HandSummaryPage defines model for HandSummaryPage.
+type HandSummaryPage struct {
+	Items      []HandSummary `json:"items"`
+	NextCursor *string       `json:"nextCursor"`
 }
 
 // HealthStatus defines model for HealthStatus.
@@ -939,6 +1285,43 @@ type MemberPage struct {
 // MemberStatus defines model for MemberStatus.
 type MemberStatus string
 
+// PlatformOverview defines model for PlatformOverview.
+type PlatformOverview struct {
+	Clubs struct {
+		Active    int `json:"active"`
+		Suspended int `json:"suspended"`
+		Total     int `json:"total"`
+	} `json:"clubs"`
+
+	// GeneratedAt UTC RFC 3339 timestamp
+	GeneratedAt Timestamp `json:"generatedAt"`
+	Hands       struct {
+		CompletedLast24h int `json:"completedLast24h"`
+		InProgress       int `json:"inProgress"`
+		VoidedLast24h    int `json:"voidedLast24h"`
+	} `json:"hands"`
+	Ledger struct {
+		// InvariantViolations Must always be 0; anything else pages the on-call (docs/runbooks).
+		InvariantViolations int `json:"invariantViolations"`
+	} `json:"ledger"`
+	Risk struct {
+		HighSeverityOpen int `json:"highSeverityOpen"`
+		OpenEvents       int `json:"openEvents"`
+	} `json:"risk"`
+	Sessions struct {
+		Active int `json:"active"`
+	} `json:"sessions"`
+	Tables struct {
+		Open          int `json:"open"`
+		SeatedPlayers int `json:"seatedPlayers"`
+	} `json:"tables"`
+	Users struct {
+		PlatformAdmins int `json:"platformAdmins"`
+		Suspended      int `json:"suspended"`
+		Total          int `json:"total"`
+	} `json:"users"`
+}
+
 // PlatformRole defines model for PlatformRole.
 type PlatformRole string
 
@@ -958,6 +1341,48 @@ type RegisterRequest struct {
 // ReversalRequest defines model for ReversalRequest.
 type ReversalRequest struct {
 	Note string `json:"note"`
+}
+
+// ReviewRiskEventRequest defines model for ReviewRiskEventRequest.
+type ReviewRiskEventRequest struct {
+	Disposition ReviewRiskEventRequestDisposition `json:"disposition"`
+	Note        string                            `json:"note"`
+}
+
+// ReviewRiskEventRequestDisposition defines model for ReviewRiskEventRequest.Disposition.
+type ReviewRiskEventRequestDisposition string
+
+// RiskEvent defines model for RiskEvent.
+type RiskEvent struct {
+	ClubId *openapi_types.UUID `json:"clubId"`
+
+	// CreatedAt UTC RFC 3339 timestamp
+	CreatedAt          Timestamp              `json:"createdAt"`
+	Disposition        *RiskEventDisposition  `json:"disposition"`
+	EvidenceRefs       []interface{}          `json:"evidenceRefs"`
+	FeatureValues      map[string]interface{} `json:"featureValues"`
+	Id                 Uuid                   `json:"id"`
+	ReviewNote         *string                `json:"reviewNote"`
+	ReviewedAt         *time.Time             `json:"reviewedAt"`
+	ReviewedBy         *openapi_types.UUID    `json:"reviewedBy"`
+	ReviewedByUsername *string                `json:"reviewedByUsername"`
+	Score              int                    `json:"score"`
+	Severity           RiskEventSeverity      `json:"severity"`
+	SubjectUserId      *openapi_types.UUID    `json:"subjectUserId"`
+	SubjectUsername    *string                `json:"subjectUsername"`
+	Type               string                 `json:"type"`
+}
+
+// RiskEventDisposition defines model for RiskEvent.Disposition.
+type RiskEventDisposition string
+
+// RiskEventSeverity defines model for RiskEvent.Severity.
+type RiskEventSeverity string
+
+// RiskEventPage defines model for RiskEventPage.
+type RiskEventPage struct {
+	Items      []RiskEvent `json:"items"`
+	NextCursor *string     `json:"nextCursor"`
 }
 
 // SeatRequest defines model for SeatRequest.
@@ -1088,6 +1513,27 @@ type TableSeat struct {
 // Timestamp UTC RFC 3339 timestamp
 type Timestamp = time.Time
 
+// TransferOwnershipRequest defines model for TransferOwnershipRequest.
+type TransferOwnershipRequest struct {
+	UserId Uuid `json:"userId"`
+}
+
+// UpdateAccountStatusRequest defines model for UpdateAccountStatusRequest.
+type UpdateAccountStatusRequest struct {
+	// Reason Recorded in the audit log.
+	Reason string                           `json:"reason"`
+	Status UpdateAccountStatusRequestStatus `json:"status"`
+}
+
+// UpdateAccountStatusRequestStatus defines model for UpdateAccountStatusRequest.Status.
+type UpdateAccountStatusRequestStatus string
+
+// UpdateClubRequest defines model for UpdateClubRequest.
+type UpdateClubRequest struct {
+	Description *string `json:"description,omitempty"`
+	Name        *string `json:"name,omitempty"`
+}
+
 // UpdateMemberRequest defines model for UpdateMemberRequest.
 type UpdateMemberRequest struct {
 	Role   *UpdateMemberRequestRole   `json:"role,omitempty"`
@@ -1157,6 +1603,9 @@ type ClubId = Uuid
 // Cursor defines model for Cursor.
 type Cursor = string
 
+// HandId defines model for HandId.
+type HandId = Uuid
+
 // IdempotencyKey defines model for IdempotencyKey.
 type IdempotencyKey = string
 
@@ -1171,6 +1620,49 @@ type TableId = Uuid
 
 // Error defines model for Error.
 type Error = ErrorEnvelope
+
+// AdminAuditLogParams defines parameters for AdminAuditLog.
+type AdminAuditLogParams struct {
+	ClubId      *Uuid   `form:"clubId,omitempty" json:"clubId,omitempty"`
+	ActorUserId *Uuid   `form:"actorUserId,omitempty" json:"actorUserId,omitempty"`
+	Action      *string `form:"action,omitempty" json:"action,omitempty"`
+	Limit       *Limit  `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Cursor Opaque cursor from a previous page's `nextCursor`.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+}
+
+// AdminSearchClubsParams defines parameters for AdminSearchClubs.
+type AdminSearchClubsParams struct {
+	// Q Case-insensitive prefix (username/email for users, name for clubs).
+	Q     *string `form:"q,omitempty" json:"q,omitempty"`
+	Limit *Limit  `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Cursor Opaque cursor from a previous page's `nextCursor`.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+}
+
+// AdminRiskEventsParams defines parameters for AdminRiskEvents.
+type AdminRiskEventsParams struct {
+	Status *AdminRiskEventsParamsStatus `form:"status,omitempty" json:"status,omitempty"`
+	Limit  *Limit                       `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Cursor Opaque cursor from a previous page's `nextCursor`.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+}
+
+// AdminRiskEventsParamsStatus defines parameters for AdminRiskEvents.
+type AdminRiskEventsParamsStatus string
+
+// AdminSearchUsersParams defines parameters for AdminSearchUsers.
+type AdminSearchUsersParams struct {
+	// Q Case-insensitive prefix (username/email for users, name for clubs).
+	Q     *string `form:"q,omitempty" json:"q,omitempty"`
+	Limit *Limit  `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Cursor Opaque cursor from a previous page's `nextCursor`.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+}
 
 // LoginParams defines parameters for Login.
 type LoginParams struct {
@@ -1228,6 +1720,15 @@ type GrantChipsParams struct {
 	IdempotencyKey string `json:"Idempotency-Key"`
 }
 
+// ListClubHandsParams defines parameters for ListClubHands.
+type ListClubHandsParams struct {
+	TableId *Uuid  `form:"tableId,omitempty" json:"tableId,omitempty"`
+	Limit   *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Cursor Opaque cursor from a previous page's `nextCursor`.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+}
+
 // CreateClubInviteParams defines parameters for CreateClubInvite.
 type CreateClubInviteParams struct {
 	// IdempotencyKey Unique key making a retried state-changing request a no-op.
@@ -1281,6 +1782,14 @@ type ListMyWalletEntriesParams struct {
 	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
 }
 
+// ListMyHandsParams defines parameters for ListMyHands.
+type ListMyHandsParams struct {
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Cursor Opaque cursor from a previous page's `nextCursor`.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+}
+
 // LeaveTableParams defines parameters for LeaveTable.
 type LeaveTableParams struct {
 	// IdempotencyKey Unique key making a retried state-changing request a no-op.
@@ -1292,6 +1801,15 @@ type TakeSeatParams struct {
 	// IdempotencyKey Unique key making a retried state-changing request a no-op.
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
+
+// AdminSetClubStatusJSONRequestBody defines body for AdminSetClubStatus for application/json ContentType.
+type AdminSetClubStatusJSONRequestBody = UpdateAccountStatusRequest
+
+// AdminReviewRiskEventJSONRequestBody defines body for AdminReviewRiskEvent for application/json ContentType.
+type AdminReviewRiskEventJSONRequestBody = ReviewRiskEventRequest
+
+// AdminSetUserStatusJSONRequestBody defines body for AdminSetUserStatus for application/json ContentType.
+type AdminSetUserStatusJSONRequestBody = UpdateAccountStatusRequest
 
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody = LoginRequest
@@ -1307,6 +1825,9 @@ type CreateClubJSONRequestBody = CreateClubRequest
 
 // JoinClubByCodeJSONRequestBody defines body for JoinClubByCode for application/json ContentType.
 type JoinClubByCodeJSONRequestBody = JoinClubRequest
+
+// UpdateClubJSONRequestBody defines body for UpdateClub for application/json ContentType.
+type UpdateClubJSONRequestBody = UpdateClubRequest
 
 // DeductChipsJSONRequestBody defines body for DeductChips for application/json ContentType.
 type DeductChipsJSONRequestBody = ChipMovementRequest
@@ -1328,6 +1849,9 @@ type UpdateClubMemberJSONRequestBody = UpdateMemberRequest
 
 // CreateTableJSONRequestBody defines body for CreateTable for application/json ContentType.
 type CreateTableJSONRequestBody = CreateTableRequest
+
+// TransferClubOwnershipJSONRequestBody defines body for TransferClubOwnership for application/json ContentType.
+type TransferClubOwnershipJSONRequestBody = TransferOwnershipRequest
 
 // TakeSeatJSONRequestBody defines body for TakeSeat for application/json ContentType.
 type TakeSeatJSONRequestBody = SeatRequest

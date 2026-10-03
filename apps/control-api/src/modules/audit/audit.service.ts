@@ -56,7 +56,7 @@ export class AuditService {
   }
 
   async list(
-    filter: { clubId?: string },
+    filter: { clubId?: string; actorUserId?: string; action?: string },
     limit: number,
     cursor?: string,
   ): Promise<Page<AuditRecordDto>> {
@@ -66,6 +66,14 @@ export class AuditService {
     if (filter.clubId) {
       params.push(filter.clubId);
       where.push(`a.club_id = $${params.length}`);
+    }
+    if (filter.actorUserId) {
+      params.push(filter.actorUserId);
+      where.push(`a.actor_user_id = $${params.length}`);
+    }
+    if (filter.action) {
+      params.push(filter.action);
+      where.push(`a.action = $${params.length}`);
     }
     if (after) {
       params.push(after.createdAt, after.id);

@@ -13,6 +13,8 @@ import type {
   CreateClubInput,
   CreateInviteInput,
   ListMembersQuery,
+  TransferOwnershipInput,
+  UpdateClubInput,
   UpdateMemberInput,
 } from './clubs.schemas';
 import { ClubDto, InviteDto, MemberDto, toClubDto, toInviteDto, toMemberDto } from './clubs.dto';
@@ -195,6 +197,76 @@ export class ClubsService {
         throw err;
       }
     }
+  }
+
+  /** Renames the club or edits its description (OWNER). */
+  async update(
+    auth: AuthContext,
+    clubId: string,
+    input: UpdateClubInput,
+    ctx: RequestContext,
+  ): Promise<ClubDto> {
+    return this.db.tx(async (q) => {
+      const { club, membership } = await this.access.require(clubId, auth, 'CLUB_MANAGE', q);
+      const updated = await this.repo.updateClub(q, clubId, {
+        name: input.name,
+        description: input.description,
+      });
+      await this.audit.record(q, ctx, {
+        action: 'CLUB_UPDATED',
+        objectType: 'club',
+        objectId: clubId,
+        clubId,
+        before: { name: club.name, description: club.description },
+        after: { name: updated.name, description: updated.description },
+      });
+      return toClubDto(updated, membership?.role ?? null, {
+        showJoinCode: true,
+        memberCount: await this.repo.countActiveMembers(clubId),
+      });
+    });
+  }
+
+  /**
+   * Hands the club to another active member (OWNER only). The previous owner
+   * stays on as ADMIN. Exactly one OWNER exists at any time (unique index),
+   * so the demotion happens before the promotion inside one transaction.
+   */
+  async transferOwnership(
+    auth: AuthContext,
+    clubId: string,
+    input: TransferOwnershipInput,
+    ctx: RequestContext,
+  ): Promise<ClubDto> {
+    return this.db.tx(async (q) => {
+      await this.repo.findClub(clubId, q, true); // serialize ownership changes
+      const { club, membership } = await this.access.require(clubId, auth, 'CLUB_MANAGE', q);
+      if (membership?.role !== 'OWNER') {
+        throw new AppError('FORBIDDEN', 'Only the club owner can transfer ownership');
+      }
+      if (input.userId === auth.userId) {
+        throw new AppError('VALIDATION_FAILED', 'You already own this club');
+      }
+      const target = await this.repo.findMembership(clubId, input.userId, q, true);
+      if (!target || target.status !== 'ACTIVE') {
+        throw new AppError('NOT_FOUND', 'The new owner must be an active member');
+      }
+      await this.repo.updateMembership(q, clubId, auth.userId, { role: 'ADMIN' });
+      await this.repo.updateMembership(q, clubId, input.userId, { role: 'OWNER' });
+      const updated = await this.repo.updateClub(q, clubId, { ownerUserId: input.userId });
+      await this.audit.record(q, ctx, {
+        action: 'CLUB_OWNERSHIP_TRANSFERRED',
+        objectType: 'club',
+        objectId: clubId,
+        clubId,
+        before: { ownerUserId: club.ownerUserId, previousTargetRole: target.role },
+        after: { ownerUserId: input.userId, previousOwnerRole: 'ADMIN' },
+      });
+      return toClubDto(updated, 'ADMIN', {
+        showJoinCode: true,
+        memberCount: await this.repo.countActiveMembers(clubId),
+      });
+    });
   }
 
   // --- members ---------------------------------------------------------------

@@ -15,6 +15,7 @@ import (
 
 	"github.com/bar1287/kofclub/apps/game-service/internal/api"
 	"github.com/bar1287/kofclub/apps/game-service/internal/config"
+	"github.com/bar1287/kofclub/apps/game-service/internal/history"
 	"github.com/bar1287/kofclub/apps/game-service/internal/lease"
 	"github.com/bar1287/kofclub/apps/game-service/internal/registry"
 	"github.com/bar1287/kofclub/apps/game-service/internal/sealer"
@@ -75,7 +76,7 @@ func run() error {
 	mux := http.NewServeMux()
 	health.Register(mux)
 	mux.Handle("GET /metrics", observability.MetricsHandler(reg))
-	api.New(tables, cfg.InternalServiceToken, logger).Register(mux)
+	api.New(tables, history.NewReader(deps.Store, seal), cfg.InternalServiceToken, logger).Register(mux)
 
 	logger.Info("service_starting", slog.Int("port", cfg.Port), slog.String("advertise_url", cfg.AdvertiseURL))
 	return service.Run(ctx, service.Options{

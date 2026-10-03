@@ -95,6 +95,15 @@ export class TablesRepository {
     );
   }
 
+  /** Marks the table CLOSED (terminal). Returns false when it already was. */
+  async markClosed(q: Queryable, id: string): Promise<boolean> {
+    const res = await q.query(
+      `UPDATE tables SET status = 'CLOSED', updated_at = now() WHERE id = $1 AND status = 'OPEN'`,
+      [id],
+    );
+    return (res.rowCount ?? 0) > 0;
+  }
+
   async find(id: string, q: Queryable = this.db): Promise<TableRow | null> {
     const res = await q.query(`${SELECT} WHERE t.id = $1`, [id]);
     return res.rows[0] ? map(res.rows[0]) : null;

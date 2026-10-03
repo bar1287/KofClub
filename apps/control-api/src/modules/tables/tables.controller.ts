@@ -5,7 +5,13 @@ import { uuidSchema } from '../../common/validation/schemas';
 import { ZodPipe } from '../../common/validation/zod.pipe';
 import type { TableRow } from './tables.repository';
 import { CreateTableInput, createTableSchema, SeatInput, seatSchema } from './tables.schemas';
-import { LeaveResultDto, SeatResultDto, TableDetailDto, TablesService } from './tables.service';
+import {
+  CloseResultDto,
+  LeaveResultDto,
+  SeatResultDto,
+  TableDetailDto,
+  TablesService,
+} from './tables.service';
 
 @Controller()
 export class TablesController {
@@ -59,6 +65,16 @@ export class TablesController {
     @Ctx() ctx: RequestContext,
   ): Promise<LeaveResultDto> {
     return this.tables.leave(auth, tableId, key, ctx);
+  }
+
+  @Post('tables/:tableId/close')
+  @HttpCode(200)
+  close(
+    @CurrentAuth() auth: AuthContext,
+    @Param('tableId', new ZodPipe(uuidSchema)) tableId: string,
+    @Ctx() ctx: RequestContext,
+  ): Promise<CloseResultDto> {
+    return this.tables.close(auth, tableId, ctx);
   }
 
   @Get('tables/:tableId/state')

@@ -38,6 +38,17 @@ export class GameServiceClient {
     );
   }
 
+  /** A participant's own hole cards for a finished hand (any node can serve it). */
+  holeCards(handId: string, userId: string, requestId: string): Promise<{ cards: string[] }> {
+    const qs = new URLSearchParams({ userId }).toString();
+    return this.request(
+      'GET',
+      `/internal/v1/hands/${handId}/hole-cards?${qs}`,
+      undefined,
+      requestId,
+    );
+  }
+
   private async request<T>(
     method: string,
     path: string,

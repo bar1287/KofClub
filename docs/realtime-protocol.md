@@ -98,22 +98,23 @@ resume, command re-send with the same `requestId`) and
 
 ## Table events (`TABLE_EVENT.event.kind`)
 
-| Kind                    | Public fields                                                       | Private (recipient only)       |
-| ----------------------- | ------------------------------------------------------------------- | ------------------------------ |
-| `PLAYER_SEATED`         | seat, userId, username, stack                                       |                                |
-| `PLAYER_LEFT`           | seat, userId, reason (LEFT/BUSTED), cashOut                         |                                |
-| `PLAYER_SITTING_OUT`    | seat, userId, sittingOut, reason                                    |                                |
-| `HAND_STARTED`          | handId, handNo, button/blind seats, blinds, deckCommitment, players |                                |
-| `BLIND_POSTED`          | seat, blind, amount, allIn, stack, pot                              |                                |
-| `HOLE_CARDS_DEALT`      | seats                                                               | `cards` (own two cards)        |
-| `TURN_STARTED`          | seat, street, currentBet, minRaise, pot, deadline, timeoutMs        | `legalActions` (acting player) |
-| `PLAYER_ACTED`          | seat, action, added, streetBet, stack, allIn, pot, timeout          |                                |
-| `UNCALLED_BET_RETURNED` | seat, amount, stack, pot                                            |                                |
-| `STREET_DEALT`          | street, cards, board                                                |                                |
-| `CARDS_REVEALED`        | seat, cards, description, bestFive                                  |                                |
-| `POT_AWARDED`           | potIndex, amount, eligibleSeats, winners, description               |                                |
-| `HAND_COMPLETED`        | handId, handNo, board, showdown, results                            |                                |
-| `HAND_VOIDED`           | handId, handNo, reason                                              |                                |
+| Kind                    | Public fields                                                         | Private (recipient only)       |
+| ----------------------- | --------------------------------------------------------------------- | ------------------------------ |
+| `PLAYER_SEATED`         | seat, userId, username, stack                                         |                                |
+| `PLAYER_LEFT`           | seat, userId, reason (LEFT/BUSTED/TABLE_CLOSED), cashOut              |                                |
+| `PLAYER_SITTING_OUT`    | seat, userId, sittingOut, reason                                      |                                |
+| `HAND_STARTED`          | handId, handNo, button/blind seats, blinds, deckCommitment, players   |                                |
+| `BLIND_POSTED`          | seat, blind, amount, allIn, stack, pot                                |                                |
+| `HOLE_CARDS_DEALT`      | seats                                                                 | `cards` (own two cards)        |
+| `TURN_STARTED`          | seat, street, currentBet, minRaise, pot, deadline, timeoutMs          | `legalActions` (acting player) |
+| `PLAYER_ACTED`          | seat, action, added, streetBet, stack, allIn, pot, timeout            |                                |
+| `UNCALLED_BET_RETURNED` | seat, amount, stack, pot                                              |                                |
+| `STREET_DEALT`          | street, cards, board                                                  |                                |
+| `CARDS_REVEALED`        | seat, cards, description, bestFive                                    |                                |
+| `POT_AWARDED`           | potIndex, amount, eligibleSeats, winners, description                 |                                |
+| `HAND_COMPLETED`        | handId, handNo, board, showdown, results                              |                                |
+| `HAND_VOIDED`           | handId, handNo, reason                                                |                                |
+| `TABLE_CLOSED`          | (none) — no new hands or players; seats are cashed out after the hand |                                |
 
 Unrevealed cards never appear in public payloads, snapshots of other
 viewers, logs or the persisted event log (ADR-008). Spectating club members

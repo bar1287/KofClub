@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bar1287/kofclub/apps/game-service/internal/history"
 	"github.com/bar1287/kofclub/apps/game-service/internal/registry"
 	"github.com/bar1287/kofclub/apps/game-service/internal/store"
 	"github.com/bar1287/kofclub/apps/game-service/internal/table"
@@ -26,13 +27,14 @@ var uuidRe = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[
 // Server serves the internal API.
 type Server struct {
 	reg   *registry.Registry
+	hist  *history.Reader
 	token []byte
 	log   *slog.Logger
 }
 
 // New creates the internal API server.
-func New(reg *registry.Registry, token string, log *slog.Logger) *Server {
-	return &Server{reg: reg, token: []byte(token), log: log}
+func New(reg *registry.Registry, hist *history.Reader, token string, log *slog.Logger) *Server {
+	return &Server{reg: reg, hist: hist, token: []byte(token), log: log}
 }
 
 // Register mounts the routes on mux.
@@ -41,11 +43,13 @@ func (s *Server) Register(mux *http.ServeMux) {
 	mux.Handle("POST /internal/v1/tables/{tableId}/leave", s.auth(s.leave))
 	mux.Handle("POST /internal/v1/tables/{tableId}/sitting-out", s.auth(s.sittingOut))
 	mux.Handle("POST /internal/v1/tables/{tableId}/commands", s.auth(s.command))
+	mux.Handle("POST /internal/v1/tables/{tableId}/close", s.auth(s.close))
 	mux.Handle("GET /internal/v1/tables/{tableId}/snapshot", s.auth(s.snapshot))
 	mux.Handle("GET /internal/v1/tables/{tableId}/events", s.auth(s.events))
 	mux.Handle("GET /internal/v1/tables/{tableId}/route", s.auth(s.route))
 	mux.Handle("GET /internal/v1/tables/{tableId}/stream", s.auth(s.stream))
 	mux.Handle("GET /internal/v1/tables", s.auth(s.list))
+	mux.Handle("GET /internal/v1/hands/{handId}/hole-cards", s.auth(s.holeCards))
 }
 
 func (s *Server) auth(next http.HandlerFunc) http.Handler {
@@ -309,6 +313,37 @@ func statusFor(code string) int {
 		return http.StatusInternalServerError
 	default:
 		return http.StatusConflict
+	}
+}
+
+// close applies a table closure already recorded in the directory: no new
+// hands, and every seat is cashed out once no hand is in progress.
+func (s *Server) close(w http.ResponseWriter, r *http.Request) {
+	a, ok := s.actor(w, r)
+	if !ok {
+		return
+	}
+	res, err := a.Close(r.Context())
+	respond(w, r, http.StatusOK, res, err)
+}
+
+// holeCards returns the requesting participant's own hole cards for a
+// finished hand. control-api passes the authenticated user's id; the row is
+// selected by (hand, user), so no other player's cards can be returned.
+func (s *Server) holeCards(w http.ResponseWriter, r *http.Request) {
+	handID, userID := r.PathValue("handId"), r.URL.Query().Get("userId")
+	if !validID(w, r, "handId", handID) || !validID(w, r, "userId", userID) {
+		return
+	}
+	cards, err := s.hist.OwnHoleCards(r.Context(), handID, userID)
+	switch {
+	case errors.Is(err, history.ErrNotAvailable):
+		writeError(w, r, http.StatusNotFound, "HAND_NOT_FOUND", "no hole cards for this user and hand", nil)
+	case err != nil:
+		observability.Logger(r.Context(), s.log).Error("hole_cards_read_failed", slog.String("hand_id", handID), slog.String("error", err.Error()))
+		writeError(w, r, http.StatusInternalServerError, "INTERNAL", "could not read hand", nil)
+	default:
+		writeJSON(w, http.StatusOK, map[string]any{"handId": handID, "userId": userID, "cards": cards})
 	}
 }
 

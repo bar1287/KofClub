@@ -25,15 +25,15 @@ Chips are scoped **per club** (each club is its own asset). Account kinds:
 
 Enforced inside `ledger_post()` (defense against caller bugs):
 
-| Kind                               | Flow                                                                                           |
-| ---------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `CLUB_GRANT`, `PROMOTIONAL_CREDIT` | treasury → one wallet                                                                          |
-| `CLUB_DEDUCTION`                   | one wallet → treasury                                                                          |
-| `ADMIN_ADJUSTMENT`                 | treasury ↔ one wallet                                                                          |
-| `TABLE_BUY_IN`                     | a player's wallet → the same player's table stack                                              |
-| `TABLE_CASH_OUT`                   | a player's table stack → the same player's wallet                                              |
-| `HAND_SETTLEMENT`                  | between table stacks of **one** table (net result per player, `external_ref = hand:<hand_id>`) |
-| `REVERSAL`                         | exact negation of an earlier transaction (at most one reversal each)                           |
+| Kind                               | Flow                                                                                                          |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `CLUB_GRANT`, `PROMOTIONAL_CREDIT` | treasury → one wallet                                                                                         |
+| `CLUB_DEDUCTION`                   | one wallet → treasury                                                                                         |
+| `ADMIN_ADJUSTMENT`                 | treasury ↔ one wallet                                                                                         |
+| `TABLE_BUY_IN`                     | a player's wallet → the same player's table stack                                                             |
+| `TABLE_CASH_OUT`                   | a player's table stack → the same player's wallet (leaving, or the table closing: ref `close:<table>:<user>`) |
+| `HAND_SETTLEMENT`                  | between table stacks of **one** table (net result per player, `external_ref = hand:<hand_id>`)                |
+| `REVERSAL`                         | exact negation of an earlier transaction (at most one reversal each)                                          |
 
 There are deliberately no deposit, withdrawal, payment or cash-out kinds.
 

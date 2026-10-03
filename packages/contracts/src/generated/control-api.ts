@@ -35,6 +35,148 @@ export type paths = {
     patch?: never;
     trace?: never;
   };
+  '/v1/admin/audit-log': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Platform-wide audit log (PLATFORM_ADMIN) */
+    get: operations['adminAuditLog'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/clubs': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Search clubs (PLATFORM_ADMIN) */
+    get: operations['adminSearchClubs'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/clubs/{clubId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        clubId: components['parameters']['ClubId'];
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Suspend (view-only) or reinstate a club (PLATFORM_ADMIN) */
+    patch: operations['adminSetClubStatus'];
+    trace?: never;
+  };
+  '/v1/admin/overview': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Platform operational overview (PLATFORM_ADMIN) */
+    get: operations['adminOverview'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/risk-events': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Risk cases awaiting (OPEN) or after (REVIEWED) review (PLATFORM_ADMIN) */
+    get: operations['adminRiskEvents'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/risk-events/{eventId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        eventId: components['schemas']['Uuid'];
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Record a review disposition (evidence stays immutable) (PLATFORM_ADMIN) */
+    patch: operations['adminReviewRiskEvent'];
+    trace?: never;
+  };
+  '/v1/admin/users': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Search accounts (PLATFORM_ADMIN) */
+    get: operations['adminSearchUsers'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/users/{userId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        userId: components['schemas']['Uuid'];
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Suspend or reinstate an account; suspension revokes every session (PLATFORM_ADMIN) */
+    patch: operations['adminSetUserStatus'];
+    trace?: never;
+  };
   '/v1/auth/login': {
     parameters: {
       query?: never;
@@ -142,7 +284,8 @@ export type paths = {
     delete?: never;
     options?: never;
     head?: never;
-    patch?: never;
+    /** Rename the club or edit its description (OWNER) */
+    patch: operations['updateClub'];
     trace?: never;
   };
   '/v1/clubs/{clubId}/audit-log': {
@@ -196,6 +339,25 @@ export type paths = {
     put?: never;
     /** Grant virtual chips from the club treasury to a member (ADMIN+) */
     post: operations['grantChips'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/clubs/{clubId}/hands': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        clubId: components['parameters']['ClubId'];
+      };
+      cookie?: never;
+    };
+    /** Finished hands in a club (ADMIN+ audit view, newest first) */
+    get: operations['listClubHands'];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -435,6 +597,25 @@ export type paths = {
     patch?: never;
     trace?: never;
   };
+  '/v1/clubs/{clubId}/transfer-ownership': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        clubId: components['parameters']['ClubId'];
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Hand the club to another active member (OWNER); the previous owner becomes ADMIN */
+    post: operations['transferClubOwnership'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/clubs/{clubId}/wallet': {
     parameters: {
       query?: never;
@@ -490,6 +671,31 @@ export type paths = {
     patch?: never;
     trace?: never;
   };
+  '/v1/hands/{handId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        handId: components['parameters']['HandId'];
+      };
+      cookie?: never;
+    };
+    /**
+     * Visible hand record (ADR-008 visibility policy)
+     * @description Participants see the public action log, the board, cards shown at
+     *     showdown and their own hole cards. Club staff (ADMIN+) and platform
+     *     admins see the same public record without anyone's unrevealed cards.
+     *     Anyone else receives HAND_NOT_FOUND.
+     */
+    get: operations['getHand'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/me': {
     parameters: {
       query?: never;
@@ -499,6 +705,23 @@ export type paths = {
     };
     /** Current profile */
     get: operations['getMe'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/me/hands': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Hands I was dealt into (finished hands, newest first) */
+    get: operations['listMyHands'];
     put?: never;
     post?: never;
     delete?: never;
@@ -554,6 +777,30 @@ export type paths = {
     get: operations['getTable'];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/tables/{tableId}/close': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tableId: components['parameters']['TableId'];
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Close the table for good (ADMIN+); seated players are cashed out to their wallets
+     * @description No new hands are dealt. When no hand is in progress every seat is
+     *     cashed out immediately (status CLOSED); otherwise after the current
+     *     hand (status CLOSING). Safe to retry.
+     */
+    post: operations['closeTable'];
     delete?: never;
     options?: never;
     head?: never;
@@ -624,6 +871,34 @@ export type paths = {
 export type webhooks = Record<string, never>;
 export type components = {
   schemas: {
+    AdminClub: {
+      createdAt: components['schemas']['Timestamp'];
+      id: components['schemas']['Uuid'];
+      memberCount: number;
+      name: string;
+      openTables: number;
+      ownerUserId: components['schemas']['Uuid'];
+      ownerUsername: string;
+      status: components['schemas']['ClubStatus'];
+    };
+    AdminClubPage: {
+      items: components['schemas']['AdminClub'][];
+      nextCursor: string | null;
+    };
+    AdminUser: {
+      activeSessions: number;
+      clubCount: number;
+      createdAt: components['schemas']['Timestamp'];
+      email: string;
+      id: components['schemas']['Uuid'];
+      platformRole: components['schemas']['PlatformRole'];
+      status: components['schemas']['UserStatus'];
+      username: string;
+    };
+    AdminUserPage: {
+      items: components['schemas']['AdminUser'][];
+      nextCursor: string | null;
+    };
     AuditPage: {
       items: components['schemas']['AuditRecord'][];
       nextCursor: string | null;
@@ -657,8 +932,36 @@ export type components = {
       sessionId: components['schemas']['Uuid'];
       user: components['schemas']['User'];
     };
+    BlindPostedEvent: {
+      allIn: boolean;
+      /** Format: int64 */
+      amount: number;
+      /** @enum {string} */
+      blind: 'SMALL' | 'BIG';
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: 'BLIND_POSTED';
+      /** Format: int64 */
+      pot: number;
+      seat: number;
+      /** Format: int64 */
+      stack: number;
+    };
     /** @description Rank + suit, e.g. "As", "Td", "2c". */
     Card: string;
+    CardsRevealedEvent: {
+      bestFive: components['schemas']['Card'][];
+      cards: components['schemas']['Card'][];
+      description: string;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: 'CARDS_REVEALED';
+      seat: number;
+    };
     /**
      * Format: int64
      * @description Integer amount of virtual chips (no monetary value).
@@ -669,6 +972,16 @@ export type components = {
       amount: number;
       note?: string;
       userId: components['schemas']['Uuid'];
+    };
+    CloseTableResult: {
+      /** @description Players still seated (0 once CLOSED). */
+      seated: number;
+      /**
+       * @description CLOSING while a hand finishes; seats are then cashed out.
+       * @enum {string}
+       */
+      status: 'CLOSED' | 'CLOSING';
+      tableId: components['schemas']['Uuid'];
     };
     Club: {
       createdAt: components['schemas']['Timestamp'];
@@ -779,6 +1092,125 @@ export type components = {
     ErrorEnvelope: {
       error: components['schemas']['ErrorBody'];
     };
+    HandCompletedEvent: {
+      board: components['schemas']['Card'][];
+      /** Format: uuid */
+      handId: string;
+      /** Format: int64 */
+      handNo: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: 'HAND_COMPLETED';
+      results: components['schemas']['HandResult'][];
+      showdown: boolean;
+    };
+    HandDetail: components['schemas']['HandSummary'] & {
+      buttonSeat: number;
+      /** @description SHA-256 commitment to the shuffled deck (internal audit). */
+      deckCommitment: string;
+      /** @description Public action log of the hand (never contains unrevealed cards). */
+      events: components['schemas']['HandEventRecord'][];
+      /** @description The viewer's own hole cards; null for non-participants. */
+      myHoleCards: components['schemas']['Card'][] | null;
+      players: components['schemas']['HandParticipant'][];
+      /** @enum {string} */
+      viewerRole: 'PARTICIPANT' | 'CLUB_STAFF' | 'PLATFORM_ADMIN';
+      voidReason: string | null;
+    };
+    HandEventRecord: {
+      createdAt: components['schemas']['Timestamp'];
+      event: components['schemas']['TableEventPayload'];
+      /** Format: int64 */
+      seq: number;
+    };
+    HandParticipant: {
+      /** Format: int64 */
+      contributed: number | null;
+      /** Format: int64 */
+      endingStack: number | null;
+      folded: boolean | null;
+      /** Format: int64 */
+      net: number | null;
+      seat: number;
+      /** @description Cards revealed at showdown (public); null when not shown. */
+      shownCards: components['schemas']['Card'][] | null;
+      startingStack: components['schemas']['ChipAmount'];
+      userId: components['schemas']['Uuid'];
+      username: string;
+      /** Format: int64 */
+      won: number | null;
+    };
+    HandPlayer: {
+      seat: number;
+      /** Format: int64 */
+      stack: number;
+      /** Format: uuid */
+      userId: string;
+    };
+    HandResult: {
+      /** Format: int64 */
+      contributed: number;
+      folded: boolean;
+      /** Format: int64 */
+      net: number;
+      seat: number;
+      /** Format: int64 */
+      stack: number;
+      /** Format: uuid */
+      userId: string;
+      /** Format: int64 */
+      won: number;
+    };
+    HandStartedEvent: {
+      /** Format: int64 */
+      bigBlind: number;
+      bigBlindSeat: number;
+      buttonSeat: number;
+      deckCommitment: string;
+      /** Format: uuid */
+      handId: string;
+      /** Format: int64 */
+      handNo: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: 'HAND_STARTED';
+      players: components['schemas']['HandPlayer'][];
+      /** Format: int64 */
+      smallBlind: number;
+      smallBlindSeat: number;
+    };
+    /** @description No additionalProperties restriction because HandDetail extends it (allOf). */
+    HandSummary: {
+      bigBlind: components['schemas']['ChipAmount'];
+      board: components['schemas']['Card'][];
+      clubId: components['schemas']['Uuid'];
+      clubName: string;
+      endedAt: components['schemas']['Timestamp'];
+      /** Format: int64 */
+      handNo: number;
+      id: components['schemas']['Uuid'];
+      /**
+       * Format: int64
+       * @description The viewer's result; null when the viewer did not play or the hand was voided.
+       */
+      myNet: number | null;
+      playerCount: number;
+      pot: components['schemas']['ChipAmount'];
+      smallBlind: components['schemas']['ChipAmount'];
+      startedAt: components['schemas']['Timestamp'];
+      /** @enum {string} */
+      status: 'COMPLETED' | 'VOIDED';
+      tableId: components['schemas']['Uuid'];
+      tableName: string;
+    };
+    HandSummaryPage: {
+      items: components['schemas']['HandSummary'][];
+      nextCursor: string | null;
+    };
     HandView: {
       /** Format: date-time */
       actionDeadline: string | null;
@@ -808,6 +1240,18 @@ export type components = {
        */
       turnSeq: number;
     };
+    HandVoidedEvent: {
+      /** Format: uuid */
+      handId: string;
+      /** Format: int64 */
+      handNo: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: 'HAND_VOIDED';
+      reason: string;
+    };
     HealthStatus: {
       checks?: {
         [key: string]: string;
@@ -815,6 +1259,15 @@ export type components = {
       service: string;
       /** @enum {string} */
       status: 'ok' | 'unavailable' | 'draining';
+    };
+    HoleCardsDealtEvent: {
+      cards?: components['schemas']['Card'][];
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: 'HOLE_CARDS_DEALT';
+      seats: number[];
     };
     Invite: {
       clubId: components['schemas']['Uuid'];
@@ -947,8 +1400,114 @@ export type components = {
     };
     /** @enum {string} */
     MemberStatus: 'ACTIVE' | 'BANNED' | 'LEFT';
+    PlatformOverview: {
+      clubs: {
+        active: number;
+        suspended: number;
+        total: number;
+      };
+      generatedAt: components['schemas']['Timestamp'];
+      hands: {
+        completedLast24h: number;
+        inProgress: number;
+        voidedLast24h: number;
+      };
+      ledger: {
+        /** @description Must always be 0; anything else pages the on-call (docs/runbooks). */
+        invariantViolations: number;
+      };
+      risk: {
+        highSeverityOpen: number;
+        openEvents: number;
+      };
+      sessions: {
+        active: number;
+      };
+      tables: {
+        open: number;
+        seatedPlayers: number;
+      };
+      users: {
+        platformAdmins: number;
+        suspended: number;
+        total: number;
+      };
+    };
     /** @enum {string} */
     PlatformRole: 'USER' | 'PLATFORM_ADMIN';
+    PlayerActedEvent: {
+      /** @enum {string} */
+      action: 'FOLD' | 'CHECK' | 'CALL' | 'BET' | 'RAISE';
+      /** Format: int64 */
+      added: number;
+      allIn: boolean;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: 'PLAYER_ACTED';
+      /** Format: int64 */
+      pot: number;
+      seat: number;
+      /** Format: int64 */
+      stack: number;
+      /** Format: int64 */
+      streetBet: number;
+      timeout: boolean;
+    };
+    PlayerLeftEvent: {
+      /** Format: int64 */
+      cashOut: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: 'PLAYER_LEFT';
+      /** @enum {string} */
+      reason: 'LEFT' | 'BUSTED' | 'TABLE_CLOSED';
+      seat: number;
+      /** Format: uuid */
+      userId: string;
+    };
+    PlayerSeatedEvent: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: 'PLAYER_SEATED';
+      seat: number;
+      /** Format: int64 */
+      stack: number;
+      /** Format: uuid */
+      userId: string;
+      username: string;
+    };
+    PlayerSittingOutEvent: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: 'PLAYER_SITTING_OUT';
+      /** @enum {string} */
+      reason?: 'TIMEOUTS' | 'REQUEST' | 'LEAVING';
+      seat: number;
+      sittingOut: boolean;
+      /** Format: uuid */
+      userId: string;
+    };
+    PotAwardedEvent: {
+      /** Format: int64 */
+      amount: number;
+      description: string;
+      eligibleSeats: number[];
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: 'POT_AWARDED';
+      potIndex: number;
+      winners: components['schemas']['WinnerShare'][];
+    };
     RefreshRequest: {
       refreshToken?: string;
     };
@@ -961,6 +1520,40 @@ export type components = {
     };
     ReversalRequest: {
       note: string;
+    };
+    ReviewRiskEventRequest: {
+      /** @enum {string} */
+      disposition: 'DISMISSED' | 'CONFIRMED' | 'ESCALATED';
+      note: string;
+    };
+    RiskEvent: {
+      /** Format: uuid */
+      clubId: string | null;
+      createdAt: components['schemas']['Timestamp'];
+      /** @enum {string|null} */
+      disposition: 'DISMISSED' | 'CONFIRMED' | 'ESCALATED' | null;
+      evidenceRefs: unknown[];
+      featureValues: {
+        [key: string]: unknown;
+      };
+      id: components['schemas']['Uuid'];
+      /** Format: date-time */
+      reviewedAt: string | null;
+      /** Format: uuid */
+      reviewedBy: string | null;
+      reviewedByUsername: string | null;
+      reviewNote: string | null;
+      score: number;
+      /** @enum {string} */
+      severity: 'LOW' | 'MEDIUM' | 'HIGH';
+      /** Format: uuid */
+      subjectUserId: string | null;
+      subjectUsername: string | null;
+      type: string;
+    };
+    RiskEventPage: {
+      items: components['schemas']['RiskEvent'][];
+      nextCursor: string | null;
     };
     SeatRequest: {
       buyIn: components['schemas']['ChipAmount'];
@@ -1003,6 +1596,17 @@ export type components = {
     SessionList: {
       items: components['schemas']['Session'][];
     };
+    StreetDealtEvent: {
+      board: components['schemas']['Card'][];
+      cards: components['schemas']['Card'][];
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: 'STREET_DEALT';
+      /** @enum {string} */
+      street: 'FLOP' | 'TURN' | 'RIVER';
+    };
     Table: {
       actionTimeoutSec: number;
       bigBlind: components['schemas']['ChipAmount'];
@@ -1021,9 +1625,38 @@ export type components = {
       /** @enum {string} */
       status: 'OPEN' | 'CLOSED';
     };
+    /**
+     * @description The table accepts no new hands or players. Seated players are cashed
+     *     out to their club wallets (PLAYER_LEFT reason TABLE_CLOSED) as soon as
+     *     no hand is in progress.
+     */
+    TableClosedEvent: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: 'TABLE_CLOSED';
+    };
     TableDetail: components['schemas']['Table'] & {
       seats: components['schemas']['TableSeat'][];
     };
+    /** @description Ordered table event (discriminated by kind). Private fields only appear in the recipient's copy. */
+    TableEventPayload:
+      | components['schemas']['PlayerSeatedEvent']
+      | components['schemas']['PlayerLeftEvent']
+      | components['schemas']['PlayerSittingOutEvent']
+      | components['schemas']['HandStartedEvent']
+      | components['schemas']['BlindPostedEvent']
+      | components['schemas']['HoleCardsDealtEvent']
+      | components['schemas']['PlayerActedEvent']
+      | components['schemas']['TurnStartedEvent']
+      | components['schemas']['UncalledBetReturnedEvent']
+      | components['schemas']['StreetDealtEvent']
+      | components['schemas']['CardsRevealedEvent']
+      | components['schemas']['PotAwardedEvent']
+      | components['schemas']['HandCompletedEvent']
+      | components['schemas']['HandVoidedEvent']
+      | components['schemas']['TableClosedEvent'];
     TableInfo: {
       /** Format: int64 */
       actionTimeoutMs: number;
@@ -1074,6 +1707,55 @@ export type components = {
      * @description UTC RFC 3339 timestamp
      */
     Timestamp: string;
+    TransferOwnershipRequest: {
+      userId: components['schemas']['Uuid'];
+    };
+    TurnStartedEvent: {
+      /** Format: int64 */
+      currentBet: number;
+      /** Format: date-time */
+      deadline: string;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: 'TURN_STARTED';
+      /** @description Private to the acting player. */
+      legalActions?: components['schemas']['LegalAction'][];
+      /** Format: int64 */
+      minRaise: number;
+      /** Format: int64 */
+      pot: number;
+      seat: number;
+      /** @enum {string} */
+      street: 'PREFLOP' | 'FLOP' | 'TURN' | 'RIVER';
+      /** Format: int64 */
+      timeoutMs: number;
+    };
+    UncalledBetReturnedEvent: {
+      /** Format: int64 */
+      amount: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: 'UNCALLED_BET_RETURNED';
+      /** Format: int64 */
+      pot: number;
+      seat: number;
+      /** Format: int64 */
+      stack: number;
+    };
+    UpdateAccountStatusRequest: {
+      /** @description Recorded in the audit log. */
+      reason: string;
+      /** @enum {string} */
+      status: 'ACTIVE' | 'SUSPENDED';
+    };
+    UpdateClubRequest: {
+      description?: string | null;
+      name?: string;
+    };
     UpdateMemberRequest: {
       /** @enum {string} */
       role?: 'ADMIN' | 'AGENT' | 'MEMBER';
@@ -1112,6 +1794,11 @@ export type components = {
       items: components['schemas']['WalletEntry'][];
       nextCursor: string | null;
     };
+    WinnerShare: {
+      /** Format: int64 */
+      amount: number;
+      seat: number;
+    };
     YouView: {
       holeCards: components['schemas']['Card'][];
       legalActions: components['schemas']['LegalAction'][];
@@ -1141,6 +1828,7 @@ export type components = {
     ClubId: components['schemas']['Uuid'];
     /** @description Opaque cursor from a previous page's `nextCursor`. */
     Cursor: string;
+    HandId: components['schemas']['Uuid'];
     /** @description Unique key making a retried state-changing request a no-op. */
     IdempotencyKey: string;
     Limit: number;
@@ -1201,6 +1889,227 @@ export interface operations {
           'application/json': components['schemas']['HealthStatus'];
         };
       };
+    };
+  };
+  adminAuditLog: {
+    parameters: {
+      query?: {
+        action?: string;
+        actorUserId?: components['schemas']['Uuid'];
+        clubId?: components['schemas']['Uuid'];
+        /** @description Opaque cursor from a previous page's `nextCursor`. */
+        cursor?: components['parameters']['Cursor'];
+        limit?: components['parameters']['Limit'];
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AuditPage'];
+        };
+      };
+      400: components['responses']['Error'];
+      403: components['responses']['Error'];
+    };
+  };
+  adminSearchClubs: {
+    parameters: {
+      query?: {
+        /** @description Opaque cursor from a previous page's `nextCursor`. */
+        cursor?: components['parameters']['Cursor'];
+        limit?: components['parameters']['Limit'];
+        /** @description Case-insensitive prefix (username/email for users, name for clubs). */
+        q?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AdminClubPage'];
+        };
+      };
+      400: components['responses']['Error'];
+      403: components['responses']['Error'];
+    };
+  };
+  adminSetClubStatus: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        clubId: components['parameters']['ClubId'];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['UpdateAccountStatusRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AdminClub'];
+        };
+      };
+      400: components['responses']['Error'];
+      403: components['responses']['Error'];
+      404: components['responses']['Error'];
+    };
+  };
+  adminOverview: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PlatformOverview'];
+        };
+      };
+      403: components['responses']['Error'];
+    };
+  };
+  adminRiskEvents: {
+    parameters: {
+      query?: {
+        /** @description Opaque cursor from a previous page's `nextCursor`. */
+        cursor?: components['parameters']['Cursor'];
+        limit?: components['parameters']['Limit'];
+        status?: 'OPEN' | 'REVIEWED';
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RiskEventPage'];
+        };
+      };
+      400: components['responses']['Error'];
+      403: components['responses']['Error'];
+    };
+  };
+  adminReviewRiskEvent: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        eventId: components['schemas']['Uuid'];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ReviewRiskEventRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RiskEvent'];
+        };
+      };
+      400: components['responses']['Error'];
+      403: components['responses']['Error'];
+      404: components['responses']['Error'];
+      409: components['responses']['Error'];
+    };
+  };
+  adminSearchUsers: {
+    parameters: {
+      query?: {
+        /** @description Opaque cursor from a previous page's `nextCursor`. */
+        cursor?: components['parameters']['Cursor'];
+        limit?: components['parameters']['Limit'];
+        /** @description Case-insensitive prefix (username/email for users, name for clubs). */
+        q?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AdminUserPage'];
+        };
+      };
+      400: components['responses']['Error'];
+      403: components['responses']['Error'];
+    };
+  };
+  adminSetUserStatus: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        userId: components['schemas']['Uuid'];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['UpdateAccountStatusRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AdminUser'];
+        };
+      };
+      400: components['responses']['Error'];
+      403: components['responses']['Error'];
+      404: components['responses']['Error'];
     };
   };
   login: {
@@ -1391,6 +2300,34 @@ export interface operations {
       404: components['responses']['Error'];
     };
   };
+  updateClub: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        clubId: components['parameters']['ClubId'];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['UpdateClubRequest'];
+      };
+    };
+    responses: {
+      /** @description Updated club */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Club'];
+        };
+      };
+      400: components['responses']['Error'];
+      403: components['responses']['Error'];
+    };
+  };
   listClubAuditLog: {
     parameters: {
       query?: {
@@ -1477,6 +2414,34 @@ export interface operations {
       };
       403: components['responses']['Error'];
       409: components['responses']['Error'];
+    };
+  };
+  listClubHands: {
+    parameters: {
+      query?: {
+        /** @description Opaque cursor from a previous page's `nextCursor`. */
+        cursor?: components['parameters']['Cursor'];
+        limit?: components['parameters']['Limit'];
+        tableId?: components['schemas']['Uuid'];
+      };
+      header?: never;
+      path: {
+        clubId: components['parameters']['ClubId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Page of hand summaries */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HandSummaryPage'];
+        };
+      };
+      403: components['responses']['Error'];
     };
   };
   listClubInvites: {
@@ -1844,6 +2809,35 @@ export interface operations {
       403: components['responses']['Error'];
     };
   };
+  transferClubOwnership: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        clubId: components['parameters']['ClubId'];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['TransferOwnershipRequest'];
+      };
+    };
+    responses: {
+      /** @description Club after the transfer (viewed by the previous owner) */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Club'];
+        };
+      };
+      400: components['responses']['Error'];
+      403: components['responses']['Error'];
+      404: components['responses']['Error'];
+    };
+  };
   getMyWallet: {
     parameters: {
       query?: never;
@@ -1920,6 +2914,29 @@ export interface operations {
       409: components['responses']['Error'];
     };
   };
+  getHand: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        handId: components['parameters']['HandId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Hand */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HandDetail'];
+        };
+      };
+      404: components['responses']['Error'];
+    };
+  };
   getMe: {
     parameters: {
       query?: never;
@@ -1936,6 +2953,31 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['User'];
+        };
+      };
+      401: components['responses']['Error'];
+    };
+  };
+  listMyHands: {
+    parameters: {
+      query?: {
+        /** @description Opaque cursor from a previous page's `nextCursor`. */
+        cursor?: components['parameters']['Cursor'];
+        limit?: components['parameters']['Limit'];
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Page of hand summaries */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HandSummaryPage'];
         };
       };
       401: components['responses']['Error'];
@@ -2004,6 +3046,31 @@ export interface operations {
         };
       };
       404: components['responses']['Error'];
+    };
+  };
+  closeTable: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tableId: components['parameters']['TableId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Closure applied */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CloseTableResult'];
+        };
+      };
+      403: components['responses']['Error'];
+      404: components['responses']['Error'];
+      503: components['responses']['Error'];
     };
   };
   leaveTable: {

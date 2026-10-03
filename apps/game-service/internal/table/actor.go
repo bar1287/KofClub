@@ -83,6 +83,8 @@ type Actor struct {
 	subs        map[int64]*Subscription
 	nextSubID   int64
 	draining    bool
+	// closeAnnounced is set once TABLE_CLOSED was published by this actor.
+	closeAnnounced bool
 }
 
 // Start restores the table from durable state and starts its goroutine.
@@ -116,6 +118,14 @@ func Start(ctx context.Context, deps Deps, tableID string, epoch int64) (*Actor,
 	}
 	deps.Metrics.ActiveTables.Inc()
 	go a.run()
+	if a.cfg.Status == "CLOSED" {
+		// Finish a closure whose notification may have been lost.
+		a.post(func() {
+			if err := a.closeIfIdle(); err != nil {
+				a.log.Warn("table_close_failed", slog.String("error", err.Error()))
+			}
+		})
+	}
 	a.post(a.afterChange)
 	return a, nil
 }

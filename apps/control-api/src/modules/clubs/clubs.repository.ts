@@ -111,6 +111,30 @@ export class ClubsRepository {
     return res.rows[0] ? mapClub(res.rows[0]) : null;
   }
 
+  async updateClub(
+    q: Queryable,
+    clubId: string,
+    patch: { name?: string; description?: string | null; ownerUserId?: string },
+  ): Promise<ClubRow> {
+    const res = await q.query(
+      `UPDATE clubs AS c
+          SET name = COALESCE($2, c.name),
+              description = CASE WHEN $3::boolean THEN $4 ELSE c.description END,
+              owner_user_id = COALESCE($5, c.owner_user_id),
+              updated_at = now()
+        WHERE c.id = $1
+        RETURNING ${CLUB_COLS}`,
+      [
+        clubId,
+        patch.name ?? null,
+        patch.description !== undefined,
+        patch.description ?? null,
+        patch.ownerUserId ?? null,
+      ],
+    );
+    return mapClub(res.rows[0]);
+  }
+
   async updateJoinCode(q: Queryable, clubId: string, code: string): Promise<void> {
     await q.query(`UPDATE clubs SET join_code = $2 WHERE id = $1`, [clubId, code]);
   }
