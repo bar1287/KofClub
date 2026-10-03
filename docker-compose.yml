@@ -88,6 +88,8 @@ services:
     environment:
       <<: *app-env
       REALTIME_PORT: 4100
+      # Table access checks (service token) go to control-api's internal API.
+      CONTROL_API_INTERNAL_URL: http://control-api:4000
       AUTH_JWT_PUBLIC_KEY_B64: ${AUTH_JWT_PUBLIC_KEY_B64}
       AUTH_JWT_ISSUER: ${AUTH_JWT_ISSUER}
       AUTH_JWT_AUDIENCE: ${AUTH_JWT_AUDIENCE}
@@ -98,6 +100,8 @@ services:
       redis:
         condition: service_healthy
       game-service:
+        condition: service_healthy
+      control-api:
         condition: service_healthy
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:4100/health/ready']
