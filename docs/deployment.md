@@ -37,3 +37,31 @@ metrics. `infra/terraform` will hold that definition.
 Every deployable exposes `GET /health/live` (process up) and
 `GET /health/ready` (dependencies reachable, not draining). On SIGTERM a
 service reports `draining` for `DRAIN_DELAY` before closing listeners.
+
+## Production configuration checklist
+
+- `APP_ENV=production` (refuses weakened Argon2 cost and disabled rate limits).
+- `TRUST_PROXY`: the number of proxy hops in front of control-api (e.g. `1`
+  behind one ALB) or their addresses/CIDRs. Wrong values make every request
+  appear to come from the load balancer, so per-IP rate limits would apply to
+  all users together. `true`/`*` is refused.
+- `CORS_ORIGINS` and the gateway's allowed origins: the web origin only.
+- Secrets from the secret store: `AUTH_JWT_PRIVATE_KEY_B64` (control-api
+  only), `AUTH_JWT_PUBLIC_KEY_B64` (control-api, gateway),
+  `INTERNAL_SERVICE_TOKEN`, `IP_HASH_SECRET`, `DECK_ENCRYPTION_KEY_B64`
+  (game nodes only).
+- Web: served over HTTPS; the web tier sends a per-request nonce CSP and,
+  with `APP_ENV=production|staging`, HSTS.
+- Platform administrators: granted with the operator CLI
+  (`node dist/cli/platform-admin.js grant <username>` in a one-off control-api
+  task); never over HTTP.
+
+## Backups
+
+Production relies on the managed database's continuous backups
+(point-in-time recovery) plus periodic logical exports
+(`scripts/db-backup.sh`, custom format). Restores go into a fresh database
+(`scripts/db-restore.sh` refuses non-empty targets). The restore drill
+(`make backup-restore-check`, also in CI) proves a dump of played hands
+restores to an identical, healthy database. Procedure:
+[runbooks/backup-restore.md](runbooks/backup-restore.md).

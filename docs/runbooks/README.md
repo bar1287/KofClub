@@ -10,5 +10,10 @@ Each Prometheus alert (`infra/observability/alerts.yml`) links to one of these.
 | [latency.md](latency.md)                                       | HighActionLatency                                  |
 | [realtime.md](realtime.md)                                     | WebSocketResyncStorm                               |
 
-Planned for M8: chaos drills (killing a game node mid-hand), backup and
-restore, load testing.
+Procedures and drills:
+
+- [backup-restore.md](backup-restore.md) — logical backups, restore, the
+  automated restore drill (`make backup-restore-check`).
+- [failover-drill.md](failover-drill.md) — killing a game node mid-hand
+  (automated in `tests/chaos`).
+- Load baseline: [../performance.md](../performance.md) (`make load-smoke`).

@@ -138,8 +138,17 @@ e2e: ## Browser end-to-end tests: fresh DB, native services, Playwright (needs `
 	./scripts/e2e.sh
 
 .PHONY: load-smoke
-load-smoke: ## Short synthetic load test against a running stack
-	@if [ -d tests/load ]; then $(GO) run ./tests/load/cmd/loadsmoke; else echo "load-smoke is implemented in M8"; fi
+load-smoke: ## Synthetic load test: bots play on a fresh stack, report latency, verify the ledger (needs `make deps`)
+	./scripts/load-smoke.sh $(ARGS)
+
+.PHONY: audit
+audit: ## Known-vulnerability audit of npm and Go dependencies (needs network access to the advisory databases)
+	$(PNPM) audit --prod --audit-level high
+	$(GO) tool govulncheck ./...
+
+.PHONY: backup-restore-check
+backup-restore-check: ## Restore drill: dump the load-smoke DB, restore into a fresh DB, verify equivalence
+	./scripts/backup-restore-check.sh
 
 .PHONY: build
 build: ## Build all deployables
