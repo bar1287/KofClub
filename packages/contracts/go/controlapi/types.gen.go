@@ -300,6 +300,24 @@ func (e InviteStatus) Valid() bool {
 	}
 }
 
+// Defines values for LeaveResultStatus.
+const (
+	LeaveResultStatusLEAVINGAFTERHAND LeaveResultStatus = "LEAVING_AFTER_HAND"
+	LeaveResultStatusLEFT             LeaveResultStatus = "LEFT"
+)
+
+// Valid indicates whether the value is a known member of the LeaveResultStatus enum.
+func (e LeaveResultStatus) Valid() bool {
+	switch e {
+	case LeaveResultStatusLEAVINGAFTERHAND:
+		return true
+	case LeaveResultStatusLEFT:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for LedgerAccountKind.
 const (
 	LedgerAccountKindCLUBTREASURY LedgerAccountKind = "CLUB_TREASURY"
@@ -411,6 +429,72 @@ func (e PlatformRole) Valid() bool {
 	case PlatformRolePLATFORMADMIN:
 		return true
 	case PlatformRoleUSER:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TableGameType.
+const (
+	TableGameTypeNLHE TableGameType = "NLHE"
+)
+
+// Valid indicates whether the value is a known member of the TableGameType enum.
+func (e TableGameType) Valid() bool {
+	switch e {
+	case TableGameTypeNLHE:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TableStatus.
+const (
+	TableStatusCLOSED TableStatus = "CLOSED"
+	TableStatusOPEN   TableStatus = "OPEN"
+)
+
+// Valid indicates whether the value is a known member of the TableStatus enum.
+func (e TableStatus) Valid() bool {
+	switch e {
+	case TableStatusCLOSED:
+		return true
+	case TableStatusOPEN:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TableDetailGameType.
+const (
+	TableDetailGameTypeNLHE TableDetailGameType = "NLHE"
+)
+
+// Valid indicates whether the value is a known member of the TableDetailGameType enum.
+func (e TableDetailGameType) Valid() bool {
+	switch e {
+	case TableDetailGameTypeNLHE:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TableDetailStatus.
+const (
+	TableDetailStatusCLOSED TableDetailStatus = "CLOSED"
+	TableDetailStatusOPEN   TableDetailStatus = "OPEN"
+)
+
+// Valid indicates whether the value is a known member of the TableDetailStatus enum.
+func (e TableDetailStatus) Valid() bool {
+	switch e {
+	case TableDetailStatusCLOSED:
+		return true
+	case TableDetailStatusOPEN:
 		return true
 	default:
 		return false
@@ -647,6 +731,25 @@ type CreateInviteRequest struct {
 // CreateInviteRequestRole defines model for CreateInviteRequest.Role.
 type CreateInviteRequestRole string
 
+// CreateTableRequest defines model for CreateTableRequest.
+type CreateTableRequest struct {
+	ActionTimeoutSec *int `json:"actionTimeoutSec,omitempty"`
+
+	// BigBlind Integer amount of virtual chips (no monetary value).
+	BigBlind ChipAmount `json:"bigBlind"`
+
+	// BuyInMax Integer amount of virtual chips (no monetary value).
+	BuyInMax ChipAmount `json:"buyInMax"`
+
+	// BuyInMin Integer amount of virtual chips (no monetary value).
+	BuyInMin ChipAmount `json:"buyInMin"`
+	MaxSeats *int       `json:"maxSeats,omitempty"`
+	Name     string     `json:"name"`
+
+	// SmallBlind Integer amount of virtual chips (no monetary value).
+	SmallBlind ChipAmount `json:"smallBlind"`
+}
+
 // ErrorBody defines model for ErrorBody.
 type ErrorBody struct {
 	// Code Stable machine-readable error codes shared by HTTP and realtime APIs.
@@ -718,6 +821,17 @@ type JoinClubRequest struct {
 	// Code Club join code (8 chars) or invite code (12 chars); case-insensitive.
 	Code string `json:"code"`
 }
+
+// LeaveResult defines model for LeaveResult.
+type LeaveResult struct {
+	// CashOut Integer amount of virtual chips (no monetary value).
+	CashOut ChipAmount        `json:"cashOut"`
+	Status  LeaveResultStatus `json:"status"`
+	TableId Uuid              `json:"tableId"`
+}
+
+// LeaveResultStatus defines model for LeaveResult.Status.
+type LeaveResultStatus string
 
 // LedgerAccountKind defines model for LedgerAccountKind.
 type LedgerAccountKind string
@@ -846,6 +960,25 @@ type ReversalRequest struct {
 	Note string `json:"note"`
 }
 
+// SeatRequest defines model for SeatRequest.
+type SeatRequest struct {
+	// BuyIn Integer amount of virtual chips (no monetary value).
+	BuyIn ChipAmount `json:"buyIn"`
+
+	// SeatNo Omit to take the first free seat.
+	SeatNo *int `json:"seatNo,omitempty"`
+}
+
+// SeatResult defines model for SeatResult.
+type SeatResult struct {
+	SeatNo int   `json:"seatNo"`
+	Seq    int64 `json:"seq"`
+
+	// Stack Integer amount of virtual chips (no monetary value).
+	Stack   ChipAmount `json:"stack"`
+	TableId Uuid       `json:"tableId"`
+}
+
 // Session defines model for Session.
 type Session struct {
 	// CreatedAt UTC RFC 3339 timestamp
@@ -865,6 +998,91 @@ type Session struct {
 // SessionList defines model for SessionList.
 type SessionList struct {
 	Items []Session `json:"items"`
+}
+
+// Table defines model for Table.
+type Table struct {
+	ActionTimeoutSec int `json:"actionTimeoutSec"`
+
+	// BigBlind Integer amount of virtual chips (no monetary value).
+	BigBlind ChipAmount `json:"bigBlind"`
+
+	// BuyInMax Integer amount of virtual chips (no monetary value).
+	BuyInMax ChipAmount `json:"buyInMax"`
+
+	// BuyInMin Integer amount of virtual chips (no monetary value).
+	BuyInMin ChipAmount `json:"buyInMin"`
+	ClubId   Uuid       `json:"clubId"`
+
+	// CreatedAt UTC RFC 3339 timestamp
+	CreatedAt   Timestamp     `json:"createdAt"`
+	CreatedBy   Uuid          `json:"createdBy"`
+	GameType    TableGameType `json:"gameType"`
+	Id          Uuid          `json:"id"`
+	MaxSeats    int           `json:"maxSeats"`
+	Name        string        `json:"name"`
+	SeatedCount int           `json:"seatedCount"`
+
+	// SmallBlind Integer amount of virtual chips (no monetary value).
+	SmallBlind ChipAmount  `json:"smallBlind"`
+	Status     TableStatus `json:"status"`
+}
+
+// TableGameType defines model for Table.GameType.
+type TableGameType string
+
+// TableStatus defines model for Table.Status.
+type TableStatus string
+
+// TableDetail defines model for TableDetail.
+type TableDetail struct {
+	ActionTimeoutSec int `json:"actionTimeoutSec"`
+
+	// BigBlind Integer amount of virtual chips (no monetary value).
+	BigBlind ChipAmount `json:"bigBlind"`
+
+	// BuyInMax Integer amount of virtual chips (no monetary value).
+	BuyInMax ChipAmount `json:"buyInMax"`
+
+	// BuyInMin Integer amount of virtual chips (no monetary value).
+	BuyInMin ChipAmount `json:"buyInMin"`
+	ClubId   Uuid       `json:"clubId"`
+
+	// CreatedAt UTC RFC 3339 timestamp
+	CreatedAt   Timestamp           `json:"createdAt"`
+	CreatedBy   Uuid                `json:"createdBy"`
+	GameType    TableDetailGameType `json:"gameType"`
+	Id          Uuid                `json:"id"`
+	MaxSeats    int                 `json:"maxSeats"`
+	Name        string              `json:"name"`
+	SeatedCount int                 `json:"seatedCount"`
+	Seats       []TableSeat         `json:"seats"`
+
+	// SmallBlind Integer amount of virtual chips (no monetary value).
+	SmallBlind ChipAmount        `json:"smallBlind"`
+	Status     TableDetailStatus `json:"status"`
+}
+
+// TableDetailGameType defines model for TableDetail.GameType.
+type TableDetailGameType string
+
+// TableDetailStatus defines model for TableDetail.Status.
+type TableDetailStatus string
+
+// TableList defines model for TableList.
+type TableList struct {
+	Items []Table `json:"items"`
+}
+
+// TableSeat defines model for TableSeat.
+type TableSeat struct {
+	SeatNo     int  `json:"seatNo"`
+	SittingOut bool `json:"sittingOut"`
+
+	// Stack Integer amount of virtual chips (no monetary value).
+	Stack    ChipAmount `json:"stack"`
+	UserId   Uuid       `json:"userId"`
+	Username string     `json:"username"`
 }
 
 // Timestamp UTC RFC 3339 timestamp
@@ -947,6 +1165,9 @@ type Limit = int
 
 // RequestId defines model for RequestId.
 type RequestId = string
+
+// TableId defines model for TableId.
+type TableId = Uuid
 
 // Error defines model for Error.
 type Error = ErrorEnvelope
@@ -1046,12 +1267,30 @@ type ListClubMembersParams struct {
 	Status *MemberStatus `form:"status,omitempty" json:"status,omitempty"`
 }
 
+// CreateTableParams defines parameters for CreateTable.
+type CreateTableParams struct {
+	// IdempotencyKey Unique key making a retried state-changing request a no-op.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
 // ListMyWalletEntriesParams defines parameters for ListMyWalletEntries.
 type ListMyWalletEntriesParams struct {
 	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
 
 	// Cursor Opaque cursor from a previous page's `nextCursor`.
 	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+}
+
+// LeaveTableParams defines parameters for LeaveTable.
+type LeaveTableParams struct {
+	// IdempotencyKey Unique key making a retried state-changing request a no-op.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// TakeSeatParams defines parameters for TakeSeat.
+type TakeSeatParams struct {
+	// IdempotencyKey Unique key making a retried state-changing request a no-op.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
@@ -1086,3 +1325,9 @@ type ReverseLedgerTransactionJSONRequestBody = ReversalRequest
 
 // UpdateClubMemberJSONRequestBody defines body for UpdateClubMember for application/json ContentType.
 type UpdateClubMemberJSONRequestBody = UpdateMemberRequest
+
+// CreateTableJSONRequestBody defines body for CreateTable for application/json ContentType.
+type CreateTableJSONRequestBody = CreateTableRequest
+
+// TakeSeatJSONRequestBody defines body for TakeSeat for application/json ContentType.
+type TakeSeatJSONRequestBody = SeatRequest

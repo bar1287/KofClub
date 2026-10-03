@@ -21,6 +21,7 @@ module.exports = {
       testMatch: ['<rootDir>/test/integration/**/*.int-spec.ts'],
       transform,
       globalSetup: '<rootDir>/test/integration/support/global-setup.ts',
+      globalTeardown: '<rootDir>/test/integration/support/global-teardown.ts',
       testTimeout: 30000,
     },
   ],

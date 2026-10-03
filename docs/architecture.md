@@ -81,10 +81,26 @@ gateway: filter private payloads per viewer -> TABLE_EVENT to each client
   - ephemeral: in-memory actor state, timers, event retention window;
   - durable business state: `table_seats`, `hands`, `hand_players`, `game_events`;
   - immutable accounting: ledger entries (buy-in, settlement, cash-out).
-- **Recovery**: on node failure the next owner restores seats from
-  `table_seats` and stacks from ledger `TABLE_STACK` balances (which equal
-  stacks at the last hand boundary). An in-progress hand is voided: no
-  settlement was posted, so no chips move (see docs/game-engine.md).
+- **Recovery**: on node failure another node adopts the table (orphan scan),
+  restores seats from `table_seats` (equal to ledger `TABLE_STACK` balances at
+  the last hand boundary) and resumes an in-progress hand by deterministic
+  replay of its persisted actions against the encrypted deck; if replay is
+  impossible the hand is voided and no chips move (ADR-002).
+- **Atomic settlement**: the final action of a hand, the `HAND_SETTLEMENT`
+  ledger posting, hand/participant results, cash-outs of departing players,
+  seat projections and a ledger-vs-seat consistency assertion commit in one
+  fenced transaction.
+
+## 4.1 Game-service packages
+
+| Package             | Responsibility                                                                                       |
+| ------------------- | ---------------------------------------------------------------------------------------------------- |
+| `internal/table`    | Actor: serialized inbox, clone→apply→persist→swap pipeline, timers, wire events, snapshots, recovery |
+| `internal/store`    | PostgreSQL persistence; `InFencedTx` lease fencing                                                   |
+| `internal/lease`    | Lease acquire/renew/release with epochs                                                              |
+| `internal/registry` | Activation, renewal loop, orphan adoption (failover), idle stop, draining                            |
+| `internal/sealer`   | AES-256-GCM encryption of decks and hole cards at rest                                               |
+| `internal/api`      | Internal HTTP API (docs/protocols/internal-game-api.md)                                              |
 
 ## 5. Realtime
 

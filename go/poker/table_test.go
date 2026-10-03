@@ -2,6 +2,7 @@ package poker
 
 import (
 	"errors"
+	"reflect"
 	"testing"
 )
 
@@ -145,5 +146,80 @@ func TestRestoreTable(t *testing.T) {
 	h, _, _ := table.StartHand(NewOrderedDeck())
 	if h.ButtonSeat() != 6 || h.HandNo() != 42 || len(h.Players()) != 2 {
 		t.Fatalf("restored table: button %d hand %d players %d", h.ButtonSeat(), h.HandNo(), len(h.Players()))
+	}
+}
+
+func TestCloneIsIndependent(t *testing.T) {
+	table := newTestTable(t)
+	_ = table.SitDown(1, "a", 1000)
+	_ = table.SitDown(2, "b", 1000)
+	_, _, _ = table.StartHand(NewOrderedDeck())
+	clone := table.Clone()
+	seat, _ := clone.Hand().CurrentActor()
+	if _, err := clone.Act(Action{Seat: seat, Kind: ActionRaise, Amount: 50}); err != nil {
+		t.Fatal(err)
+	}
+	if table.Hand().CurrentBet() != 10 {
+		t.Fatal("acting on a clone must not change the original")
+	}
+	if s, _ := table.SeatState(seat); s.Stack != 995 {
+		t.Fatalf("original seat stack changed: %d", s.Stack)
+	}
+}
+
+func TestResumeHandByReplay(t *testing.T) {
+	// Play part of a hand, then rebuild it from config + actions on a
+	// freshly restored table and verify the states match.
+	table := newTestTable(t)
+	_ = table.SitDown(1, "a", 1000)
+	_ = table.SitDown(3, "b", 700)
+	_ = table.SitDown(5, "c", 400)
+	deck, _ := NewShuffledDeck(newSeededReader(3))
+	h, _, _ := table.StartHand(deck)
+	var players []SeatSetup
+	for _, p := range h.Players() {
+		players = append(players, SeatSetup{Seat: p.Seat, Player: p.Player, Stack: p.Stack + p.Contributed})
+	}
+	var actions []Action
+	for i := 0; i < 4 && !h.IsComplete(); i++ {
+		seat, _ := h.CurrentActor()
+		a := Action{Seat: seat, Kind: ActionCall}
+		if i == 1 {
+			la, _ := legal(h, ActionRaise)
+			a = Action{Seat: seat, Kind: ActionRaise, Amount: la.MinTo}
+		}
+		if _, err := table.Act(a); err != nil {
+			t.Fatal(err)
+		}
+		actions = append(actions, a)
+	}
+
+	restored, _ := RestoreTable(table.Config(), []SeatState{
+		{Seat: 1, Player: "a", Stack: 1000}, {Seat: 3, Player: "b", Stack: 700}, {Seat: 5, Player: "c", Stack: 400},
+		{Seat: 6, Player: "late", Stack: 300}, // sat down mid-hand: not part of the replayed hand
+	}, 0, 0)
+	replayed, _, err := NewHand(HandConfig{HandNo: h.HandNo(), SmallBlind: 5, BigBlind: 10, ButtonSeat: h.ButtonSeat(), Seats: players, Deck: deck})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, a := range actions {
+		if _, err := replayed.Act(a); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := restored.ResumeHand(replayed); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(restored.Hand().Players(), table.Hand().Players()) || restored.HandNo() != table.HandNo() {
+		t.Fatal("replayed hand diverged from the original")
+	}
+	for _, s := range table.Seats() {
+		got, _ := restored.SeatState(s.Seat)
+		if got.Stack != s.Stack {
+			t.Fatalf("seat %d stack %d want %d", s.Seat, got.Stack, s.Stack)
+		}
+	}
+	if restored.InHand(6) {
+		t.Fatal("late joiner must not be in the resumed hand")
 	}
 }

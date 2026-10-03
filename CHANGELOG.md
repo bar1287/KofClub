@@ -5,6 +5,32 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added — M4 Table service
+
+- Migration `000006_tables`: tables, leases, runtime, seats, hands, hand
+  players (encrypted hole cards), append-only game events and command log.
+- game-service: PostgreSQL lease manager with epoch fencing; table actor
+  (serialized inbox, clone→apply→persist→swap commit pipeline, turn timers
+  with check/fold defaults and auto sit-out, buy-in/cash-out through the
+  ledger, leave-after-hand, busted-player removal, atomic hand settlement
+  with ledger/seat consistency assertion); crypto shuffle with deck
+  commitment and AES-256-GCM encrypted deck/hole cards; failover by
+  deterministic replay (void fallback); registry with orphan adoption,
+  renewal, idle stop and draining; internal HTTP API; Prometheus metrics.
+- control-api: table directory (create/list/detail), seat/leave forwarding
+  to the owning game node, table state snapshot; OpenAPI + realtime
+  TableSnapshot schema.
+- Engine: `Table.Clone()` and `Table.ResumeHand()`.
+- Tests: actor integration suite (full hands, privacy, idempotency, stale
+  seq, timeouts, leaving, buy-in rules, failover replay, fencing, void on
+  corrupt state, ordered streams, multi-hand conservation; race detector
+  clean) and control-api integration against a real game-service process.
+
+### Fixed
+
+- Auto sit-out after repeated timeouts was skipped when the timeout action
+  ended the hand (always the case heads-up).
+
 ### Added — M3 Ledger
 
 - Migration `000005_ledger`: per-club accounts (treasury, member wallets,

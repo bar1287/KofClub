@@ -39,6 +39,36 @@ func (e ClientMessageType) Valid() bool {
 	}
 }
 
+// Defines values for HandViewStreet.
+const (
+	HandViewStreetCOMPLETE HandViewStreet = "COMPLETE"
+	HandViewStreetFLOP     HandViewStreet = "FLOP"
+	HandViewStreetPREFLOP  HandViewStreet = "PREFLOP"
+	HandViewStreetRIVER    HandViewStreet = "RIVER"
+	HandViewStreetSHOWDOWN HandViewStreet = "SHOWDOWN"
+	HandViewStreetTURN     HandViewStreet = "TURN"
+)
+
+// Valid indicates whether the value is a known member of the HandViewStreet enum.
+func (e HandViewStreet) Valid() bool {
+	switch e {
+	case HandViewStreetCOMPLETE:
+		return true
+	case HandViewStreetFLOP:
+		return true
+	case HandViewStreetPREFLOP:
+		return true
+	case HandViewStreetRIVER:
+		return true
+	case HandViewStreetSHOWDOWN:
+		return true
+	case HandViewStreetTURN:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for HelloType.
 const (
 	HelloTypeHELLO HelloType = "HELLO"
@@ -48,6 +78,36 @@ const (
 func (e HelloType) Valid() bool {
 	switch e {
 	case HelloTypeHELLO:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for LegalActionKind.
+const (
+	LegalActionKindALLIN LegalActionKind = "ALL_IN"
+	LegalActionKindBET   LegalActionKind = "BET"
+	LegalActionKindCALL  LegalActionKind = "CALL"
+	LegalActionKindCHECK LegalActionKind = "CHECK"
+	LegalActionKindFOLD  LegalActionKind = "FOLD"
+	LegalActionKindRAISE LegalActionKind = "RAISE"
+)
+
+// Valid indicates whether the value is a known member of the LegalActionKind enum.
+func (e LegalActionKind) Valid() bool {
+	switch e {
+	case LegalActionKindALLIN:
+		return true
+	case LegalActionKindBET:
+		return true
+	case LegalActionKindCALL:
+		return true
+	case LegalActionKindCHECK:
+		return true
+	case LegalActionKindFOLD:
+		return true
+	case LegalActionKindRAISE:
 		return true
 	default:
 		return false
@@ -135,6 +195,45 @@ func (e ServerMessageType) Valid() bool {
 	}
 }
 
+// Defines values for TableInfoStatus.
+const (
+	TableInfoStatusCLOSED TableInfoStatus = "CLOSED"
+	TableInfoStatusOPEN   TableInfoStatus = "OPEN"
+)
+
+// Valid indicates whether the value is a known member of the TableInfoStatus enum.
+func (e TableInfoStatus) Valid() bool {
+	switch e {
+	case TableInfoStatusCLOSED:
+		return true
+	case TableInfoStatusOPEN:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TableSnapshotPhase.
+const (
+	TableSnapshotPhaseHANDCOMPLETE      TableSnapshotPhase = "HAND_COMPLETE"
+	TableSnapshotPhaseHANDINPROGRESS    TableSnapshotPhase = "HAND_IN_PROGRESS"
+	TableSnapshotPhaseWAITINGFORPLAYERS TableSnapshotPhase = "WAITING_FOR_PLAYERS"
+)
+
+// Valid indicates whether the value is a known member of the TableSnapshotPhase enum.
+func (e TableSnapshotPhase) Valid() bool {
+	switch e {
+	case TableSnapshotPhaseHANDCOMPLETE:
+		return true
+	case TableSnapshotPhaseHANDINPROGRESS:
+		return true
+	case TableSnapshotPhaseWAITINGFORPLAYERS:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for WelcomeType.
 const (
 	WelcomeTypeWELCOME WelcomeType = "WELCOME"
@@ -150,8 +249,38 @@ func (e WelcomeType) Valid() bool {
 	}
 }
 
+// Card Rank + suit, e.g. "As", "Td", "2c".
+type Card = string
+
 // ClientMessageType defines model for ClientMessageType.
 type ClientMessageType string
+
+// HandView defines model for HandView.
+type HandView struct {
+	ActionDeadline *time.Time `json:"actionDeadline"`
+	BigBlindSeat   int        `json:"bigBlindSeat"`
+	Board          []Card     `json:"board"`
+	ButtonSeat     int        `json:"buttonSeat"`
+	CurrentBet     int64      `json:"currentBet"`
+
+	// DeckCommitment SHA-256 commitment to the deck order (audit).
+	DeckCommitment string             `json:"deckCommitment"`
+	HandId         openapi_types.UUID `json:"handId"`
+	HandNo         int64              `json:"handNo"`
+	MinRaise       int64              `json:"minRaise"`
+	Pot            int64              `json:"pot"`
+	SmallBlindSeat int                `json:"smallBlindSeat"`
+	Street         HandViewStreet     `json:"street"`
+
+	// ToActSeat 0 when nobody is to act.
+	ToActSeat int `json:"toActSeat"`
+
+	// TurnSeq Sequence of the TURN_STARTED event of the current turn.
+	TurnSeq int64 `json:"turnSeq"`
+}
+
+// HandViewStreet defines model for HandView.Street.
+type HandViewStreet string
 
 // Hello First client frame. Authenticates the connection.
 type Hello struct {
@@ -163,6 +292,22 @@ type Hello struct {
 
 // HelloType defines model for Hello.Type.
 type HelloType string
+
+// LegalAction defines model for LegalAction.
+type LegalAction struct {
+	// Amount CALL - chips to add; ALL_IN - resulting street commitment.
+	Amount *int64          `json:"amount,omitempty"`
+	Kind   LegalActionKind `json:"kind"`
+
+	// MaxTo BET/RAISE maximum "to" amount (all-in).
+	MaxTo *int64 `json:"maxTo,omitempty"`
+
+	// MinTo BET/RAISE minimum "to" amount.
+	MinTo *int64 `json:"minTo,omitempty"`
+}
+
+// LegalActionKind defines model for LegalAction.Kind.
+type LegalActionKind string
 
 // Ping defines model for Ping.
 type Ping struct {
@@ -195,8 +340,59 @@ type ProtocolError struct {
 // ProtocolErrorType defines model for ProtocolError.Type.
 type ProtocolErrorType string
 
+// SeatView defines model for SeatView.
+type SeatView struct {
+	AllIn   bool `json:"allIn"`
+	Folded  bool `json:"folded"`
+	InHand  bool `json:"inHand"`
+	Leaving bool `json:"leaving"`
+	Seat    int  `json:"seat"`
+
+	// ShownCards Cards revealed at showdown (public).
+	ShownCards *[]Card            `json:"shownCards,omitempty"`
+	SittingOut bool               `json:"sittingOut"`
+	Stack      int64              `json:"stack"`
+	StreetBet  int64              `json:"streetBet"`
+	UserId     openapi_types.UUID `json:"userId"`
+	Username   string             `json:"username"`
+}
+
 // ServerMessageType defines model for ServerMessageType.
 type ServerMessageType string
+
+// TableInfo defines model for TableInfo.
+type TableInfo struct {
+	ActionTimeoutMs int64              `json:"actionTimeoutMs"`
+	BigBlind        int64              `json:"bigBlind"`
+	BuyInMax        int64              `json:"buyInMax"`
+	BuyInMin        int64              `json:"buyInMin"`
+	ClubId          openapi_types.UUID `json:"clubId"`
+	MaxSeats        int                `json:"maxSeats"`
+	Name            string             `json:"name"`
+	SmallBlind      int64              `json:"smallBlind"`
+	Status          TableInfoStatus    `json:"status"`
+}
+
+// TableInfoStatus defines model for TableInfo.Status.
+type TableInfoStatus string
+
+// TableSnapshot Complete viewer-sanitized table state; clients replace (never merge) state with it.
+type TableSnapshot struct {
+	// Hand Present while a hand is in progress or just completed.
+	Hand       *HandView          `json:"hand,omitempty"`
+	Phase      TableSnapshotPhase `json:"phase"`
+	Seats      []SeatView         `json:"seats"`
+	Seq        int64              `json:"seq"`
+	ServerTime time.Time          `json:"serverTime"`
+	Table      TableInfo          `json:"table"`
+	TableId    openapi_types.UUID `json:"tableId"`
+
+	// You The viewer's private view (absent for anonymous spectators).
+	You *YouView `json:"you,omitempty"`
+}
+
+// TableSnapshotPhase defines model for TableSnapshot.Phase.
+type TableSnapshotPhase string
 
 // Welcome defines model for Welcome.
 type Welcome struct {
@@ -209,3 +405,13 @@ type Welcome struct {
 
 // WelcomeType defines model for Welcome.Type.
 type WelcomeType string
+
+// YouView defines model for YouView.
+type YouView struct {
+	HoleCards    []Card        `json:"holeCards"`
+	LegalActions []LegalAction `json:"legalActions"`
+
+	// Seat 0 when the viewer is not seated.
+	Seat   int                `json:"seat"`
+	UserId openapi_types.UUID `json:"userId"`
+}

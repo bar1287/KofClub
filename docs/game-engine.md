@@ -126,6 +126,10 @@ checks table-wide conservation and button movement.
 
 ## Recovery semantics
 
+The engine is deterministic, so the actor can rebuild an unfinished hand
+from its configuration (`HandConfig`) and the persisted actions, then attach
+it to a restored table with `Table.ResumeHand()`; see ADR-002.
+
 `Table.AbortHand()` voids an unfinished hand and restores every dealt-in
 player's stack to its value at hand start. The actor uses it when a hand
 cannot be completed safely (e.g. lost table ownership or a failed durable

@@ -7,7 +7,7 @@ with the repository at the end of every task.
 
 ## Current milestone
 
-**M4 — Table service** (next). M0–M3 are complete.
+**M5 — Realtime gateway** (next). M0–M4 are complete.
 
 ## Milestones (spec §16)
 
@@ -18,7 +18,7 @@ with the repository at the end of every task.
 | M2 — Pure Hold'em engine | ✅ Done | `go/poker`: crypto shuffle, evaluator (exhaustive tests), NL betting state machine, side pots, odd chips, table/button; 12k-hand property tests |
 | M3 — Ledger              | ⏳ Next |                                                                                                                                                 |
 | M4 — Table service       | ⏳ Next |                                                                                                                                                 |
-| M5 — Realtime            | Pending |                                                                                                                                                 |
+| M5 — Realtime            | ⏳ Next |                                                                                                                                                 |
 | M6 — Web poker table     | Pending |                                                                                                                                                 |
 | M7 — History + Admin     | Pending |                                                                                                                                                 |
 | M8 — Hardening           | Pending |                                                                                                                                                 |
@@ -64,6 +64,9 @@ make dev   # full stack in Docker; all /health/ready endpoints return ok
 - Rate limiter fails open when Redis is down (documented tradeoff; Argon2 cost still bounds brute force).
 - Ownership transfer and club suspension/closure endpoints not yet implemented (M7 admin).
 - Demo seed passwords are fixed for local convenience (seed refuses `APP_ENV=production`).
+- Players who leave mid-hand are auto-checked/folded and removed after the hand; there is no "stand up after folding" yet.
+- Busted players (stack 0) are unseated automatically after the hand (no re-buy flow yet).
+- Table closing (status CLOSED with cash-out of seated players) is not implemented yet (M7).
 - Engine simplifications (documented in docs/game-engine.md): no antes/straddles, no dead button or missed-blind tracking, no mucking at showdown.
 
 ## Implemented API (control-api, `/v1`)
@@ -77,11 +80,13 @@ Auth: `POST /auth/register|login|refresh|logout`. Me: `GET /me`,
 Ledger: `GET /clubs/{id}/wallet`, `GET /clubs/{id}/wallet/entries`,
 `POST /clubs/{id}/chips/grants|deductions`, `GET /clubs/{id}/ledger/summary|balances|transactions`,
 `POST /clubs/{id}/ledger/transactions/{txId}/reversal`.
+Tables: `POST|GET /clubs/{id}/tables`, `GET /tables/{id}`, `POST /tables/{id}/seat|leave`,
+`GET /tables/{id}/state`.
 Canonical contract: `packages/contracts/openapi/control-api.yaml`
 (integration tests validate responses against it).
 
 ## Next tasks
 
-1. M4: migrations for `tables`, `table_seats`, `hands`, `hand_players`, `game_events`, `table_leases` (+ FK from `ledger_accounts.table_id`).
-2. M4: control-api table configuration endpoints (`POST/GET /v1/clubs/{id}/tables`), seat/leave forwarding to the game service.
-3. M4: game-service lease manager (epoch fencing), table actor (serialized commands, timers, buy-in/cash-out, hand persistence + atomic settlement, command idempotency), internal API, recovery.
+1. M5: realtime-gateway WebSocket server: HELLO/WELCOME (EdDSA token verification, revocation check), SUBSCRIBE_TABLE with authorization via control-api internal endpoint, per-table feed from game-service (internal stream), per-viewer filtering, TABLE_SNAPSHOT/TABLE_EVENT/COMMAND_RESULT, reconnect with lastSeenSeq, RESYNC_REQUIRED, PING/PONG, rate limits.
+2. M5: game-service internal WebSocket stream endpoint for the gateway; realtime.yaml message schemas; docs/realtime-protocol.md.
+3. M5 tests: two clients identical public stream, reconnect reproduces state, duplicate commandId, stale expectedSeq, unauthorized subscribe.

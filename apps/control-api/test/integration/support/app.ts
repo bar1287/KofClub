@@ -36,6 +36,8 @@ export function testConfig(overrides: Record<string, string> = {}): AppConfig {
     IP_HASH_SECRET: randomBytes(32).toString('hex'),
     // Cheap hashing keeps the suite fast; production enforces >= 19 MiB.
     ARGON2_MEMORY_KIB: '1024',
+    GAME_SERVICE_URL: `http://127.0.0.1:${env.gameServicePort}`,
+    INTERNAL_SERVICE_TOKEN: env.internalToken,
     ...overrides,
   });
 }

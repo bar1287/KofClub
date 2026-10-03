@@ -7,3 +7,5 @@ output-options:
   skip-prune: true
 compatibility:
   always-prefix-enum-values: true
+import-mapping:
+  ./realtime.yaml: github.com/bar1287/kofclub/packages/contracts/go/realtime

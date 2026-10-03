@@ -1,8 +1,8 @@
 // Regenerates TypeScript types from the canonical OpenAPI documents.
 // Output is deterministic so CI can verify it with `git diff --exit-code`.
-import { readFile, writeFile } from 'node:fs/promises';
+import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import openapiTS, { astToString } from 'openapi-typescript';
 import prettier from 'prettier';
 
@@ -15,8 +15,11 @@ const specs = [
 const prettierConfig = (await prettier.resolveConfig(path.join(root, 'src/index.ts'))) ?? {};
 
 for (const spec of specs) {
-  const source = await readFile(path.join(root, spec.input), 'utf8');
-  const ast = await openapiTS(source, { exportType: true, alphabetize: true });
+  // Pass a file URL so relative $refs (e.g. ./realtime.yaml) resolve correctly.
+  const ast = await openapiTS(pathToFileURL(path.join(root, spec.input)), {
+    exportType: true,
+    alphabetize: true,
+  });
   const header =
     `// Code generated from ${spec.input} by scripts/generate.mjs. DO NOT EDIT.\n` +
     `/* eslint-disable */\n`;

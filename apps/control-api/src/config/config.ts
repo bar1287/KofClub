@@ -35,6 +35,11 @@ const envSchema = z.object({
   IP_HASH_SECRET: z.string().min(32, 'must be at least 32 characters'),
   /** Argon2id memory cost in KiB (OWASP baseline 19 MiB). Lowered only in tests. */
   ARGON2_MEMORY_KIB: z.coerce.number().int().min(1024).default(19456),
+  GAME_SERVICE_URL: z.string().url().default('http://localhost:4200'),
+  INTERNAL_SERVICE_TOKEN: z
+    .string()
+    .min(32, 'must be at least 32 characters (run scripts/init-env.sh)'),
+  GAME_SERVICE_TIMEOUT_MS: z.coerce.number().int().min(100).max(60000).default(5000),
   RATE_LIMIT_ENABLED: z
     .enum(['true', 'false'])
     .default('true')

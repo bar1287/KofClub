@@ -291,3 +291,52 @@ func (t *Table) AbortHand() {
 	t.hand = nil
 	t.phase = PhaseWaitingForPlayers
 }
+
+// Clone returns a deep copy. The actor applies commands to a clone and only
+// swaps it in after the resulting events were persisted, so a failed write
+// never leaves in-memory state ahead of the database.
+func (t *Table) Clone() *Table {
+	c := *t
+	c.seats = make(map[int]*SeatState, len(t.seats))
+	for k, v := range t.seats {
+		cp := *v
+		c.seats[k] = &cp
+	}
+	if t.hand != nil {
+		c.hand = t.hand.Clone()
+	}
+	return &c
+}
+
+// ResumeHand attaches a hand rebuilt from durable state (hand config +
+// replayed actions) to a restored table. Every player in the hand must be
+// seated at the same seat.
+func (t *Table) ResumeHand(h *Hand) error {
+	if t.hand != nil && !t.hand.IsComplete() {
+		return errorf(CodeIllegalAction, "a hand is already in progress")
+	}
+	for _, p := range h.players {
+		s, ok := t.seats[p.seat]
+		if !ok || s.Player != p.player {
+			return errorf(CodeInvalidConfig, "hand player %s is not seated at seat %d", p.player, p.seat)
+		}
+	}
+	t.hand = h
+	t.handNo = h.HandNo()
+	t.button = h.ButtonSeat()
+	t.phase = PhaseHandInProgress
+	t.syncStacks()
+	if h.IsComplete() {
+		t.phase = PhaseHandComplete
+	}
+	return nil
+}
+
+// SeatState returns a copy of one seat's state.
+func (t *Table) SeatState(seat int) (SeatState, bool) {
+	s, ok := t.seats[seat]
+	if !ok {
+		return SeatState{}, false
+	}
+	return *s, true
+}

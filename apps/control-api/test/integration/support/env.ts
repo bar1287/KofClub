@@ -18,5 +18,8 @@ export function integrationEnv() {
     adminUrl: adminUrl.toString(),
     databaseUrl: url.toString(),
     redisUrl: process.env.TEST_REDIS_URL ?? 'redis://localhost:6379/15',
+    gameServicePort: Number(process.env.TEST_GAME_SERVICE_PORT ?? 4291),
+    // Test-only shared secret between control-api and the spawned game-service.
+    internalToken: 'integration-test-internal-service-token-0123456789',
   };
 }

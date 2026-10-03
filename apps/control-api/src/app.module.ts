@@ -14,6 +14,7 @@ import { ClubsModule } from './modules/clubs/clubs.module';
 import { IdentityModule } from './modules/identity/identity.module';
 import { LedgerModule } from './modules/ledger/ledger.module';
 import { RiskModule } from './modules/risk/risk.module';
+import { TablesModule } from './modules/tables/tables.module';
 
 @Module({})
 export class AppModule {
@@ -33,6 +34,7 @@ export class AppModule {
         IdentityModule,
         ClubsModule,
         LedgerModule,
+        TablesModule,
       ],
       providers: [{ provide: APP_FILTER, useClass: AppErrorFilter }],
     };

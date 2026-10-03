@@ -91,3 +91,206 @@ components:
         tableId:
           type: string
           format: uuid
+    Card:
+      type: string
+      pattern: '^[2-9TJQKA][cdhs]$'
+      description: Rank + suit, e.g. "As", "Td", "2c".
+    LegalAction:
+      type: object
+      additionalProperties: false
+      required: [kind]
+      properties:
+        kind:
+          type: string
+          enum: [FOLD, CHECK, CALL, BET, RAISE, ALL_IN]
+        amount:
+          type: integer
+          format: int64
+          description: CALL - chips to add; ALL_IN - resulting street commitment.
+        minTo:
+          type: integer
+          format: int64
+          description: BET/RAISE minimum "to" amount.
+        maxTo:
+          type: integer
+          format: int64
+          description: BET/RAISE maximum "to" amount (all-in).
+    TableInfo:
+      type: object
+      additionalProperties: false
+      required:
+        [clubId, name, maxSeats, smallBlind, bigBlind, buyInMin, buyInMax, actionTimeoutMs, status]
+      properties:
+        clubId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        maxSeats:
+          type: integer
+        smallBlind:
+          type: integer
+          format: int64
+        bigBlind:
+          type: integer
+          format: int64
+        buyInMin:
+          type: integer
+          format: int64
+        buyInMax:
+          type: integer
+          format: int64
+        actionTimeoutMs:
+          type: integer
+          format: int64
+        status:
+          type: string
+          enum: [OPEN, CLOSED]
+    SeatView:
+      type: object
+      additionalProperties: false
+      required:
+        [seat, userId, username, stack, sittingOut, leaving, inHand, folded, allIn, streetBet]
+      properties:
+        seat:
+          type: integer
+        userId:
+          type: string
+          format: uuid
+        username:
+          type: string
+        stack:
+          type: integer
+          format: int64
+        sittingOut:
+          type: boolean
+        leaving:
+          type: boolean
+        inHand:
+          type: boolean
+        folded:
+          type: boolean
+        allIn:
+          type: boolean
+        streetBet:
+          type: integer
+          format: int64
+        shownCards:
+          type: array
+          description: Cards revealed at showdown (public).
+          items:
+            $ref: '#/components/schemas/Card'
+    HandView:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          handId,
+          handNo,
+          street,
+          board,
+          pot,
+          currentBet,
+          minRaise,
+          buttonSeat,
+          smallBlindSeat,
+          bigBlindSeat,
+          toActSeat,
+          actionDeadline,
+          turnSeq,
+          deckCommitment,
+        ]
+      properties:
+        handId:
+          type: string
+          format: uuid
+        handNo:
+          type: integer
+          format: int64
+        street:
+          type: string
+          enum: [PREFLOP, FLOP, TURN, RIVER, SHOWDOWN, COMPLETE]
+        board:
+          type: array
+          items:
+            $ref: '#/components/schemas/Card'
+        pot:
+          type: integer
+          format: int64
+        currentBet:
+          type: integer
+          format: int64
+        minRaise:
+          type: integer
+          format: int64
+        buttonSeat:
+          type: integer
+        smallBlindSeat:
+          type: integer
+        bigBlindSeat:
+          type: integer
+        toActSeat:
+          type: integer
+          description: 0 when nobody is to act.
+        actionDeadline:
+          type: string
+          format: date-time
+          nullable: true
+        turnSeq:
+          type: integer
+          format: int64
+          description: Sequence of the TURN_STARTED event of the current turn.
+        deckCommitment:
+          type: string
+          description: SHA-256 commitment to the deck order (audit).
+    YouView:
+      type: object
+      additionalProperties: false
+      required: [userId, seat, holeCards, legalActions]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        seat:
+          type: integer
+          description: 0 when the viewer is not seated.
+        holeCards:
+          type: array
+          items:
+            $ref: '#/components/schemas/Card'
+        legalActions:
+          type: array
+          items:
+            $ref: '#/components/schemas/LegalAction'
+    TableSnapshot:
+      type: object
+      description: Complete viewer-sanitized table state; clients replace (never merge) state with it.
+      additionalProperties: false
+      required: [tableId, seq, serverTime, table, phase, seats]
+      properties:
+        tableId:
+          type: string
+          format: uuid
+        seq:
+          type: integer
+          format: int64
+        serverTime:
+          type: string
+          format: date-time
+        table:
+          $ref: '#/components/schemas/TableInfo'
+        phase:
+          type: string
+          enum: [WAITING_FOR_PLAYERS, HAND_IN_PROGRESS, HAND_COMPLETE]
+        seats:
+          type: array
+          items:
+            $ref: '#/components/schemas/SeatView'
+        hand:
+          description: Present while a hand is in progress or just completed.
+          allOf:
+            - $ref: '#/components/schemas/HandView'
+        you:
+          description: The viewer's private view (absent for anonymous spectators).
+          allOf:
+            - $ref: '#/components/schemas/YouView'

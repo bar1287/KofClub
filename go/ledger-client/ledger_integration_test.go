@@ -53,6 +53,34 @@ func (f *fixture) club(owner string) string {
 	return id
 }
 
+// table inserts a table row (TABLE_STACK accounts reference tables).
+func (f *fixture) table() string {
+	f.t.Helper()
+	id := uuid.NewString()
+	var owner string
+	if err := f.pool.QueryRow(f.ctx, `SELECT owner_user_id FROM clubs WHERE id = $1`, f.clubID).Scan(&owner); err != nil {
+		f.t.Fatal(err)
+	}
+	_, err := f.pool.Exec(f.ctx, `INSERT INTO tables (id, club_id, name, max_seats, small_blind, big_blind, buyin_min, buyin_max, created_by)
+		VALUES ($1, $2, 'Test table', 6, 5, 10, 100, 10000, $3)`, id, f.clubID, owner)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	return id
+}
+
+// hand inserts a hand row (ledger entries reference hands).
+func (f *fixture) hand(table string) string {
+	f.t.Helper()
+	id := uuid.NewString()
+	_, err := f.pool.Exec(f.ctx, `INSERT INTO hands (id, table_id, club_id, hand_no, status, button_seat, small_blind, big_blind, deck_commitment, deck_enc, lease_epoch)
+		VALUES ($1, $2, $3, (SELECT coalesce(max(hand_no), 0) + 1 FROM hands WHERE table_id = $2), 'IN_PROGRESS', 1, 5, 10, 'x', '\x00', 1)`, id, table, f.clubID)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	return id
+}
+
 func (f *fixture) account(kind ledger.AccountKind, owner, table string) string {
 	f.t.Helper()
 	id, err := ledger.EnsureAccount(f.ctx, f.pool, f.clubID, kind, owner, table)
@@ -112,7 +140,7 @@ func (f *fixture) assertNoViolations() {
 func TestChipLifecycle(t *testing.T) {
 	f := newFixture(t)
 	alice, bob := f.user("alice"), f.user("bob")
-	table := uuid.NewString()
+	table := f.table()
 	wa, wb := f.account(ledger.AccountMemberWallet, alice, ""), f.account(ledger.AccountMemberWallet, bob, "")
 	sa, sb := f.account(ledger.AccountTableStack, alice, table), f.account(ledger.AccountTableStack, bob, table)
 	treasury := f.account(ledger.AccountClubTreasury, f.clubID, "")
@@ -121,7 +149,7 @@ func TestChipLifecycle(t *testing.T) {
 	f.grant(wb, 1000)
 	f.mustPost(ledger.Posting{Kind: ledger.KindTableBuyIn, Entries: []ledger.Entry{{AccountID: wa, Amount: -500}, {AccountID: sa, Amount: 500}}})
 	f.mustPost(ledger.Posting{Kind: ledger.KindTableBuyIn, Entries: []ledger.Entry{{AccountID: wb, Amount: -400}, {AccountID: sb, Amount: 400}}})
-	hand := uuid.NewString()
+	hand := f.hand(table)
 	f.mustPost(ledger.Posting{Kind: ledger.KindHandSettlement, ExternalRef: "hand:" + hand, ReferenceType: "hand", ReferenceID: hand,
 		Entries: []ledger.Entry{{AccountID: sa, Amount: 150, HandID: hand}, {AccountID: sb, Amount: -150, HandID: hand}}})
 	f.mustPost(ledger.Posting{Kind: ledger.KindTableCashOut, Entries: []ledger.Entry{{AccountID: sa, Amount: -650}, {AccountID: wa, Amount: 650}}})
@@ -190,7 +218,7 @@ func TestInsufficientChipsAndNonNegativeBalances(t *testing.T) {
 	f := newFixture(t)
 	u := f.user("u")
 	w := f.account(ledger.AccountMemberWallet, u, "")
-	s := f.account(ledger.AccountTableStack, u, uuid.NewString())
+	s := f.account(ledger.AccountTableStack, u, f.table())
 	f.grant(w, 100)
 	_, err := f.post(ledger.Posting{Kind: ledger.KindTableBuyIn, Entries: []ledger.Entry{{AccountID: w, Amount: -101}, {AccountID: s, Amount: 101}}})
 	if !errors.Is(err, ledger.ErrInsufficientChips) {
@@ -204,7 +232,7 @@ func TestInsufficientChipsAndNonNegativeBalances(t *testing.T) {
 func TestFlowRulesPerKind(t *testing.T) {
 	f := newFixture(t)
 	alice, bob := f.user("alice"), f.user("bob")
-	t1, t2 := uuid.NewString(), uuid.NewString()
+	t1, t2 := f.table(), f.table()
 	wa, wb := f.account(ledger.AccountMemberWallet, alice, ""), f.account(ledger.AccountMemberWallet, bob, "")
 	sa1, sb1 := f.account(ledger.AccountTableStack, alice, t1), f.account(ledger.AccountTableStack, bob, t1)
 	sb2 := f.account(ledger.AccountTableStack, bob, t2)
@@ -274,7 +302,7 @@ func TestConcurrentSpendingNeverOverdraws(t *testing.T) {
 	f := newFixture(t)
 	u := f.user("u")
 	w := f.account(ledger.AccountMemberWallet, u, "")
-	s := f.account(ledger.AccountTableStack, u, uuid.NewString())
+	s := f.account(ledger.AccountTableStack, u, f.table())
 	f.grant(w, 1000)
 
 	var wg sync.WaitGroup
@@ -383,7 +411,7 @@ func TestRandomOperationsConserveChips(t *testing.T) {
 	f := newFixture(t)
 	r := mrand.New(mrand.NewPCG(1, 2))
 	treasury := f.account(ledger.AccountClubTreasury, f.clubID, "")
-	tables := []string{uuid.NewString(), uuid.NewString()}
+	tables := []string{f.table(), f.table()}
 	type player struct {
 		wallet string
 		stacks map[string]string

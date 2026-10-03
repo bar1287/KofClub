@@ -28,6 +28,9 @@ type Options struct {
 	DrainDelay time.Duration
 	// ShutdownTimeout bounds graceful shutdown of in-flight requests.
 	ShutdownTimeout time.Duration
+	// Drain runs after DrainDelay while the server still serves requests
+	// (e.g. finish in-progress hands and hand tables over).
+	Drain func(ctx context.Context)
 	// OnShutdown runs after the HTTP server stopped (close pools, flush state).
 	OnShutdown func(ctx context.Context)
 	// Listener optionally overrides Addr (used by tests).
@@ -81,6 +84,9 @@ func Run(ctx context.Context, o Options) error {
 	}
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
+	if o.Drain != nil {
+		o.Drain(shutdownCtx)
+	}
 	err := srv.Shutdown(shutdownCtx)
 	if o.OnShutdown != nil {
 		o.OnShutdown(shutdownCtx)

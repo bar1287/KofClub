@@ -6,6 +6,7 @@ const base = {
   AUTH_JWT_PRIVATE_KEY_B64: 'x',
   AUTH_JWT_PUBLIC_KEY_B64: 'y',
   IP_HASH_SECRET: '0123456789abcdef0123456789abcdef',
+  INTERNAL_SERVICE_TOKEN: 'x'.repeat(32),
 };
 
 describe('loadConfig', () => {

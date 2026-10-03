@@ -1,0 +1,10 @@
+DROP TABLE IF EXISTS table_commands;
+DROP TABLE IF EXISTS game_events;
+ALTER TABLE IF EXISTS ledger_entries DROP CONSTRAINT IF EXISTS ledger_entries_hand_fk;
+DROP TABLE IF EXISTS hand_players;
+DROP TABLE IF EXISTS hands;
+DROP TABLE IF EXISTS table_seats;
+DROP TABLE IF EXISTS table_runtime;
+DROP TABLE IF EXISTS table_leases;
+ALTER TABLE IF EXISTS ledger_accounts DROP CONSTRAINT IF EXISTS ledger_accounts_table_fk;
+DROP TABLE IF EXISTS tables;

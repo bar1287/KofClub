@@ -32,6 +32,8 @@ tags:
     description: Clubs, memberships, roles, invites, audit
   - name: ledger
     description: Virtual-chip wallets and club chip administration (no monetary value)
+  - name: tables
+    description: Table directory, seating (buy-in) and leaving (cash-out)
 paths:
   /health/live:
     get:
@@ -684,6 +686,134 @@ paths:
           $ref: '#/components/responses/Error'
         '409':
           $ref: '#/components/responses/Error'
+  /v1/clubs/{clubId}/tables:
+    parameters:
+      - $ref: '#/components/parameters/ClubId'
+    post:
+      tags: [tables]
+      operationId: createTable
+      summary: Create a No-Limit Hold'em table (ADMIN+)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTableRequest'
+      responses:
+        '201':
+          description: Table created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TableDetail'
+        '400':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+    get:
+      tags: [tables]
+      operationId: listClubTables
+      summary: Tables of a club
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Tables
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TableList'
+  /v1/tables/{tableId}:
+    parameters:
+      - $ref: '#/components/parameters/TableId'
+    get:
+      tags: [tables]
+      operationId: getTable
+      summary: Table configuration and seated players
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Table
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TableDetail'
+        '404':
+          $ref: '#/components/responses/Error'
+  /v1/tables/{tableId}/seat:
+    parameters:
+      - $ref: '#/components/parameters/TableId'
+    post:
+      tags: [tables]
+      operationId: takeSeat
+      summary: Buy in from the club wallet and take a seat
+      description: The Idempotency-Key (if given) makes retried buy-ins safe.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SeatRequest'
+      responses:
+        '200':
+          description: Seated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeatResult'
+        '400':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+  /v1/tables/{tableId}/leave:
+    parameters:
+      - $ref: '#/components/parameters/TableId'
+    post:
+      tags: [tables]
+      operationId: leaveTable
+      summary: Leave the table; the stack is cashed out to the club wallet (after the current hand if needed)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Left or leaving after the hand
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaveResult'
+        '409':
+          $ref: '#/components/responses/Error'
+  /v1/tables/{tableId}/state:
+    parameters:
+      - $ref: '#/components/parameters/TableId'
+    get:
+      tags: [tables]
+      operationId: getTableState
+      summary: Viewer-sanitized table snapshot (realtime clients use TABLE_SNAPSHOT instead)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Snapshot
+          content:
+            application/json:
+              schema:
+                $ref: './realtime.yaml#/components/schemas/TableSnapshot'
+        '403':
+          $ref: '#/components/responses/Error'
 components:
   securitySchemes:
     bearerAuth:
@@ -691,6 +821,12 @@ components:
       scheme: bearer
       bearerFormat: JWT
   parameters:
+    TableId:
+      name: tableId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
     ClubId:
       name: clubId
       in: path
@@ -1312,6 +1448,155 @@ components:
         nextCursor:
           type: string
           nullable: true
+    Table:
+      type: object
+      required:
+        [
+          id,
+          clubId,
+          name,
+          gameType,
+          maxSeats,
+          smallBlind,
+          bigBlind,
+          buyInMin,
+          buyInMax,
+          actionTimeoutSec,
+          status,
+          createdBy,
+          createdAt,
+          seatedCount,
+        ]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        clubId:
+          $ref: '#/components/schemas/Uuid'
+        name:
+          type: string
+        gameType:
+          type: string
+          enum: [NLHE]
+        maxSeats:
+          type: integer
+        smallBlind:
+          $ref: '#/components/schemas/ChipAmount'
+        bigBlind:
+          $ref: '#/components/schemas/ChipAmount'
+        buyInMin:
+          $ref: '#/components/schemas/ChipAmount'
+        buyInMax:
+          $ref: '#/components/schemas/ChipAmount'
+        actionTimeoutSec:
+          type: integer
+        status:
+          type: string
+          enum: [OPEN, CLOSED]
+        createdBy:
+          $ref: '#/components/schemas/Uuid'
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        seatedCount:
+          type: integer
+    TableSeat:
+      type: object
+      additionalProperties: false
+      required: [seatNo, userId, username, stack, sittingOut]
+      properties:
+        seatNo:
+          type: integer
+        userId:
+          $ref: '#/components/schemas/Uuid'
+        username:
+          type: string
+        stack:
+          $ref: '#/components/schemas/ChipAmount'
+        sittingOut:
+          type: boolean
+    TableDetail:
+      allOf:
+        - $ref: '#/components/schemas/Table'
+        - type: object
+          required: [seats]
+          properties:
+            seats:
+              type: array
+              items:
+                $ref: '#/components/schemas/TableSeat'
+    TableList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Table'
+    CreateTableRequest:
+      type: object
+      additionalProperties: false
+      required: [name, smallBlind, bigBlind, buyInMin, buyInMax]
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 64
+        maxSeats:
+          type: integer
+          minimum: 2
+          maximum: 10
+          default: 6
+        smallBlind:
+          $ref: '#/components/schemas/ChipAmount'
+        bigBlind:
+          $ref: '#/components/schemas/ChipAmount'
+        buyInMin:
+          $ref: '#/components/schemas/ChipAmount'
+        buyInMax:
+          $ref: '#/components/schemas/ChipAmount'
+        actionTimeoutSec:
+          type: integer
+          minimum: 5
+          maximum: 120
+          default: 20
+    SeatRequest:
+      type: object
+      additionalProperties: false
+      required: [buyIn]
+      properties:
+        seatNo:
+          type: integer
+          minimum: 1
+          maximum: 10
+          description: Omit to take the first free seat.
+        buyIn:
+          $ref: '#/components/schemas/ChipAmount'
+    SeatResult:
+      type: object
+      additionalProperties: false
+      required: [tableId, seatNo, stack, seq]
+      properties:
+        tableId:
+          $ref: '#/components/schemas/Uuid'
+        seatNo:
+          type: integer
+        stack:
+          $ref: '#/components/schemas/ChipAmount'
+        seq:
+          type: integer
+          format: int64
+    LeaveResult:
+      type: object
+      additionalProperties: false
+      required: [tableId, status, cashOut]
+      properties:
+        tableId:
+          $ref: '#/components/schemas/Uuid'
+        status:
+          type: string
+          enum: [LEFT, LEAVING_AFTER_HAND]
+        cashOut:
+          $ref: '#/components/schemas/ChipAmount'
     HealthStatus:
       type: object
       required: [status, service]

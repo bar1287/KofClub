@@ -415,6 +415,26 @@ export type paths = {
     patch: operations['updateClubMember'];
     trace?: never;
   };
+  '/v1/clubs/{clubId}/tables': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        clubId: components['parameters']['ClubId'];
+      };
+      cookie?: never;
+    };
+    /** Tables of a club */
+    get: operations['listClubTables'];
+    put?: never;
+    /** Create a No-Limit Hold'em table (ADMIN+) */
+    post: operations['createTable'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/clubs/{clubId}/wallet': {
     parameters: {
       query?: never;
@@ -521,6 +541,85 @@ export type paths = {
     patch?: never;
     trace?: never;
   };
+  '/v1/tables/{tableId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tableId: components['parameters']['TableId'];
+      };
+      cookie?: never;
+    };
+    /** Table configuration and seated players */
+    get: operations['getTable'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/tables/{tableId}/leave': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tableId: components['parameters']['TableId'];
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Leave the table; the stack is cashed out to the club wallet (after the current hand if needed) */
+    post: operations['leaveTable'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/tables/{tableId}/seat': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tableId: components['parameters']['TableId'];
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Buy in from the club wallet and take a seat
+     * @description The Idempotency-Key (if given) makes retried buy-ins safe.
+     */
+    post: operations['takeSeat'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/tables/{tableId}/state': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tableId: components['parameters']['TableId'];
+      };
+      cookie?: never;
+    };
+    /** Viewer-sanitized table snapshot (realtime clients use TABLE_SNAPSHOT instead) */
+    get: operations['getTableState'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 };
 export type webhooks = Record<string, never>;
 export type components = {
@@ -558,6 +657,8 @@ export type components = {
       sessionId: components['schemas']['Uuid'];
       user: components['schemas']['User'];
     };
+    /** @description Rank + suit, e.g. "As", "Td", "2c". */
+    Card: string;
     /**
      * Format: int64
      * @description Integer amount of virtual chips (no monetary value).
@@ -606,6 +707,17 @@ export type components = {
        * @enum {string}
        */
       role: 'MEMBER' | 'AGENT';
+    };
+    CreateTableRequest: {
+      /** @default 20 */
+      actionTimeoutSec: number;
+      bigBlind: components['schemas']['ChipAmount'];
+      buyInMax: components['schemas']['ChipAmount'];
+      buyInMin: components['schemas']['ChipAmount'];
+      /** @default 6 */
+      maxSeats: number;
+      name: string;
+      smallBlind: components['schemas']['ChipAmount'];
     };
     ErrorBody: {
       code: components['schemas']['ErrorCode'];
@@ -667,6 +779,35 @@ export type components = {
     ErrorEnvelope: {
       error: components['schemas']['ErrorBody'];
     };
+    HandView: {
+      /** Format: date-time */
+      actionDeadline: string | null;
+      bigBlindSeat: number;
+      board: components['schemas']['Card'][];
+      buttonSeat: number;
+      /** Format: int64 */
+      currentBet: number;
+      /** @description SHA-256 commitment to the deck order (audit). */
+      deckCommitment: string;
+      /** Format: uuid */
+      handId: string;
+      /** Format: int64 */
+      handNo: number;
+      /** Format: int64 */
+      minRaise: number;
+      /** Format: int64 */
+      pot: number;
+      smallBlindSeat: number;
+      /** @enum {string} */
+      street: 'PREFLOP' | 'FLOP' | 'TURN' | 'RIVER' | 'SHOWDOWN' | 'COMPLETE';
+      /** @description 0 when nobody is to act. */
+      toActSeat: number;
+      /**
+       * Format: int64
+       * @description Sequence of the TURN_STARTED event of the current turn.
+       */
+      turnSeq: number;
+    };
     HealthStatus: {
       checks?: {
         [key: string]: string;
@@ -700,6 +841,12 @@ export type components = {
     JoinClubRequest: {
       /** @description Club join code (8 chars) or invite code (12 chars); case-insensitive. */
       code: string;
+    };
+    LeaveResult: {
+      cashOut: components['schemas']['ChipAmount'];
+      /** @enum {string} */
+      status: 'LEFT' | 'LEAVING_AFTER_HAND';
+      tableId: components['schemas']['Uuid'];
     };
     /** @enum {string} */
     LedgerAccountKind: 'CLUB_TREASURY' | 'MEMBER_WALLET' | 'TABLE_STACK';
@@ -752,6 +899,25 @@ export type components = {
       items: components['schemas']['LedgerTransaction'][];
       nextCursor: string | null;
     };
+    LegalAction: {
+      /**
+       * Format: int64
+       * @description CALL - chips to add; ALL_IN - resulting street commitment.
+       */
+      amount?: number;
+      /** @enum {string} */
+      kind: 'FOLD' | 'CHECK' | 'CALL' | 'BET' | 'RAISE' | 'ALL_IN';
+      /**
+       * Format: int64
+       * @description BET/RAISE maximum "to" amount (all-in).
+       */
+      maxTo?: number;
+      /**
+       * Format: int64
+       * @description BET/RAISE minimum "to" amount.
+       */
+      minTo?: number;
+    };
     LoginRequest: {
       deviceId?: string;
       /** @description Email or username */
@@ -796,6 +962,35 @@ export type components = {
     ReversalRequest: {
       note: string;
     };
+    SeatRequest: {
+      buyIn: components['schemas']['ChipAmount'];
+      /** @description Omit to take the first free seat. */
+      seatNo?: number;
+    };
+    SeatResult: {
+      seatNo: number;
+      /** Format: int64 */
+      seq: number;
+      stack: components['schemas']['ChipAmount'];
+      tableId: components['schemas']['Uuid'];
+    };
+    SeatView: {
+      allIn: boolean;
+      folded: boolean;
+      inHand: boolean;
+      leaving: boolean;
+      seat: number;
+      /** @description Cards revealed at showdown (public). */
+      shownCards?: components['schemas']['Card'][];
+      sittingOut: boolean;
+      /** Format: int64 */
+      stack: number;
+      /** Format: int64 */
+      streetBet: number;
+      /** Format: uuid */
+      userId: string;
+      username: string;
+    };
     Session: {
       createdAt: components['schemas']['Timestamp'];
       current: boolean;
@@ -807,6 +1002,72 @@ export type components = {
     };
     SessionList: {
       items: components['schemas']['Session'][];
+    };
+    Table: {
+      actionTimeoutSec: number;
+      bigBlind: components['schemas']['ChipAmount'];
+      buyInMax: components['schemas']['ChipAmount'];
+      buyInMin: components['schemas']['ChipAmount'];
+      clubId: components['schemas']['Uuid'];
+      createdAt: components['schemas']['Timestamp'];
+      createdBy: components['schemas']['Uuid'];
+      /** @enum {string} */
+      gameType: 'NLHE';
+      id: components['schemas']['Uuid'];
+      maxSeats: number;
+      name: string;
+      seatedCount: number;
+      smallBlind: components['schemas']['ChipAmount'];
+      /** @enum {string} */
+      status: 'OPEN' | 'CLOSED';
+    };
+    TableDetail: components['schemas']['Table'] & {
+      seats: components['schemas']['TableSeat'][];
+    };
+    TableInfo: {
+      /** Format: int64 */
+      actionTimeoutMs: number;
+      /** Format: int64 */
+      bigBlind: number;
+      /** Format: int64 */
+      buyInMax: number;
+      /** Format: int64 */
+      buyInMin: number;
+      /** Format: uuid */
+      clubId: string;
+      maxSeats: number;
+      name: string;
+      /** Format: int64 */
+      smallBlind: number;
+      /** @enum {string} */
+      status: 'OPEN' | 'CLOSED';
+    };
+    TableList: {
+      items: components['schemas']['Table'][];
+    };
+    TableSeat: {
+      seatNo: number;
+      sittingOut: boolean;
+      stack: components['schemas']['ChipAmount'];
+      userId: components['schemas']['Uuid'];
+      username: string;
+    };
+    /** @description Complete viewer-sanitized table state; clients replace (never merge) state with it. */
+    TableSnapshot: {
+      /** @description Present while a hand is in progress or just completed. */
+      hand?: components['schemas']['HandView'];
+      /** @enum {string} */
+      phase: 'WAITING_FOR_PLAYERS' | 'HAND_IN_PROGRESS' | 'HAND_COMPLETE';
+      seats: components['schemas']['SeatView'][];
+      /** Format: int64 */
+      seq: number;
+      /** Format: date-time */
+      serverTime: string;
+      table: components['schemas']['TableInfo'];
+      /** Format: uuid */
+      tableId: string;
+      /** @description The viewer's private view (absent for anonymous spectators). */
+      you?: components['schemas']['YouView'];
     };
     /**
      * Format: date-time
@@ -851,6 +1112,14 @@ export type components = {
       items: components['schemas']['WalletEntry'][];
       nextCursor: string | null;
     };
+    YouView: {
+      holeCards: components['schemas']['Card'][];
+      legalActions: components['schemas']['LegalAction'][];
+      /** @description 0 when the viewer is not seated. */
+      seat: number;
+      /** Format: uuid */
+      userId: string;
+    };
   };
   responses: {
     /** @description Machine-readable error */
@@ -877,6 +1146,7 @@ export type components = {
     Limit: number;
     /** @description Client-supplied correlation id (echoed back). */
     RequestId: string;
+    TableId: components['schemas']['Uuid'];
   };
   requestBodies: never;
   headers: never;
@@ -1521,6 +1791,59 @@ export interface operations {
       404: components['responses']['Error'];
     };
   };
+  listClubTables: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        clubId: components['parameters']['ClubId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Tables */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TableList'];
+        };
+      };
+    };
+  };
+  createTable: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Unique key making a retried state-changing request a no-op. */
+        'Idempotency-Key'?: components['parameters']['IdempotencyKey'];
+      };
+      path: {
+        clubId: components['parameters']['ClubId'];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CreateTableRequest'];
+      };
+    };
+    responses: {
+      /** @description Table created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TableDetail'];
+        };
+      };
+      400: components['responses']['Error'];
+      403: components['responses']['Error'];
+    };
+  };
   getMyWallet: {
     parameters: {
       query?: never;
@@ -1658,6 +1981,110 @@ export interface operations {
         content?: never;
       };
       404: components['responses']['Error'];
+    };
+  };
+  getTable: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tableId: components['parameters']['TableId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Table */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TableDetail'];
+        };
+      };
+      404: components['responses']['Error'];
+    };
+  };
+  leaveTable: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Unique key making a retried state-changing request a no-op. */
+        'Idempotency-Key'?: components['parameters']['IdempotencyKey'];
+      };
+      path: {
+        tableId: components['parameters']['TableId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Left or leaving after the hand */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LeaveResult'];
+        };
+      };
+      409: components['responses']['Error'];
+    };
+  };
+  takeSeat: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Unique key making a retried state-changing request a no-op. */
+        'Idempotency-Key'?: components['parameters']['IdempotencyKey'];
+      };
+      path: {
+        tableId: components['parameters']['TableId'];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['SeatRequest'];
+      };
+    };
+    responses: {
+      /** @description Seated */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['SeatResult'];
+        };
+      };
+      400: components['responses']['Error'];
+      409: components['responses']['Error'];
+      422: components['responses']['Error'];
+    };
+  };
+  getTableState: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tableId: components['parameters']['TableId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Snapshot */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TableSnapshot'];
+        };
+      };
+      403: components['responses']['Error'];
     };
   };
 }
