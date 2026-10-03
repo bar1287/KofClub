@@ -5,6 +5,36 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added — M7 History + Admin
+
+- Hand history: `GET /v1/me/hands`, `GET /v1/hands/{id}`,
+  `GET /v1/clubs/{id}/hands` with the ADR-008 visibility policy
+  (participants: public record + own hole cards; staff: public record only;
+  others: 404). Own hole cards are decrypted by the game plane
+  (`/internal/v1/hands/{id}/hole-cards`); the key never leaves it.
+- Table closure: `POST /v1/tables/{id}/close`; the actor stops dealing,
+  announces `TABLE_CLOSED` and cashes every seat out once no hand is running
+  (`PLAYER_LEFT` reason `TABLE_CLOSED`); converges after lost notifications
+  and restarts.
+- Club administration: `PATCH /v1/clubs/{id}` (settings),
+  `POST /v1/clubs/{id}/transfer-ownership`; web console
+  (`/clubs/{id}/admin`) for members/roles/bans/ownership, invites, chips and
+  ledger (grants, deductions, reversals), tables, hands, audit log, settings.
+- Platform administration (`/v1/admin/*`, web `/admin`): overview,
+  account/club search with suspension (sessions revoked at once; suspended
+  clubs are view-only), platform-wide audit log, risk-case review with
+  immutable evidence; operator CLI `make platform-admin` (audited).
+- Web: `/hands` and hand detail pages with the replayed public action log.
+- Observability: Prometheus scrape config, 8 alert rules (promtool-checked),
+  provisioned Grafana dashboard (`make observability`), runbooks for every
+  alert, `docs/observability.md`.
+- Migration `000007_history_admin`; ADR-013; E2E spec for the club console.
+
+### Fixed
+
+- Seating in a suspended club was possible (seat only checked view rights).
+- CI's migration step now really rolls back and re-applies the latest migration.
+
 ### Added — M6 Web poker table
 
 - Web client (Next.js): register/login/logout, session restore from the

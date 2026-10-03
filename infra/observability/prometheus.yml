@@ -1,0 +1,22 @@
+# Prometheus for the local stack (`make observability`). Deployed
+# environments scrape the same /metrics endpoints (docs/observability.md).
+global:
+  scrape_interval: 10s
+  evaluation_interval: 10s
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+scrape_configs:
+  - job_name: control-api
+    static_configs:
+      - targets: ['control-api:4000']
+  - job_name: game-service
+    static_configs:
+      - targets: ['game-service:4200']
+  - job_name: realtime-gateway
+    static_configs:
+      - targets: ['realtime-gateway:4100']
+  - job_name: worker
+    static_configs:
+      - targets: ['worker:4300']

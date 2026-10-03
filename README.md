@@ -87,6 +87,8 @@ make dev-local  # run all services natively with live reload
 | `make e2e`                                         | Browser E2E (Playwright): fresh DB, services started natively       |
 | `make migrate` / `migrate-down` / `migrate-status` | Schema migrations                                                   |
 | `make seed`                                        | Demo data                                                           |
+| `make platform-admin ADMIN_USER=<name>`            | Grant the platform-admin role (operator CLI, audited)               |
+| `make observability`                               | Prometheus (:9090) + Grafana dashboards (:3001)                     |
 | `make contracts` / `contracts-check`               | Regenerate / verify generated contract types                        |
 | `make load-smoke`                                  | Short synthetic load test                                           |
 | `make ci`                                          | Everything CI runs except integration tests                         |
@@ -105,6 +107,8 @@ a managed secret store ([docs/security.md](docs/security.md)).
 - [docs/game-engine.md](docs/game-engine.md) — poker rules, state machine, pots
 - [docs/realtime-protocol.md](docs/realtime-protocol.md) — WebSocket protocol
 - [docs/web-client.md](docs/web-client.md) — web client architecture, table UI, E2E tests
+- [docs/observability.md](docs/observability.md) — metrics, dashboards, alerts
+- [docs/runbooks](docs/runbooks/README.md) — what to do when an alert fires
 - [docs/ledger.md](docs/ledger.md) — chip accounting
 - [docs/database.md](docs/database.md) — schema and migrations
 - [docs/security.md](docs/security.md) — auth, RBAC, secrets, logging rules

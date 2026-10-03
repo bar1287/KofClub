@@ -73,6 +73,15 @@ migrate-status: ## Print the current schema version
 seed: ## Load demo data (users, club, table, chip grants)
 	$(PNPM) --filter @kofclub/control-api seed
 
+.PHONY: observability
+observability: ## Start Prometheus (http://localhost:9090) and Grafana dashboards (http://localhost:3001)
+	docker compose --profile observability up -d prometheus grafana
+
+.PHONY: platform-admin
+platform-admin: ## Grant the platform-admin role: make platform-admin ADMIN_USER=<username> [ACTION=revoke]
+	@test -n "$(ADMIN_USER)" || (echo "usage: make platform-admin ADMIN_USER=<username> [ACTION=grant|revoke]"; exit 2)
+	$(PNPM) --filter @kofclub/control-api platform-admin $(or $(ACTION),grant) $(ADMIN_USER)
+
 # ---------------------------------------------------------------------------
 # Contracts
 # ---------------------------------------------------------------------------

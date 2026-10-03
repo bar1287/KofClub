@@ -1,0 +1,61 @@
+# Alert rules. Every alert names the runbook to follow (docs/runbooks/).
+groups:
+  - name: kofclub-integrity
+    rules:
+      - alert: LedgerInvariantViolation
+        expr: sum(ledger_invariant_violations) > 0
+        for: 0m
+        labels: { severity: page }
+        annotations:
+          summary: The chip ledger reports invariant violations
+          runbook: docs/runbooks/ledger-invariant-violation.md
+      - alert: HandsVoided
+        expr: sum(increase(game_hands_voided_total[15m])) > 0
+        labels: { severity: ticket }
+        annotations:
+          summary: Hands were voided (no chips moved) — recovery could not replay them
+          runbook: docs/runbooks/table-recovery.md
+      - alert: GamePersistFailures
+        expr: sum(rate(game_persist_failures_total[5m])) > 0
+        for: 2m
+        labels: { severity: page }
+        annotations:
+          summary: The game service cannot persist table state
+          runbook: docs/runbooks/table-recovery.md
+  - name: kofclub-availability
+    rules:
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels: { severity: page }
+        annotations:
+          summary: '{{ $labels.job }} is not answering /metrics'
+          runbook: docs/runbooks/service-down.md
+      - alert: HighActionLatency
+        expr: histogram_quantile(0.95, sum by (le) (rate(game_command_latency_seconds_bucket[5m]))) > 0.15
+        for: 5m
+        labels: { severity: ticket }
+        annotations:
+          summary: p95 player-action processing above 150 ms (spec §15 target)
+          runbook: docs/runbooks/latency.md
+      - alert: WebSocketResyncStorm
+        expr: sum(rate(ws_resyncs_total[5m])) > 1
+        for: 10m
+        labels: { severity: ticket }
+        annotations:
+          summary: Clients are resynchronizing unusually often
+          runbook: docs/runbooks/realtime.md
+      - alert: TableLeaseLosses
+        expr: sum(increase(game_lease_losses_total[10m])) > 3
+        labels: { severity: ticket }
+        annotations:
+          summary: Game nodes keep losing table leases (database latency or clock issues)
+          runbook: docs/runbooks/table-recovery.md
+      - alert: HttpErrorRate
+        expr: |
+          sum(rate(http_requests_total{code=~"5.."}[5m])) / clamp_min(sum(rate(http_requests_total[5m])), 1) > 0.02
+        for: 5m
+        labels: { severity: page }
+        annotations:
+          summary: More than 2% of HTTP requests fail with 5xx
+          runbook: docs/runbooks/service-down.md
