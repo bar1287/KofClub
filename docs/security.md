@@ -56,3 +56,9 @@ where relevant, `risk_events` rows for later review (spec §11).
   register, login success/failure/blocked, new device, refresh reuse, rate
   limiting and rate-limiter degradation. Logs never contain passwords,
   tokens or raw IPs.
+
+## Review
+
+The M8 security review (threats, verified controls, fixed findings,
+residual risks) is in [security-review.md](security-review.md). CI runs
+`make audit` (npm + Go advisories) and a gitleaks scan of the full history.

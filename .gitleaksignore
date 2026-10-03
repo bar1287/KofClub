@@ -1,0 +1,3 @@
+# Reviewed false positives (gitleaks finding fingerprints).
+# Dummy IP_HASH_SECRET test fixture in an early commit (since replaced).
+98e003801dedfab0ca8fa7adc15c1b84ce8375a6:apps/control-api/src/config/config.spec.ts:generic-api-key:8

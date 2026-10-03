@@ -7,6 +7,7 @@ import {
   register,
   snap,
   uniqueName,
+  watchCsp,
   type Player,
 } from './helpers';
 
@@ -21,6 +22,7 @@ test('two players play a complete hand of Hold’em', async ({ browser }) => {
   const bobCtx = await browser.newContext();
   const alice: Player = { page: await aliceCtx.newPage(), username: uniqueName('alice') };
   const bob: Player = { page: await bobCtx.newPage(), username: uniqueName('bob') };
+  const cspViolations = [...watchCsp(alice.page), ...watchCsp(bob.page)];
   const GRANT = 5_000;
   const BUY_IN = 1_000;
 
@@ -131,6 +133,9 @@ test('two players play a complete hand of Hold’em', async ({ browser }) => {
     total += parseChips(await p.page.getByTestId('wallet-balance').textContent());
   }
   expect(total).toBe(2 * GRANT);
+
+  // The strict nonce CSP never got in the way of the app.
+  expect(cspViolations).toEqual([]);
 
   await aliceCtx.close();
   await bobCtx.close();

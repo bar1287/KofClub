@@ -19,6 +19,8 @@ export type SessionStatus = 'loading' | 'authenticated' | 'anonymous';
 
 interface SessionValue {
   status: SessionStatus;
+  /** The user signed out on purpose (guards send them to /login without ?next). */
+  signedOut: boolean;
   user: User | null;
   api: ApiClient;
   ep: Endpoints;
@@ -70,6 +72,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     api.auth.user ? 'authenticated' : 'loading',
   );
   const [user, setUser] = useState<User | null>(api.auth.user);
+  const [signedOut, setSignedOut] = useState(false);
 
   useEffect(() => {
     const off = api.onAuthChange((s) => {
@@ -100,23 +103,26 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const login = useCallback(
     async (loginName: string, password: string) => {
       await api.login({ login: loginName, password });
+      setSignedOut(false);
     },
     [api],
   );
   const register = useCallback(
     async (email: string, username: string, password: string) => {
       await api.register({ email, username, password });
+      setSignedOut(false);
     },
     [api],
   );
   const logout = useCallback(async () => {
+    setSignedOut(true);
     realtime.close();
     await api.logout().catch(() => undefined);
   }, [api, realtime]);
 
   const value = useMemo<SessionValue>(
-    () => ({ status, user, api, ep, realtime, login, register, logout }),
-    [status, user, api, ep, realtime, login, register, logout],
+    () => ({ status, signedOut, user, api, ep, realtime, login, register, logout }),
+    [status, signedOut, user, api, ep, realtime, login, register, logout],
   );
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

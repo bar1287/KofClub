@@ -31,10 +31,8 @@ export function AppShell({ children }: { children: ReactNode }) {
               <button
                 className="btn small"
                 onClick={() => {
-                  // Leave protected pages first so their guard does not
-                  // turn the logout into a "log in to continue" redirect.
-                  router.push('/login');
                   void logout();
+                  router.push('/login');
                 }}
               >
                 Log out

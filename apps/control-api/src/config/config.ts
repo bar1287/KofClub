@@ -40,6 +40,17 @@ const envSchema = z.object({
     .string()
     .min(32, 'must be at least 32 characters (run scripts/init-env.sh)'),
   GAME_SERVICE_TIMEOUT_MS: z.coerce.number().int().min(100).max(60000).default(5000),
+  /**
+   * Which reverse proxies may set X-Forwarded-For (Express "trust proxy"):
+   * a hop count ("1" behind one load balancer), or comma-separated
+   * addresses/CIDRs/presets ("loopback", "10.0.0.0/8"). Client IPs feed
+   * per-IP rate limits and audit hashes, so this must match the deployment.
+   */
+  TRUST_PROXY: z
+    .string()
+    .trim()
+    .default('loopback')
+    .transform((v): number | string => (/^\d+$/.test(v) ? Number(v) : v)),
   RATE_LIMIT_ENABLED: z
     .enum(['true', 'false'])
     .default('true')
@@ -63,6 +74,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
           code: 'custom',
           path: ['ARGON2_MEMORY_KIB'],
           message: 'must be >= 19456 in production',
+        });
+      }
+      if (cfg.TRUST_PROXY === 'true' || cfg.TRUST_PROXY === '*') {
+        // Trusting every hop lets any client spoof its IP via X-Forwarded-For.
+        ctx.addIssue({
+          code: 'custom',
+          path: ['TRUST_PROXY'],
+          message: 'must name hops or proxy addresses, not trust everything',
         });
       }
       if (cfg.APP_ENV === 'production' && !cfg.RATE_LIMIT_ENABLED) {

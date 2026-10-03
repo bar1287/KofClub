@@ -13,7 +13,9 @@ export async function createApp(config: AppConfig): Promise<INestApplication> {
   });
   app.useLogger(app.get(Logger));
   app.disable('x-powered-by');
-  app.set('trust proxy', 'loopback');
+  // Real client IPs (rate limits, audit hashes) come from X-Forwarded-For
+  // only when set by a trusted proxy (TRUST_PROXY).
+  app.set('trust proxy', config.TRUST_PROXY);
   app.useBodyParser('json', { limit: '64kb' });
   app.enableCors({
     origin: config.CORS_ORIGINS,

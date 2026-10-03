@@ -7,6 +7,12 @@ test('protected pages redirect to login and return afterwards', async ({ page })
   await page.getByRole('button', { name: 'Log out' }).click();
   await expect(page).toHaveURL(/\/login$/);
 
+  const login = await page.goto('/login');
+  const csp = login?.headers()['content-security-policy'] ?? '';
+  expect(csp).toMatch(/script-src 'self' 'nonce-[A-Za-z0-9+/=]+' 'strict-dynamic'/);
+  expect(csp).toContain("frame-ancestors 'none'");
+  expect(login?.headers()['x-frame-options']).toBe('DENY');
+
   await page.goto('/profile');
   await expect(page).toHaveURL(/\/login\?next=%2Fprofile$/);
 

@@ -83,3 +83,12 @@ export async function snap(page: Page, name: string): Promise<void> {
   const dir = process.env.E2E_SCREENSHOT_DIR;
   if (dir) await page.screenshot({ path: `${dir}/${name}.png`, fullPage: true });
 }
+
+/** Collects Content-Security-Policy violations reported by the browser. */
+export function watchCsp(page: Page): string[] {
+  const violations: string[] = [];
+  page.on('console', (msg) => {
+    if (/Content.Security.Policy/i.test(msg.text())) violations.push(msg.text());
+  });
+  return violations;
+}

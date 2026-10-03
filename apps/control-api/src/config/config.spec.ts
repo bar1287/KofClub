@@ -5,7 +5,7 @@ const base = {
   REDIS_URL: 'redis://localhost:6379/0',
   AUTH_JWT_PRIVATE_KEY_B64: 'x',
   AUTH_JWT_PUBLIC_KEY_B64: 'y',
-  IP_HASH_SECRET: '0123456789abcdef0123456789abcdef',
+  IP_HASH_SECRET: 'h'.repeat(32), // test fixture, not a secret
   INTERNAL_SERVICE_TOKEN: 'x'.repeat(32),
 };
 
@@ -24,6 +24,15 @@ describe('loadConfig', () => {
     expect(() =>
       loadConfig({ ...base, APP_ENV: 'production', RATE_LIMIT_ENABLED: 'false' }),
     ).toThrow(/RATE_LIMIT_ENABLED/);
+  });
+
+  it('parses which proxies may set X-Forwarded-For and refuses trusting all', () => {
+    expect(loadConfig(base).TRUST_PROXY).toBe('loopback');
+    expect(loadConfig({ ...base, TRUST_PROXY: '1' }).TRUST_PROXY).toBe(1);
+    expect(loadConfig({ ...base, TRUST_PROXY: '10.0.0.0/8, loopback' }).TRUST_PROXY).toBe(
+      '10.0.0.0/8, loopback',
+    );
+    expect(() => loadConfig({ ...base, TRUST_PROXY: 'true' })).toThrow(/TRUST_PROXY/);
   });
 
   it('reports every invalid value at once', () => {
