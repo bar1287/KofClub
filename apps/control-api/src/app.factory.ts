@@ -25,6 +25,8 @@ export async function createApp(config: AppConfig): Promise<INestApplication> {
       { path: 'health/live', method: RequestMethod.GET },
       { path: 'health/ready', method: RequestMethod.GET },
       { path: 'metrics', method: RequestMethod.GET },
+      // Service-to-service API: /internal/v1/... (not routed by the edge).
+      { path: 'internal/{*rest}', method: RequestMethod.ALL },
     ],
   });
   return app;

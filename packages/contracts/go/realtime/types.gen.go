@@ -4,13 +4,80 @@
 package realtime
 
 import (
+	"encoding/json"
+	"errors"
 	"time"
 
+	"github.com/oapi-codegen/runtime"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for AuthType.
+const (
+	AuthTypeAUTH AuthType = "AUTH"
+)
+
+// Valid indicates whether the value is a known member of the AuthType enum.
+func (e AuthType) Valid() bool {
+	switch e {
+	case AuthTypeAUTH:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BlindPostedEventBlind.
+const (
+	BlindPostedEventBlindBIG   BlindPostedEventBlind = "BIG"
+	BlindPostedEventBlindSMALL BlindPostedEventBlind = "SMALL"
+)
+
+// Valid indicates whether the value is a known member of the BlindPostedEventBlind enum.
+func (e BlindPostedEventBlind) Valid() bool {
+	switch e {
+	case BlindPostedEventBlindBIG:
+		return true
+	case BlindPostedEventBlindSMALL:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BlindPostedEventKind.
+const (
+	BlindPostedEventKindBLINDPOSTED BlindPostedEventKind = "BLIND_POSTED"
+)
+
+// Valid indicates whether the value is a known member of the BlindPostedEventKind enum.
+func (e BlindPostedEventKind) Valid() bool {
+	switch e {
+	case BlindPostedEventKindBLINDPOSTED:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CardsRevealedEventKind.
+const (
+	CardsRevealedEventKindCARDSREVEALED CardsRevealedEventKind = "CARDS_REVEALED"
+)
+
+// Valid indicates whether the value is a known member of the CardsRevealedEventKind enum.
+func (e CardsRevealedEventKind) Valid() bool {
+	switch e {
+	case CardsRevealedEventKindCARDSREVEALED:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ClientMessageType.
 const (
+	ClientMessageTypeAUTH             ClientMessageType = "AUTH"
 	ClientMessageTypeCOMMAND          ClientMessageType = "COMMAND"
 	ClientMessageTypeHELLO            ClientMessageType = "HELLO"
 	ClientMessageTypePING             ClientMessageType = "PING"
@@ -22,6 +89,8 @@ const (
 // Valid indicates whether the value is a known member of the ClientMessageType enum.
 func (e ClientMessageType) Valid() bool {
 	switch e {
+	case ClientMessageTypeAUTH:
+		return true
 	case ClientMessageTypeCOMMAND:
 		return true
 	case ClientMessageTypeHELLO:
@@ -33,6 +102,102 @@ func (e ClientMessageType) Valid() bool {
 	case ClientMessageTypeSUBSCRIBETABLE:
 		return true
 	case ClientMessageTypeUNSUBSCRIBETABLE:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CommandType.
+const (
+	CommandTypeCOMMAND CommandType = "COMMAND"
+)
+
+// Valid indicates whether the value is a known member of the CommandType enum.
+func (e CommandType) Valid() bool {
+	switch e {
+	case CommandTypeCOMMAND:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CommandPayloadKind.
+const (
+	CommandPayloadKindALLIN  CommandPayloadKind = "ALL_IN"
+	CommandPayloadKindBET    CommandPayloadKind = "BET"
+	CommandPayloadKindCALL   CommandPayloadKind = "CALL"
+	CommandPayloadKindCHECK  CommandPayloadKind = "CHECK"
+	CommandPayloadKindFOLD   CommandPayloadKind = "FOLD"
+	CommandPayloadKindRAISE  CommandPayloadKind = "RAISE"
+	CommandPayloadKindSITIN  CommandPayloadKind = "SIT_IN"
+	CommandPayloadKindSITOUT CommandPayloadKind = "SIT_OUT"
+)
+
+// Valid indicates whether the value is a known member of the CommandPayloadKind enum.
+func (e CommandPayloadKind) Valid() bool {
+	switch e {
+	case CommandPayloadKindALLIN:
+		return true
+	case CommandPayloadKindBET:
+		return true
+	case CommandPayloadKindCALL:
+		return true
+	case CommandPayloadKindCHECK:
+		return true
+	case CommandPayloadKindFOLD:
+		return true
+	case CommandPayloadKindRAISE:
+		return true
+	case CommandPayloadKindSITIN:
+		return true
+	case CommandPayloadKindSITOUT:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CommandResultType.
+const (
+	CommandResultTypeCOMMANDRESULT CommandResultType = "COMMAND_RESULT"
+)
+
+// Valid indicates whether the value is a known member of the CommandResultType enum.
+func (e CommandResultType) Valid() bool {
+	switch e {
+	case CommandResultTypeCOMMANDRESULT:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for HandCompletedEventKind.
+const (
+	HandCompletedEventKindHANDCOMPLETED HandCompletedEventKind = "HAND_COMPLETED"
+)
+
+// Valid indicates whether the value is a known member of the HandCompletedEventKind enum.
+func (e HandCompletedEventKind) Valid() bool {
+	switch e {
+	case HandCompletedEventKindHANDCOMPLETED:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for HandStartedEventKind.
+const (
+	HandStartedEventKindHANDSTARTED HandStartedEventKind = "HAND_STARTED"
+)
+
+// Valid indicates whether the value is a known member of the HandStartedEventKind enum.
+func (e HandStartedEventKind) Valid() bool {
+	switch e {
+	case HandStartedEventKindHANDSTARTED:
 		return true
 	default:
 		return false
@@ -69,6 +234,21 @@ func (e HandViewStreet) Valid() bool {
 	}
 }
 
+// Defines values for HandVoidedEventKind.
+const (
+	HandVoidedEventKindHANDVOIDED HandVoidedEventKind = "HAND_VOIDED"
+)
+
+// Valid indicates whether the value is a known member of the HandVoidedEventKind enum.
+func (e HandVoidedEventKind) Valid() bool {
+	switch e {
+	case HandVoidedEventKindHANDVOIDED:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for HelloType.
 const (
 	HelloTypeHELLO HelloType = "HELLO"
@@ -78,6 +258,21 @@ const (
 func (e HelloType) Valid() bool {
 	switch e {
 	case HelloTypeHELLO:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for HoleCardsDealtEventKind.
+const (
+	HoleCardsDealtEventKindHOLECARDSDEALT HoleCardsDealtEventKind = "HOLE_CARDS_DEALT"
+)
+
+// Valid indicates whether the value is a known member of the HoleCardsDealtEventKind enum.
+func (e HoleCardsDealtEventKind) Valid() bool {
+	switch e {
+	case HoleCardsDealtEventKindHOLECARDSDEALT:
 		return true
 	default:
 		return false
@@ -129,6 +324,132 @@ func (e PingType) Valid() bool {
 	}
 }
 
+// Defines values for PlayerActedEventAction.
+const (
+	PlayerActedEventActionBET   PlayerActedEventAction = "BET"
+	PlayerActedEventActionCALL  PlayerActedEventAction = "CALL"
+	PlayerActedEventActionCHECK PlayerActedEventAction = "CHECK"
+	PlayerActedEventActionFOLD  PlayerActedEventAction = "FOLD"
+	PlayerActedEventActionRAISE PlayerActedEventAction = "RAISE"
+)
+
+// Valid indicates whether the value is a known member of the PlayerActedEventAction enum.
+func (e PlayerActedEventAction) Valid() bool {
+	switch e {
+	case PlayerActedEventActionBET:
+		return true
+	case PlayerActedEventActionCALL:
+		return true
+	case PlayerActedEventActionCHECK:
+		return true
+	case PlayerActedEventActionFOLD:
+		return true
+	case PlayerActedEventActionRAISE:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PlayerActedEventKind.
+const (
+	PlayerActedEventKindPLAYERACTED PlayerActedEventKind = "PLAYER_ACTED"
+)
+
+// Valid indicates whether the value is a known member of the PlayerActedEventKind enum.
+func (e PlayerActedEventKind) Valid() bool {
+	switch e {
+	case PlayerActedEventKindPLAYERACTED:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PlayerLeftEventKind.
+const (
+	PlayerLeftEventKindPLAYERLEFT PlayerLeftEventKind = "PLAYER_LEFT"
+)
+
+// Valid indicates whether the value is a known member of the PlayerLeftEventKind enum.
+func (e PlayerLeftEventKind) Valid() bool {
+	switch e {
+	case PlayerLeftEventKindPLAYERLEFT:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PlayerLeftEventReason.
+const (
+	PlayerLeftEventReasonBUSTED PlayerLeftEventReason = "BUSTED"
+	PlayerLeftEventReasonLEFT   PlayerLeftEventReason = "LEFT"
+)
+
+// Valid indicates whether the value is a known member of the PlayerLeftEventReason enum.
+func (e PlayerLeftEventReason) Valid() bool {
+	switch e {
+	case PlayerLeftEventReasonBUSTED:
+		return true
+	case PlayerLeftEventReasonLEFT:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PlayerSeatedEventKind.
+const (
+	PlayerSeatedEventKindPLAYERSEATED PlayerSeatedEventKind = "PLAYER_SEATED"
+)
+
+// Valid indicates whether the value is a known member of the PlayerSeatedEventKind enum.
+func (e PlayerSeatedEventKind) Valid() bool {
+	switch e {
+	case PlayerSeatedEventKindPLAYERSEATED:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PlayerSittingOutEventKind.
+const (
+	PlayerSittingOutEventKindPLAYERSITTINGOUT PlayerSittingOutEventKind = "PLAYER_SITTING_OUT"
+)
+
+// Valid indicates whether the value is a known member of the PlayerSittingOutEventKind enum.
+func (e PlayerSittingOutEventKind) Valid() bool {
+	switch e {
+	case PlayerSittingOutEventKindPLAYERSITTINGOUT:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PlayerSittingOutEventReason.
+const (
+	PlayerSittingOutEventReasonLEAVING  PlayerSittingOutEventReason = "LEAVING"
+	PlayerSittingOutEventReasonREQUEST  PlayerSittingOutEventReason = "REQUEST"
+	PlayerSittingOutEventReasonTIMEOUTS PlayerSittingOutEventReason = "TIMEOUTS"
+)
+
+// Valid indicates whether the value is a known member of the PlayerSittingOutEventReason enum.
+func (e PlayerSittingOutEventReason) Valid() bool {
+	switch e {
+	case PlayerSittingOutEventReasonLEAVING:
+		return true
+	case PlayerSittingOutEventReasonREQUEST:
+		return true
+	case PlayerSittingOutEventReasonTIMEOUTS:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PongType.
 const (
 	PongTypePONG PongType = "PONG"
@@ -138,6 +459,21 @@ const (
 func (e PongType) Valid() bool {
 	switch e {
 	case PongTypePONG:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PotAwardedEventKind.
+const (
+	PotAwardedEventKindPOTAWARDED PotAwardedEventKind = "POT_AWARDED"
+)
+
+// Valid indicates whether the value is a known member of the PotAwardedEventKind enum.
+func (e PotAwardedEventKind) Valid() bool {
+	switch e {
+	case PotAwardedEventKindPOTAWARDED:
 		return true
 	default:
 		return false
@@ -159,6 +495,42 @@ func (e ProtocolErrorType) Valid() bool {
 	}
 }
 
+// Defines values for ResyncRequiredReason.
+const (
+	ResyncRequiredReasonEVENTSNOTRETAINED ResyncRequiredReason = "EVENTS_NOT_RETAINED"
+	ResyncRequiredReasonFEEDRESET         ResyncRequiredReason = "FEED_RESET"
+	ResyncRequiredReasonSEQUENCEGAP       ResyncRequiredReason = "SEQUENCE_GAP"
+)
+
+// Valid indicates whether the value is a known member of the ResyncRequiredReason enum.
+func (e ResyncRequiredReason) Valid() bool {
+	switch e {
+	case ResyncRequiredReasonEVENTSNOTRETAINED:
+		return true
+	case ResyncRequiredReasonFEEDRESET:
+		return true
+	case ResyncRequiredReasonSEQUENCEGAP:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ResyncRequiredType.
+const (
+	ResyncRequiredTypeRESYNCREQUIRED ResyncRequiredType = "RESYNC_REQUIRED"
+)
+
+// Valid indicates whether the value is a known member of the ResyncRequiredType enum.
+func (e ResyncRequiredType) Valid() bool {
+	switch e {
+	case ResyncRequiredTypeRESYNCREQUIRED:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ServerMessageType.
 const (
 	ServerMessageTypeCOMMANDRESULT  ServerMessageType = "COMMAND_RESULT"
@@ -166,6 +538,7 @@ const (
 	ServerMessageTypePING           ServerMessageType = "PING"
 	ServerMessageTypePONG           ServerMessageType = "PONG"
 	ServerMessageTypeRESYNCREQUIRED ServerMessageType = "RESYNC_REQUIRED"
+	ServerMessageTypeSUBSCRIBED     ServerMessageType = "SUBSCRIBED"
 	ServerMessageTypeTABLEEVENT     ServerMessageType = "TABLE_EVENT"
 	ServerMessageTypeTABLESNAPSHOT  ServerMessageType = "TABLE_SNAPSHOT"
 	ServerMessageTypeWELCOME        ServerMessageType = "WELCOME"
@@ -184,11 +557,112 @@ func (e ServerMessageType) Valid() bool {
 		return true
 	case ServerMessageTypeRESYNCREQUIRED:
 		return true
+	case ServerMessageTypeSUBSCRIBED:
+		return true
 	case ServerMessageTypeTABLEEVENT:
 		return true
 	case ServerMessageTypeTABLESNAPSHOT:
 		return true
 	case ServerMessageTypeWELCOME:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StreetDealtEventKind.
+const (
+	StreetDealtEventKindSTREETDEALT StreetDealtEventKind = "STREET_DEALT"
+)
+
+// Valid indicates whether the value is a known member of the StreetDealtEventKind enum.
+func (e StreetDealtEventKind) Valid() bool {
+	switch e {
+	case StreetDealtEventKindSTREETDEALT:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StreetDealtEventStreet.
+const (
+	StreetDealtEventStreetFLOP  StreetDealtEventStreet = "FLOP"
+	StreetDealtEventStreetRIVER StreetDealtEventStreet = "RIVER"
+	StreetDealtEventStreetTURN  StreetDealtEventStreet = "TURN"
+)
+
+// Valid indicates whether the value is a known member of the StreetDealtEventStreet enum.
+func (e StreetDealtEventStreet) Valid() bool {
+	switch e {
+	case StreetDealtEventStreetFLOP:
+		return true
+	case StreetDealtEventStreetRIVER:
+		return true
+	case StreetDealtEventStreetTURN:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SubscribeTableType.
+const (
+	SubscribeTableTypeSUBSCRIBETABLE SubscribeTableType = "SUBSCRIBE_TABLE"
+)
+
+// Valid indicates whether the value is a known member of the SubscribeTableType enum.
+func (e SubscribeTableType) Valid() bool {
+	switch e {
+	case SubscribeTableTypeSUBSCRIBETABLE:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SubscribedMode.
+const (
+	SubscribedModeREPLAY   SubscribedMode = "REPLAY"
+	SubscribedModeSNAPSHOT SubscribedMode = "SNAPSHOT"
+)
+
+// Valid indicates whether the value is a known member of the SubscribedMode enum.
+func (e SubscribedMode) Valid() bool {
+	switch e {
+	case SubscribedModeREPLAY:
+		return true
+	case SubscribedModeSNAPSHOT:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SubscribedType.
+const (
+	SubscribedTypeSUBSCRIBED SubscribedType = "SUBSCRIBED"
+)
+
+// Valid indicates whether the value is a known member of the SubscribedType enum.
+func (e SubscribedType) Valid() bool {
+	switch e {
+	case SubscribedTypeSUBSCRIBED:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TableEventMessageType.
+const (
+	TableEventMessageTypeTABLEEVENT TableEventMessageType = "TABLE_EVENT"
+)
+
+// Valid indicates whether the value is a known member of the TableEventMessageType enum.
+func (e TableEventMessageType) Valid() bool {
+	switch e {
+	case TableEventMessageTypeTABLEEVENT:
 		return true
 	default:
 		return false
@@ -234,6 +708,90 @@ func (e TableSnapshotPhase) Valid() bool {
 	}
 }
 
+// Defines values for TableSnapshotMessageType.
+const (
+	TableSnapshotMessageTypeTABLESNAPSHOT TableSnapshotMessageType = "TABLE_SNAPSHOT"
+)
+
+// Valid indicates whether the value is a known member of the TableSnapshotMessageType enum.
+func (e TableSnapshotMessageType) Valid() bool {
+	switch e {
+	case TableSnapshotMessageTypeTABLESNAPSHOT:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TurnStartedEventKind.
+const (
+	TurnStartedEventKindTURNSTARTED TurnStartedEventKind = "TURN_STARTED"
+)
+
+// Valid indicates whether the value is a known member of the TurnStartedEventKind enum.
+func (e TurnStartedEventKind) Valid() bool {
+	switch e {
+	case TurnStartedEventKindTURNSTARTED:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TurnStartedEventStreet.
+const (
+	TurnStartedEventStreetFLOP    TurnStartedEventStreet = "FLOP"
+	TurnStartedEventStreetPREFLOP TurnStartedEventStreet = "PREFLOP"
+	TurnStartedEventStreetRIVER   TurnStartedEventStreet = "RIVER"
+	TurnStartedEventStreetTURN    TurnStartedEventStreet = "TURN"
+)
+
+// Valid indicates whether the value is a known member of the TurnStartedEventStreet enum.
+func (e TurnStartedEventStreet) Valid() bool {
+	switch e {
+	case TurnStartedEventStreetFLOP:
+		return true
+	case TurnStartedEventStreetPREFLOP:
+		return true
+	case TurnStartedEventStreetRIVER:
+		return true
+	case TurnStartedEventStreetTURN:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UncalledBetReturnedEventKind.
+const (
+	UncalledBetReturnedEventKindUNCALLEDBETRETURNED UncalledBetReturnedEventKind = "UNCALLED_BET_RETURNED"
+)
+
+// Valid indicates whether the value is a known member of the UncalledBetReturnedEventKind enum.
+func (e UncalledBetReturnedEventKind) Valid() bool {
+	switch e {
+	case UncalledBetReturnedEventKindUNCALLEDBETRETURNED:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UnsubscribeTableType.
+const (
+	UnsubscribeTableTypeUNSUBSCRIBETABLE UnsubscribeTableType = "UNSUBSCRIBE_TABLE"
+)
+
+// Valid indicates whether the value is a known member of the UnsubscribeTableType enum.
+func (e UnsubscribeTableType) Valid() bool {
+	switch e {
+	case UnsubscribeTableTypeUNSUBSCRIBETABLE:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for WelcomeType.
 const (
 	WelcomeTypeWELCOME WelcomeType = "WELCOME"
@@ -249,11 +807,146 @@ func (e WelcomeType) Valid() bool {
 	}
 }
 
+// Auth Re-authenticates a live connection with a fresh access token before the current one expires.
+type Auth struct {
+	AccessToken string   `json:"accessToken"`
+	Type        AuthType `json:"type"`
+}
+
+// AuthType defines model for Auth.Type.
+type AuthType string
+
+// BlindPostedEvent defines model for BlindPostedEvent.
+type BlindPostedEvent struct {
+	AllIn  bool                  `json:"allIn"`
+	Amount int64                 `json:"amount"`
+	Blind  BlindPostedEventBlind `json:"blind"`
+	Kind   BlindPostedEventKind  `json:"kind"`
+	Pot    int64                 `json:"pot"`
+	Seat   int                   `json:"seat"`
+	Stack  int64                 `json:"stack"`
+}
+
+// BlindPostedEventBlind defines model for BlindPostedEvent.Blind.
+type BlindPostedEventBlind string
+
+// BlindPostedEventKind defines model for BlindPostedEvent.Kind.
+type BlindPostedEventKind string
+
 // Card Rank + suit, e.g. "As", "Td", "2c".
 type Card = string
 
+// CardsRevealedEvent defines model for CardsRevealedEvent.
+type CardsRevealedEvent struct {
+	BestFive    []Card                 `json:"bestFive"`
+	Cards       []Card                 `json:"cards"`
+	Description string                 `json:"description"`
+	Kind        CardsRevealedEventKind `json:"kind"`
+	Seat        int                    `json:"seat"`
+}
+
+// CardsRevealedEventKind defines model for CardsRevealedEvent.Kind.
+type CardsRevealedEventKind string
+
 // ClientMessageType defines model for ClientMessageType.
 type ClientMessageType string
+
+// Command Player intent. requestId (UUID) is the command's idempotency key
+// (EventID): resending it never applies the action twice.
+type Command struct {
+	Command CommandPayload `json:"command"`
+
+	// ExpectedSeq Last seq the client has applied; stale values are rejected with STALE_GAME_STATE.
+	ExpectedSeq *int64             `json:"expectedSeq,omitempty"`
+	RequestId   openapi_types.UUID `json:"requestId"`
+	TableId     openapi_types.UUID `json:"tableId"`
+	Type        CommandType        `json:"type"`
+}
+
+// CommandType defines model for Command.Type.
+type CommandType string
+
+// CommandError defines model for CommandError.
+type CommandError struct {
+	// Code An ErrorCode value from the control-api contract.
+	Code    string                  `json:"code"`
+	Details *map[string]interface{} `json:"details,omitempty"`
+	Message string                  `json:"message"`
+}
+
+// CommandPayload defines model for CommandPayload.
+type CommandPayload struct {
+	// Amount BET/RAISE "to" amount (total street commitment after the action).
+	Amount *int64             `json:"amount,omitempty"`
+	Kind   CommandPayloadKind `json:"kind"`
+}
+
+// CommandPayloadKind defines model for CommandPayload.Kind.
+type CommandPayloadKind string
+
+// CommandResult defines model for CommandResult.
+type CommandResult struct {
+	Accepted  bool               `json:"accepted"`
+	Duplicate bool               `json:"duplicate"`
+	Error     *CommandError      `json:"error,omitempty"`
+	RequestId openapi_types.UUID `json:"requestId"`
+
+	// Seq Seq of the first event produced by the command (or the table seq at rejection).
+	Seq     int64              `json:"seq"`
+	TableId openapi_types.UUID `json:"tableId"`
+	Type    CommandResultType  `json:"type"`
+}
+
+// CommandResultType defines model for CommandResult.Type.
+type CommandResultType string
+
+// HandCompletedEvent defines model for HandCompletedEvent.
+type HandCompletedEvent struct {
+	Board    []Card                 `json:"board"`
+	HandId   openapi_types.UUID     `json:"handId"`
+	HandNo   int64                  `json:"handNo"`
+	Kind     HandCompletedEventKind `json:"kind"`
+	Results  []HandResult           `json:"results"`
+	Showdown bool                   `json:"showdown"`
+}
+
+// HandCompletedEventKind defines model for HandCompletedEvent.Kind.
+type HandCompletedEventKind string
+
+// HandPlayer defines model for HandPlayer.
+type HandPlayer struct {
+	Seat   int                `json:"seat"`
+	Stack  int64              `json:"stack"`
+	UserId openapi_types.UUID `json:"userId"`
+}
+
+// HandResult defines model for HandResult.
+type HandResult struct {
+	Contributed int64              `json:"contributed"`
+	Folded      bool               `json:"folded"`
+	Net         int64              `json:"net"`
+	Seat        int                `json:"seat"`
+	Stack       int64              `json:"stack"`
+	UserId      openapi_types.UUID `json:"userId"`
+	Won         int64              `json:"won"`
+}
+
+// HandStartedEvent defines model for HandStartedEvent.
+type HandStartedEvent struct {
+	BigBlind       int64                `json:"bigBlind"`
+	BigBlindSeat   int                  `json:"bigBlindSeat"`
+	ButtonSeat     int                  `json:"buttonSeat"`
+	DeckCommitment string               `json:"deckCommitment"`
+	HandId         openapi_types.UUID   `json:"handId"`
+	HandNo         int64                `json:"handNo"`
+	Kind           HandStartedEventKind `json:"kind"`
+	Players        []HandPlayer         `json:"players"`
+	SmallBlind     int64                `json:"smallBlind"`
+	SmallBlindSeat int                  `json:"smallBlindSeat"`
+}
+
+// HandStartedEventKind defines model for HandStartedEvent.Kind.
+type HandStartedEventKind string
 
 // HandView defines model for HandView.
 type HandView struct {
@@ -282,7 +975,18 @@ type HandView struct {
 // HandViewStreet defines model for HandView.Street.
 type HandViewStreet string
 
-// Hello First client frame. Authenticates the connection.
+// HandVoidedEvent defines model for HandVoidedEvent.
+type HandVoidedEvent struct {
+	HandId openapi_types.UUID  `json:"handId"`
+	HandNo int64               `json:"handNo"`
+	Kind   HandVoidedEventKind `json:"kind"`
+	Reason string              `json:"reason"`
+}
+
+// HandVoidedEventKind defines model for HandVoidedEvent.Kind.
+type HandVoidedEventKind string
+
+// Hello First client frame (within 10 s). Authenticates the connection.
 type Hello struct {
 	AccessToken   string    `json:"accessToken"`
 	ClientVersion string    `json:"clientVersion"`
@@ -292,6 +996,16 @@ type Hello struct {
 
 // HelloType defines model for Hello.Type.
 type HelloType string
+
+// HoleCardsDealtEvent defines model for HoleCardsDealtEvent.
+type HoleCardsDealtEvent struct {
+	Cards *[]Card                 `json:"cards,omitempty"`
+	Kind  HoleCardsDealtEventKind `json:"kind"`
+	Seats []int                   `json:"seats"`
+}
+
+// HoleCardsDealtEventKind defines model for HoleCardsDealtEvent.Kind.
+type HoleCardsDealtEventKind string
 
 // LegalAction defines model for LegalAction.
 type LegalAction struct {
@@ -318,6 +1032,67 @@ type Ping struct {
 // PingType defines model for Ping.Type.
 type PingType string
 
+// PlayerActedEvent defines model for PlayerActedEvent.
+type PlayerActedEvent struct {
+	Action    PlayerActedEventAction `json:"action"`
+	Added     int64                  `json:"added"`
+	AllIn     bool                   `json:"allIn"`
+	Kind      PlayerActedEventKind   `json:"kind"`
+	Pot       int64                  `json:"pot"`
+	Seat      int                    `json:"seat"`
+	Stack     int64                  `json:"stack"`
+	StreetBet int64                  `json:"streetBet"`
+	Timeout   bool                   `json:"timeout"`
+}
+
+// PlayerActedEventAction defines model for PlayerActedEvent.Action.
+type PlayerActedEventAction string
+
+// PlayerActedEventKind defines model for PlayerActedEvent.Kind.
+type PlayerActedEventKind string
+
+// PlayerLeftEvent defines model for PlayerLeftEvent.
+type PlayerLeftEvent struct {
+	CashOut int64                 `json:"cashOut"`
+	Kind    PlayerLeftEventKind   `json:"kind"`
+	Reason  PlayerLeftEventReason `json:"reason"`
+	Seat    int                   `json:"seat"`
+	UserId  openapi_types.UUID    `json:"userId"`
+}
+
+// PlayerLeftEventKind defines model for PlayerLeftEvent.Kind.
+type PlayerLeftEventKind string
+
+// PlayerLeftEventReason defines model for PlayerLeftEvent.Reason.
+type PlayerLeftEventReason string
+
+// PlayerSeatedEvent defines model for PlayerSeatedEvent.
+type PlayerSeatedEvent struct {
+	Kind     PlayerSeatedEventKind `json:"kind"`
+	Seat     int                   `json:"seat"`
+	Stack    int64                 `json:"stack"`
+	UserId   openapi_types.UUID    `json:"userId"`
+	Username string                `json:"username"`
+}
+
+// PlayerSeatedEventKind defines model for PlayerSeatedEvent.Kind.
+type PlayerSeatedEventKind string
+
+// PlayerSittingOutEvent defines model for PlayerSittingOutEvent.
+type PlayerSittingOutEvent struct {
+	Kind       PlayerSittingOutEventKind    `json:"kind"`
+	Reason     *PlayerSittingOutEventReason `json:"reason,omitempty"`
+	Seat       int                          `json:"seat"`
+	SittingOut bool                         `json:"sittingOut"`
+	UserId     openapi_types.UUID           `json:"userId"`
+}
+
+// PlayerSittingOutEventKind defines model for PlayerSittingOutEvent.Kind.
+type PlayerSittingOutEventKind string
+
+// PlayerSittingOutEventReason defines model for PlayerSittingOutEvent.Reason.
+type PlayerSittingOutEventReason string
+
 // Pong defines model for Pong.
 type Pong struct {
 	Nonce *string  `json:"nonce,omitempty"`
@@ -327,7 +1102,20 @@ type Pong struct {
 // PongType defines model for Pong.Type.
 type PongType string
 
-// ProtocolError Connection-level error (not tied to a table command).
+// PotAwardedEvent defines model for PotAwardedEvent.
+type PotAwardedEvent struct {
+	Amount        int64               `json:"amount"`
+	Description   string              `json:"description"`
+	EligibleSeats []int               `json:"eligibleSeats"`
+	Kind          PotAwardedEventKind `json:"kind"`
+	PotIndex      int                 `json:"potIndex"`
+	Winners       []WinnerShare       `json:"winners"`
+}
+
+// PotAwardedEventKind defines model for PotAwardedEvent.Kind.
+type PotAwardedEventKind string
+
+// ProtocolError Connection- or subscription-level error (not tied to a table command).
 type ProtocolError struct {
 	// Code An ErrorCode value from the control-api contract.
 	Code      string              `json:"code"`
@@ -339,6 +1127,20 @@ type ProtocolError struct {
 
 // ProtocolErrorType defines model for ProtocolError.Type.
 type ProtocolErrorType string
+
+// ResyncRequired The client fell outside the retained event window; a TABLE_SNAPSHOT follows.
+type ResyncRequired struct {
+	CurrentSeq int64                `json:"currentSeq"`
+	Reason     ResyncRequiredReason `json:"reason"`
+	TableId    openapi_types.UUID   `json:"tableId"`
+	Type       ResyncRequiredType   `json:"type"`
+}
+
+// ResyncRequiredReason defines model for ResyncRequired.Reason.
+type ResyncRequiredReason string
+
+// ResyncRequiredType defines model for ResyncRequired.Type.
+type ResyncRequiredType string
 
 // SeatView defines model for SeatView.
 type SeatView struct {
@@ -359,6 +1161,68 @@ type SeatView struct {
 
 // ServerMessageType defines model for ServerMessageType.
 type ServerMessageType string
+
+// StreetDealtEvent defines model for StreetDealtEvent.
+type StreetDealtEvent struct {
+	Board  []Card                 `json:"board"`
+	Cards  []Card                 `json:"cards"`
+	Kind   StreetDealtEventKind   `json:"kind"`
+	Street StreetDealtEventStreet `json:"street"`
+}
+
+// StreetDealtEventKind defines model for StreetDealtEvent.Kind.
+type StreetDealtEventKind string
+
+// StreetDealtEventStreet defines model for StreetDealtEvent.Street.
+type StreetDealtEventStreet string
+
+// SubscribeTable Subscribe to a table. With lastSeenSeq the server replays missed
+// events if they are retained, otherwise it sends RESYNC_REQUIRED and a
+// fresh TABLE_SNAPSHOT. Without lastSeenSeq a TABLE_SNAPSHOT is sent.
+type SubscribeTable struct {
+	LastSeenSeq *int64             `json:"lastSeenSeq,omitempty"`
+	RequestId   *string            `json:"requestId,omitempty"`
+	TableId     openapi_types.UUID `json:"tableId"`
+	Type        SubscribeTableType `json:"type"`
+}
+
+// SubscribeTableType defines model for SubscribeTable.Type.
+type SubscribeTableType string
+
+// Subscribed Subscription is live; `replayed` events were sent before it (REPLAY mode).
+type Subscribed struct {
+	Mode      SubscribedMode     `json:"mode"`
+	Replayed  int                `json:"replayed"`
+	RequestId *string            `json:"requestId,omitempty"`
+	Seq       int64              `json:"seq"`
+	TableId   openapi_types.UUID `json:"tableId"`
+	Type      SubscribedType     `json:"type"`
+}
+
+// SubscribedMode defines model for Subscribed.Mode.
+type SubscribedMode string
+
+// SubscribedType defines model for Subscribed.Type.
+type SubscribedType string
+
+// TableEventMessage defines model for TableEventMessage.
+type TableEventMessage struct {
+	// Event Ordered table event (discriminated by kind). Private fields only appear in the recipient's copy.
+	Event      TableEventPayload     `json:"event"`
+	HandId     *openapi_types.UUID   `json:"handId,omitempty"`
+	Seq        int64                 `json:"seq"`
+	ServerTime time.Time             `json:"serverTime"`
+	TableId    openapi_types.UUID    `json:"tableId"`
+	Type       TableEventMessageType `json:"type"`
+}
+
+// TableEventMessageType defines model for TableEventMessage.Type.
+type TableEventMessageType string
+
+// TableEventPayload Ordered table event (discriminated by kind). Private fields only appear in the recipient's copy.
+type TableEventPayload struct {
+	union json.RawMessage
+}
 
 // TableInfo defines model for TableInfo.
 type TableInfo struct {
@@ -394,17 +1258,79 @@ type TableSnapshot struct {
 // TableSnapshotPhase defines model for TableSnapshot.Phase.
 type TableSnapshotPhase string
 
+// TableSnapshotMessage defines model for TableSnapshotMessage.
+type TableSnapshotMessage struct {
+	Seq int64 `json:"seq"`
+
+	// Snapshot Complete viewer-sanitized table state; clients replace (never merge) state with it.
+	Snapshot TableSnapshot            `json:"snapshot"`
+	TableId  openapi_types.UUID       `json:"tableId"`
+	Type     TableSnapshotMessageType `json:"type"`
+}
+
+// TableSnapshotMessageType defines model for TableSnapshotMessage.Type.
+type TableSnapshotMessageType string
+
+// TurnStartedEvent defines model for TurnStartedEvent.
+type TurnStartedEvent struct {
+	CurrentBet int64                `json:"currentBet"`
+	Deadline   time.Time            `json:"deadline"`
+	Kind       TurnStartedEventKind `json:"kind"`
+
+	// LegalActions Private to the acting player.
+	LegalActions *[]LegalAction         `json:"legalActions,omitempty"`
+	MinRaise     int64                  `json:"minRaise"`
+	Pot          int64                  `json:"pot"`
+	Seat         int                    `json:"seat"`
+	Street       TurnStartedEventStreet `json:"street"`
+	TimeoutMs    int64                  `json:"timeoutMs"`
+}
+
+// TurnStartedEventKind defines model for TurnStartedEvent.Kind.
+type TurnStartedEventKind string
+
+// TurnStartedEventStreet defines model for TurnStartedEvent.Street.
+type TurnStartedEventStreet string
+
+// UncalledBetReturnedEvent defines model for UncalledBetReturnedEvent.
+type UncalledBetReturnedEvent struct {
+	Amount int64                        `json:"amount"`
+	Kind   UncalledBetReturnedEventKind `json:"kind"`
+	Pot    int64                        `json:"pot"`
+	Seat   int                          `json:"seat"`
+	Stack  int64                        `json:"stack"`
+}
+
+// UncalledBetReturnedEventKind defines model for UncalledBetReturnedEvent.Kind.
+type UncalledBetReturnedEventKind string
+
+// UnsubscribeTable defines model for UnsubscribeTable.
+type UnsubscribeTable struct {
+	TableId openapi_types.UUID   `json:"tableId"`
+	Type    UnsubscribeTableType `json:"type"`
+}
+
+// UnsubscribeTableType defines model for UnsubscribeTable.Type.
+type UnsubscribeTableType string
+
 // Welcome defines model for Welcome.
 type Welcome struct {
 	ConnectionId        string             `json:"connectionId"`
 	HeartbeatIntervalMs int                `json:"heartbeatIntervalMs"`
 	ServerTime          time.Time          `json:"serverTime"`
+	TokenExpiresAt      time.Time          `json:"tokenExpiresAt"`
 	Type                WelcomeType        `json:"type"`
 	UserId              openapi_types.UUID `json:"userId"`
 }
 
 // WelcomeType defines model for Welcome.Type.
 type WelcomeType string
+
+// WinnerShare defines model for WinnerShare.
+type WinnerShare struct {
+	Amount int64 `json:"amount"`
+	Seat   int   `json:"seat"`
+}
 
 // YouView defines model for YouView.
 type YouView struct {
@@ -414,4 +1340,537 @@ type YouView struct {
 	// Seat 0 when the viewer is not seated.
 	Seat   int                `json:"seat"`
 	UserId openapi_types.UUID `json:"userId"`
+}
+
+// AsPlayerSeatedEvent returns the union data inside the TableEventPayload as a PlayerSeatedEvent
+func (t TableEventPayload) AsPlayerSeatedEvent() (PlayerSeatedEvent, error) {
+	var body PlayerSeatedEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPlayerSeatedEvent overwrites any union data inside the TableEventPayload as the provided PlayerSeatedEvent
+func (t *TableEventPayload) FromPlayerSeatedEvent(v PlayerSeatedEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"PLAYER_SEATED"}`))
+	t.union = b
+	return err
+}
+
+// MergePlayerSeatedEvent performs a merge with any union data inside the TableEventPayload, using the provided PlayerSeatedEvent
+func (t *TableEventPayload) MergePlayerSeatedEvent(v PlayerSeatedEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"PLAYER_SEATED"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsPlayerLeftEvent returns the union data inside the TableEventPayload as a PlayerLeftEvent
+func (t TableEventPayload) AsPlayerLeftEvent() (PlayerLeftEvent, error) {
+	var body PlayerLeftEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPlayerLeftEvent overwrites any union data inside the TableEventPayload as the provided PlayerLeftEvent
+func (t *TableEventPayload) FromPlayerLeftEvent(v PlayerLeftEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"PLAYER_LEFT"}`))
+	t.union = b
+	return err
+}
+
+// MergePlayerLeftEvent performs a merge with any union data inside the TableEventPayload, using the provided PlayerLeftEvent
+func (t *TableEventPayload) MergePlayerLeftEvent(v PlayerLeftEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"PLAYER_LEFT"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsPlayerSittingOutEvent returns the union data inside the TableEventPayload as a PlayerSittingOutEvent
+func (t TableEventPayload) AsPlayerSittingOutEvent() (PlayerSittingOutEvent, error) {
+	var body PlayerSittingOutEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPlayerSittingOutEvent overwrites any union data inside the TableEventPayload as the provided PlayerSittingOutEvent
+func (t *TableEventPayload) FromPlayerSittingOutEvent(v PlayerSittingOutEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"PLAYER_SITTING_OUT"}`))
+	t.union = b
+	return err
+}
+
+// MergePlayerSittingOutEvent performs a merge with any union data inside the TableEventPayload, using the provided PlayerSittingOutEvent
+func (t *TableEventPayload) MergePlayerSittingOutEvent(v PlayerSittingOutEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"PLAYER_SITTING_OUT"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsHandStartedEvent returns the union data inside the TableEventPayload as a HandStartedEvent
+func (t TableEventPayload) AsHandStartedEvent() (HandStartedEvent, error) {
+	var body HandStartedEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromHandStartedEvent overwrites any union data inside the TableEventPayload as the provided HandStartedEvent
+func (t *TableEventPayload) FromHandStartedEvent(v HandStartedEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"HAND_STARTED"}`))
+	t.union = b
+	return err
+}
+
+// MergeHandStartedEvent performs a merge with any union data inside the TableEventPayload, using the provided HandStartedEvent
+func (t *TableEventPayload) MergeHandStartedEvent(v HandStartedEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"HAND_STARTED"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsBlindPostedEvent returns the union data inside the TableEventPayload as a BlindPostedEvent
+func (t TableEventPayload) AsBlindPostedEvent() (BlindPostedEvent, error) {
+	var body BlindPostedEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromBlindPostedEvent overwrites any union data inside the TableEventPayload as the provided BlindPostedEvent
+func (t *TableEventPayload) FromBlindPostedEvent(v BlindPostedEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"BLIND_POSTED"}`))
+	t.union = b
+	return err
+}
+
+// MergeBlindPostedEvent performs a merge with any union data inside the TableEventPayload, using the provided BlindPostedEvent
+func (t *TableEventPayload) MergeBlindPostedEvent(v BlindPostedEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"BLIND_POSTED"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsHoleCardsDealtEvent returns the union data inside the TableEventPayload as a HoleCardsDealtEvent
+func (t TableEventPayload) AsHoleCardsDealtEvent() (HoleCardsDealtEvent, error) {
+	var body HoleCardsDealtEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromHoleCardsDealtEvent overwrites any union data inside the TableEventPayload as the provided HoleCardsDealtEvent
+func (t *TableEventPayload) FromHoleCardsDealtEvent(v HoleCardsDealtEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"HOLE_CARDS_DEALT"}`))
+	t.union = b
+	return err
+}
+
+// MergeHoleCardsDealtEvent performs a merge with any union data inside the TableEventPayload, using the provided HoleCardsDealtEvent
+func (t *TableEventPayload) MergeHoleCardsDealtEvent(v HoleCardsDealtEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"HOLE_CARDS_DEALT"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsPlayerActedEvent returns the union data inside the TableEventPayload as a PlayerActedEvent
+func (t TableEventPayload) AsPlayerActedEvent() (PlayerActedEvent, error) {
+	var body PlayerActedEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPlayerActedEvent overwrites any union data inside the TableEventPayload as the provided PlayerActedEvent
+func (t *TableEventPayload) FromPlayerActedEvent(v PlayerActedEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"PLAYER_ACTED"}`))
+	t.union = b
+	return err
+}
+
+// MergePlayerActedEvent performs a merge with any union data inside the TableEventPayload, using the provided PlayerActedEvent
+func (t *TableEventPayload) MergePlayerActedEvent(v PlayerActedEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"PLAYER_ACTED"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsTurnStartedEvent returns the union data inside the TableEventPayload as a TurnStartedEvent
+func (t TableEventPayload) AsTurnStartedEvent() (TurnStartedEvent, error) {
+	var body TurnStartedEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromTurnStartedEvent overwrites any union data inside the TableEventPayload as the provided TurnStartedEvent
+func (t *TableEventPayload) FromTurnStartedEvent(v TurnStartedEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"TURN_STARTED"}`))
+	t.union = b
+	return err
+}
+
+// MergeTurnStartedEvent performs a merge with any union data inside the TableEventPayload, using the provided TurnStartedEvent
+func (t *TableEventPayload) MergeTurnStartedEvent(v TurnStartedEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"TURN_STARTED"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsUncalledBetReturnedEvent returns the union data inside the TableEventPayload as a UncalledBetReturnedEvent
+func (t TableEventPayload) AsUncalledBetReturnedEvent() (UncalledBetReturnedEvent, error) {
+	var body UncalledBetReturnedEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUncalledBetReturnedEvent overwrites any union data inside the TableEventPayload as the provided UncalledBetReturnedEvent
+func (t *TableEventPayload) FromUncalledBetReturnedEvent(v UncalledBetReturnedEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"UNCALLED_BET_RETURNED"}`))
+	t.union = b
+	return err
+}
+
+// MergeUncalledBetReturnedEvent performs a merge with any union data inside the TableEventPayload, using the provided UncalledBetReturnedEvent
+func (t *TableEventPayload) MergeUncalledBetReturnedEvent(v UncalledBetReturnedEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"UNCALLED_BET_RETURNED"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsStreetDealtEvent returns the union data inside the TableEventPayload as a StreetDealtEvent
+func (t TableEventPayload) AsStreetDealtEvent() (StreetDealtEvent, error) {
+	var body StreetDealtEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromStreetDealtEvent overwrites any union data inside the TableEventPayload as the provided StreetDealtEvent
+func (t *TableEventPayload) FromStreetDealtEvent(v StreetDealtEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"STREET_DEALT"}`))
+	t.union = b
+	return err
+}
+
+// MergeStreetDealtEvent performs a merge with any union data inside the TableEventPayload, using the provided StreetDealtEvent
+func (t *TableEventPayload) MergeStreetDealtEvent(v StreetDealtEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"STREET_DEALT"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCardsRevealedEvent returns the union data inside the TableEventPayload as a CardsRevealedEvent
+func (t TableEventPayload) AsCardsRevealedEvent() (CardsRevealedEvent, error) {
+	var body CardsRevealedEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCardsRevealedEvent overwrites any union data inside the TableEventPayload as the provided CardsRevealedEvent
+func (t *TableEventPayload) FromCardsRevealedEvent(v CardsRevealedEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"CARDS_REVEALED"}`))
+	t.union = b
+	return err
+}
+
+// MergeCardsRevealedEvent performs a merge with any union data inside the TableEventPayload, using the provided CardsRevealedEvent
+func (t *TableEventPayload) MergeCardsRevealedEvent(v CardsRevealedEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"CARDS_REVEALED"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsPotAwardedEvent returns the union data inside the TableEventPayload as a PotAwardedEvent
+func (t TableEventPayload) AsPotAwardedEvent() (PotAwardedEvent, error) {
+	var body PotAwardedEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPotAwardedEvent overwrites any union data inside the TableEventPayload as the provided PotAwardedEvent
+func (t *TableEventPayload) FromPotAwardedEvent(v PotAwardedEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"POT_AWARDED"}`))
+	t.union = b
+	return err
+}
+
+// MergePotAwardedEvent performs a merge with any union data inside the TableEventPayload, using the provided PotAwardedEvent
+func (t *TableEventPayload) MergePotAwardedEvent(v PotAwardedEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"POT_AWARDED"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsHandCompletedEvent returns the union data inside the TableEventPayload as a HandCompletedEvent
+func (t TableEventPayload) AsHandCompletedEvent() (HandCompletedEvent, error) {
+	var body HandCompletedEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromHandCompletedEvent overwrites any union data inside the TableEventPayload as the provided HandCompletedEvent
+func (t *TableEventPayload) FromHandCompletedEvent(v HandCompletedEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"HAND_COMPLETED"}`))
+	t.union = b
+	return err
+}
+
+// MergeHandCompletedEvent performs a merge with any union data inside the TableEventPayload, using the provided HandCompletedEvent
+func (t *TableEventPayload) MergeHandCompletedEvent(v HandCompletedEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"HAND_COMPLETED"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsHandVoidedEvent returns the union data inside the TableEventPayload as a HandVoidedEvent
+func (t TableEventPayload) AsHandVoidedEvent() (HandVoidedEvent, error) {
+	var body HandVoidedEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromHandVoidedEvent overwrites any union data inside the TableEventPayload as the provided HandVoidedEvent
+func (t *TableEventPayload) FromHandVoidedEvent(v HandVoidedEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"HAND_VOIDED"}`))
+	t.union = b
+	return err
+}
+
+// MergeHandVoidedEvent performs a merge with any union data inside the TableEventPayload, using the provided HandVoidedEvent
+func (t *TableEventPayload) MergeHandVoidedEvent(v HandVoidedEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"HAND_VOIDED"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t TableEventPayload) Discriminator() (string, error) {
+	var discriminator struct {
+		Discriminator string `json:"kind"`
+	}
+	err := json.Unmarshal(t.union, &discriminator)
+	return discriminator.Discriminator, err
+}
+
+func (t TableEventPayload) ValueByDiscriminator() (interface{}, error) {
+	discriminator, err := t.Discriminator()
+	if err != nil {
+		return nil, err
+	}
+	switch discriminator {
+	case "BLIND_POSTED":
+		return t.AsBlindPostedEvent()
+	case "CARDS_REVEALED":
+		return t.AsCardsRevealedEvent()
+	case "HAND_COMPLETED":
+		return t.AsHandCompletedEvent()
+	case "HAND_STARTED":
+		return t.AsHandStartedEvent()
+	case "HAND_VOIDED":
+		return t.AsHandVoidedEvent()
+	case "HOLE_CARDS_DEALT":
+		return t.AsHoleCardsDealtEvent()
+	case "PLAYER_ACTED":
+		return t.AsPlayerActedEvent()
+	case "PLAYER_LEFT":
+		return t.AsPlayerLeftEvent()
+	case "PLAYER_SEATED":
+		return t.AsPlayerSeatedEvent()
+	case "PLAYER_SITTING_OUT":
+		return t.AsPlayerSittingOutEvent()
+	case "POT_AWARDED":
+		return t.AsPotAwardedEvent()
+	case "STREET_DEALT":
+		return t.AsStreetDealtEvent()
+	case "TURN_STARTED":
+		return t.AsTurnStartedEvent()
+	case "UNCALLED_BET_RETURNED":
+		return t.AsUncalledBetReturnedEvent()
+	default:
+		return nil, errors.New("unknown discriminator value: " + discriminator)
+	}
+}
+
+func (t TableEventPayload) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *TableEventPayload) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
 }

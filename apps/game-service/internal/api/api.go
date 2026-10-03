@@ -44,6 +44,7 @@ func (s *Server) Register(mux *http.ServeMux) {
 	mux.Handle("GET /internal/v1/tables/{tableId}/snapshot", s.auth(s.snapshot))
 	mux.Handle("GET /internal/v1/tables/{tableId}/events", s.auth(s.events))
 	mux.Handle("GET /internal/v1/tables/{tableId}/route", s.auth(s.route))
+	mux.Handle("GET /internal/v1/tables/{tableId}/stream", s.auth(s.stream))
 	mux.Handle("GET /internal/v1/tables", s.auth(s.list))
 }
 

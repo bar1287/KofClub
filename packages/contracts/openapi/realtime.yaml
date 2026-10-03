@@ -18,14 +18,25 @@ components:
   schemas:
     ClientMessageType:
       type: string
-      enum: [HELLO, SUBSCRIBE_TABLE, UNSUBSCRIBE_TABLE, COMMAND, PING, PONG]
+      enum: [HELLO, AUTH, SUBSCRIBE_TABLE, UNSUBSCRIBE_TABLE, COMMAND, PING, PONG]
     ServerMessageType:
       type: string
       enum:
-        [WELCOME, TABLE_SNAPSHOT, TABLE_EVENT, COMMAND_RESULT, RESYNC_REQUIRED, ERROR, PING, PONG]
+        [
+          WELCOME,
+          SUBSCRIBED,
+          TABLE_SNAPSHOT,
+          TABLE_EVENT,
+          COMMAND_RESULT,
+          RESYNC_REQUIRED,
+          ERROR,
+          PING,
+          PONG,
+        ]
     Hello:
       type: object
-      description: First client frame. Authenticates the connection.
+      description: First client frame (within 10 s). Authenticates the connection.
+      additionalProperties: false
       required: [type, accessToken, clientVersion]
       properties:
         type:
@@ -35,12 +46,25 @@ components:
           type: string
         clientVersion:
           type: string
+          maxLength: 64
         deviceId:
           type: string
           maxLength: 128
+    Auth:
+      type: object
+      description: Re-authenticates a live connection with a fresh access token before the current one expires.
+      additionalProperties: false
+      required: [type, accessToken]
+      properties:
+        type:
+          type: string
+          enum: [AUTH]
+        accessToken:
+          type: string
     Welcome:
       type: object
-      required: [type, connectionId, userId, heartbeatIntervalMs, serverTime]
+      additionalProperties: false
+      required: [type, connectionId, userId, heartbeatIntervalMs, serverTime, tokenExpiresAt]
       properties:
         type:
           type: string
@@ -55,8 +79,195 @@ components:
         serverTime:
           type: string
           format: date-time
+        tokenExpiresAt:
+          type: string
+          format: date-time
+    SubscribeTable:
+      type: object
+      description: |
+        Subscribe to a table. With lastSeenSeq the server replays missed
+        events if they are retained, otherwise it sends RESYNC_REQUIRED and a
+        fresh TABLE_SNAPSHOT. Without lastSeenSeq a TABLE_SNAPSHOT is sent.
+      additionalProperties: false
+      required: [type, tableId]
+      properties:
+        type:
+          type: string
+          enum: [SUBSCRIBE_TABLE]
+        requestId:
+          type: string
+          maxLength: 64
+        tableId:
+          type: string
+          format: uuid
+        lastSeenSeq:
+          type: integer
+          format: int64
+          minimum: 0
+    UnsubscribeTable:
+      type: object
+      additionalProperties: false
+      required: [type, tableId]
+      properties:
+        type:
+          type: string
+          enum: [UNSUBSCRIBE_TABLE]
+        tableId:
+          type: string
+          format: uuid
+    Subscribed:
+      type: object
+      description: Subscription is live; `replayed` events were sent before it (REPLAY mode).
+      additionalProperties: false
+      required: [type, tableId, seq, mode, replayed]
+      properties:
+        type:
+          type: string
+          enum: [SUBSCRIBED]
+        requestId:
+          type: string
+        tableId:
+          type: string
+          format: uuid
+        seq:
+          type: integer
+          format: int64
+        mode:
+          type: string
+          enum: [SNAPSHOT, REPLAY]
+        replayed:
+          type: integer
+    CommandPayload:
+      type: object
+      additionalProperties: false
+      required: [kind]
+      properties:
+        kind:
+          type: string
+          enum: [FOLD, CHECK, CALL, BET, RAISE, ALL_IN, SIT_OUT, SIT_IN]
+        amount:
+          type: integer
+          format: int64
+          description: BET/RAISE "to" amount (total street commitment after the action).
+    Command:
+      type: object
+      description: |
+        Player intent. requestId (UUID) is the command's idempotency key
+        (EventID): resending it never applies the action twice.
+      additionalProperties: false
+      required: [type, requestId, tableId, command]
+      properties:
+        type:
+          type: string
+          enum: [COMMAND]
+        requestId:
+          type: string
+          format: uuid
+        tableId:
+          type: string
+          format: uuid
+        expectedSeq:
+          type: integer
+          format: int64
+          description: Last seq the client has applied; stale values are rejected with STALE_GAME_STATE.
+        command:
+          $ref: '#/components/schemas/CommandPayload'
+    CommandError:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: An ErrorCode value from the control-api contract.
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+    CommandResult:
+      type: object
+      additionalProperties: false
+      required: [type, requestId, tableId, accepted, duplicate, seq]
+      properties:
+        type:
+          type: string
+          enum: [COMMAND_RESULT]
+        requestId:
+          type: string
+          format: uuid
+        tableId:
+          type: string
+          format: uuid
+        accepted:
+          type: boolean
+        duplicate:
+          type: boolean
+        seq:
+          type: integer
+          format: int64
+          description: Seq of the first event produced by the command (or the table seq at rejection).
+        error:
+          $ref: '#/components/schemas/CommandError'
+    TableSnapshotMessage:
+      type: object
+      additionalProperties: false
+      required: [type, tableId, seq, snapshot]
+      properties:
+        type:
+          type: string
+          enum: [TABLE_SNAPSHOT]
+        tableId:
+          type: string
+          format: uuid
+        seq:
+          type: integer
+          format: int64
+        snapshot:
+          $ref: '#/components/schemas/TableSnapshot'
+    TableEventMessage:
+      type: object
+      additionalProperties: false
+      required: [type, tableId, seq, serverTime, event]
+      properties:
+        type:
+          type: string
+          enum: [TABLE_EVENT]
+        tableId:
+          type: string
+          format: uuid
+        seq:
+          type: integer
+          format: int64
+        handId:
+          type: string
+          format: uuid
+        serverTime:
+          type: string
+          format: date-time
+        event:
+          $ref: '#/components/schemas/TableEventPayload'
+    ResyncRequired:
+      type: object
+      description: The client fell outside the retained event window; a TABLE_SNAPSHOT follows.
+      additionalProperties: false
+      required: [type, tableId, reason, currentSeq]
+      properties:
+        type:
+          type: string
+          enum: [RESYNC_REQUIRED]
+        tableId:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          enum: [EVENTS_NOT_RETAINED, SEQUENCE_GAP, FEED_RESET]
+        currentSeq:
+          type: integer
+          format: int64
     Ping:
       type: object
+      additionalProperties: false
       required: [type]
       properties:
         type:
@@ -64,8 +275,10 @@ components:
           enum: [PING]
         nonce:
           type: string
+          maxLength: 64
     Pong:
       type: object
+      additionalProperties: false
       required: [type]
       properties:
         type:
@@ -73,9 +286,11 @@ components:
           enum: [PONG]
         nonce:
           type: string
+          maxLength: 64
     ProtocolError:
       type: object
-      description: Connection-level error (not tied to a table command).
+      description: Connection- or subscription-level error (not tied to a table command).
+      additionalProperties: false
       required: [type, code, message]
       properties:
         type:
@@ -91,6 +306,409 @@ components:
         tableId:
           type: string
           format: uuid
+    TableEventPayload:
+      description: Ordered table event (discriminated by kind). Private fields only appear in the recipient's copy.
+      oneOf:
+        - $ref: '#/components/schemas/PlayerSeatedEvent'
+        - $ref: '#/components/schemas/PlayerLeftEvent'
+        - $ref: '#/components/schemas/PlayerSittingOutEvent'
+        - $ref: '#/components/schemas/HandStartedEvent'
+        - $ref: '#/components/schemas/BlindPostedEvent'
+        - $ref: '#/components/schemas/HoleCardsDealtEvent'
+        - $ref: '#/components/schemas/PlayerActedEvent'
+        - $ref: '#/components/schemas/TurnStartedEvent'
+        - $ref: '#/components/schemas/UncalledBetReturnedEvent'
+        - $ref: '#/components/schemas/StreetDealtEvent'
+        - $ref: '#/components/schemas/CardsRevealedEvent'
+        - $ref: '#/components/schemas/PotAwardedEvent'
+        - $ref: '#/components/schemas/HandCompletedEvent'
+        - $ref: '#/components/schemas/HandVoidedEvent'
+      discriminator:
+        propertyName: kind
+        mapping:
+          PLAYER_SEATED: '#/components/schemas/PlayerSeatedEvent'
+          PLAYER_LEFT: '#/components/schemas/PlayerLeftEvent'
+          PLAYER_SITTING_OUT: '#/components/schemas/PlayerSittingOutEvent'
+          HAND_STARTED: '#/components/schemas/HandStartedEvent'
+          BLIND_POSTED: '#/components/schemas/BlindPostedEvent'
+          HOLE_CARDS_DEALT: '#/components/schemas/HoleCardsDealtEvent'
+          PLAYER_ACTED: '#/components/schemas/PlayerActedEvent'
+          TURN_STARTED: '#/components/schemas/TurnStartedEvent'
+          UNCALLED_BET_RETURNED: '#/components/schemas/UncalledBetReturnedEvent'
+          STREET_DEALT: '#/components/schemas/StreetDealtEvent'
+          CARDS_REVEALED: '#/components/schemas/CardsRevealedEvent'
+          POT_AWARDED: '#/components/schemas/PotAwardedEvent'
+          HAND_COMPLETED: '#/components/schemas/HandCompletedEvent'
+          HAND_VOIDED: '#/components/schemas/HandVoidedEvent'
+    PlayerSeatedEvent:
+      type: object
+      additionalProperties: false
+      required: [kind, seat, userId, username, stack]
+      properties:
+        kind:
+          type: string
+          enum: [PLAYER_SEATED]
+        seat:
+          type: integer
+        userId:
+          type: string
+          format: uuid
+        username:
+          type: string
+        stack:
+          type: integer
+          format: int64
+    PlayerLeftEvent:
+      type: object
+      additionalProperties: false
+      required: [kind, seat, userId, reason, cashOut]
+      properties:
+        kind:
+          type: string
+          enum: [PLAYER_LEFT]
+        seat:
+          type: integer
+        userId:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          enum: [LEFT, BUSTED]
+        cashOut:
+          type: integer
+          format: int64
+    PlayerSittingOutEvent:
+      type: object
+      additionalProperties: false
+      required: [kind, seat, userId, sittingOut]
+      properties:
+        kind:
+          type: string
+          enum: [PLAYER_SITTING_OUT]
+        seat:
+          type: integer
+        userId:
+          type: string
+          format: uuid
+        sittingOut:
+          type: boolean
+        reason:
+          type: string
+          enum: [TIMEOUTS, REQUEST, LEAVING]
+    HandStartedEvent:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          kind,
+          handId,
+          handNo,
+          buttonSeat,
+          smallBlindSeat,
+          bigBlindSeat,
+          smallBlind,
+          bigBlind,
+          deckCommitment,
+          players,
+        ]
+      properties:
+        kind:
+          type: string
+          enum: [HAND_STARTED]
+        handId:
+          type: string
+          format: uuid
+        handNo:
+          type: integer
+          format: int64
+        buttonSeat:
+          type: integer
+        smallBlindSeat:
+          type: integer
+        bigBlindSeat:
+          type: integer
+        smallBlind:
+          type: integer
+          format: int64
+        bigBlind:
+          type: integer
+          format: int64
+        deckCommitment:
+          type: string
+        players:
+          type: array
+          items:
+            $ref: '#/components/schemas/HandPlayer'
+    BlindPostedEvent:
+      type: object
+      additionalProperties: false
+      required: [kind, seat, blind, amount, allIn, stack, pot]
+      properties:
+        kind:
+          type: string
+          enum: [BLIND_POSTED]
+        seat:
+          type: integer
+        blind:
+          type: string
+          enum: [SMALL, BIG]
+        amount:
+          type: integer
+          format: int64
+        allIn:
+          type: boolean
+        stack:
+          type: integer
+          format: int64
+        pot:
+          type: integer
+          format: int64
+    HoleCardsDealtEvent:
+      type: object
+      additionalProperties: false
+      required: [kind, seats]
+      properties:
+        kind:
+          type: string
+          enum: [HOLE_CARDS_DEALT]
+        seats:
+          type: array
+          items:
+            type: integer
+        cards:
+          type: array
+          items:
+            $ref: '#/components/schemas/Card'
+    PlayerActedEvent:
+      type: object
+      additionalProperties: false
+      required: [kind, seat, action, added, streetBet, stack, allIn, pot, timeout]
+      properties:
+        kind:
+          type: string
+          enum: [PLAYER_ACTED]
+        seat:
+          type: integer
+        action:
+          type: string
+          enum: [FOLD, CHECK, CALL, BET, RAISE]
+        added:
+          type: integer
+          format: int64
+        streetBet:
+          type: integer
+          format: int64
+        stack:
+          type: integer
+          format: int64
+        allIn:
+          type: boolean
+        pot:
+          type: integer
+          format: int64
+        timeout:
+          type: boolean
+    TurnStartedEvent:
+      type: object
+      additionalProperties: false
+      required: [kind, seat, street, currentBet, minRaise, pot, deadline, timeoutMs]
+      properties:
+        kind:
+          type: string
+          enum: [TURN_STARTED]
+        seat:
+          type: integer
+        street:
+          type: string
+          enum: [PREFLOP, FLOP, TURN, RIVER]
+        currentBet:
+          type: integer
+          format: int64
+        minRaise:
+          type: integer
+          format: int64
+        pot:
+          type: integer
+          format: int64
+        deadline:
+          type: string
+          format: date-time
+        timeoutMs:
+          type: integer
+          format: int64
+        legalActions:
+          type: array
+          description: Private to the acting player.
+          items:
+            $ref: '#/components/schemas/LegalAction'
+    UncalledBetReturnedEvent:
+      type: object
+      additionalProperties: false
+      required: [kind, seat, amount, stack, pot]
+      properties:
+        kind:
+          type: string
+          enum: [UNCALLED_BET_RETURNED]
+        seat:
+          type: integer
+        amount:
+          type: integer
+          format: int64
+        stack:
+          type: integer
+          format: int64
+        pot:
+          type: integer
+          format: int64
+    StreetDealtEvent:
+      type: object
+      additionalProperties: false
+      required: [kind, street, cards, board]
+      properties:
+        kind:
+          type: string
+          enum: [STREET_DEALT]
+        street:
+          type: string
+          enum: [FLOP, TURN, RIVER]
+        cards:
+          type: array
+          items:
+            $ref: '#/components/schemas/Card'
+        board:
+          type: array
+          items:
+            $ref: '#/components/schemas/Card'
+    CardsRevealedEvent:
+      type: object
+      additionalProperties: false
+      required: [kind, seat, cards, description, bestFive]
+      properties:
+        kind:
+          type: string
+          enum: [CARDS_REVEALED]
+        seat:
+          type: integer
+        cards:
+          type: array
+          items:
+            $ref: '#/components/schemas/Card'
+        description:
+          type: string
+        bestFive:
+          type: array
+          items:
+            $ref: '#/components/schemas/Card'
+    PotAwardedEvent:
+      type: object
+      additionalProperties: false
+      required: [kind, potIndex, amount, eligibleSeats, winners, description]
+      properties:
+        kind:
+          type: string
+          enum: [POT_AWARDED]
+        potIndex:
+          type: integer
+        amount:
+          type: integer
+          format: int64
+        eligibleSeats:
+          type: array
+          items:
+            type: integer
+        winners:
+          type: array
+          items:
+            $ref: '#/components/schemas/WinnerShare'
+        description:
+          type: string
+    HandCompletedEvent:
+      type: object
+      additionalProperties: false
+      required: [kind, handId, handNo, board, showdown, results]
+      properties:
+        kind:
+          type: string
+          enum: [HAND_COMPLETED]
+        handId:
+          type: string
+          format: uuid
+        handNo:
+          type: integer
+          format: int64
+        board:
+          type: array
+          items:
+            $ref: '#/components/schemas/Card'
+        showdown:
+          type: boolean
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/HandResult'
+    HandVoidedEvent:
+      type: object
+      additionalProperties: false
+      required: [kind, handId, handNo, reason]
+      properties:
+        kind:
+          type: string
+          enum: [HAND_VOIDED]
+        handId:
+          type: string
+          format: uuid
+        handNo:
+          type: integer
+          format: int64
+        reason:
+          type: string
+    HandPlayer:
+      type: object
+      additionalProperties: false
+      required: [seat, userId, stack]
+      properties:
+        seat:
+          type: integer
+        userId:
+          type: string
+          format: uuid
+        stack:
+          type: integer
+          format: int64
+    WinnerShare:
+      type: object
+      additionalProperties: false
+      required: [seat, amount]
+      properties:
+        seat:
+          type: integer
+        amount:
+          type: integer
+          format: int64
+    HandResult:
+      type: object
+      additionalProperties: false
+      required: [seat, userId, stack, net, won, contributed, folded]
+      properties:
+        seat:
+          type: integer
+        userId:
+          type: string
+          format: uuid
+        stack:
+          type: integer
+          format: int64
+        net:
+          type: integer
+          format: int64
+        won:
+          type: integer
+          format: int64
+        contributed:
+          type: integer
+          format: int64
+        folded:
+          type: boolean
     Card:
       type: string
       pattern: '^[2-9TJQKA][cdhs]$'

@@ -7,7 +7,7 @@ with the repository at the end of every task.
 
 ## Current milestone
 
-**M5 — Realtime gateway** (next). M0–M4 are complete.
+**M6 — Web poker table** (next). M0–M5 are complete.
 
 ## Milestones (spec §16)
 
@@ -19,7 +19,7 @@ with the repository at the end of every task.
 | M3 — Ledger              | ⏳ Next |                                                                                                                                                 |
 | M4 — Table service       | ⏳ Next |                                                                                                                                                 |
 | M5 — Realtime            | ⏳ Next |                                                                                                                                                 |
-| M6 — Web poker table     | Pending |                                                                                                                                                 |
+| M6 — Web poker table     | ⏳ Next |                                                                                                                                                 |
 | M7 — History + Admin     | Pending |                                                                                                                                                 |
 | M8 — Hardening           | Pending |                                                                                                                                                 |
 | M9 — Omaha               | Pending |                                                                                                                                                 |
@@ -87,6 +87,7 @@ Canonical contract: `packages/contracts/openapi/control-api.yaml`
 
 ## Next tasks
 
-1. M5: realtime-gateway WebSocket server: HELLO/WELCOME (EdDSA token verification, revocation check), SUBSCRIBE_TABLE with authorization via control-api internal endpoint, per-table feed from game-service (internal stream), per-viewer filtering, TABLE_SNAPSHOT/TABLE_EVENT/COMMAND_RESULT, reconnect with lastSeenSeq, RESYNC_REQUIRED, PING/PONG, rate limits.
-2. M5: game-service internal WebSocket stream endpoint for the gateway; realtime.yaml message schemas; docs/realtime-protocol.md.
-3. M5 tests: two clients identical public stream, reconnect reproduces state, duplicate commandId, stale expectedSeq, unauthorized subscribe.
+1. M6: web client foundations: API client with token refresh (cookie transport), auth pages (register/login/logout), home (my clubs), club lobby (members, tables, invites, create table for staff, join by code), wallet display.
+2. M6: realtime client (reconnect/backoff, HELLO/AUTH refresh, seq tracking, resubscribe with lastSeenSeq, resync) + pure table-state reducer with unit tests.
+3. M6: poker table UI (seats, stacks, button, blinds, own hole cards, board, pot, current bet, legal-action buttons with amount input, turn indicator, timer, connection status), seat/leave flow.
+4. M6: Playwright E2E: two browsers register, join club, receive chips, sit, play a complete hand.

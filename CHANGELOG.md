@@ -5,6 +5,29 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added — M5 Realtime
+
+- realtime-gateway: WebSocket protocol (HELLO/WELCOME, AUTH token refresh,
+  SUBSCRIBE_TABLE with snapshot/replay/resync, TABLE_EVENT with per-viewer
+  private payloads, COMMAND/COMMAND_RESULT, PING/PONG, ERROR); EdDSA token
+  verification (public key only), Redis revocation check and live session
+  termination; control-api-backed table authorization with caching;
+  per-table feeds with replay ring, gap detection and reset; bounded send
+  queues; drain on shutdown; metrics.
+- game-service: internal WebSocket event stream with backlog replay.
+- control-api: `/internal/v1/tables/{id}/access` (service token) for the gateway.
+- realtime.yaml: complete client/server frame and event payload schemas.
+- Tests: Go contract test of all event payloads/snapshots; gateway
+  end-to-end suite with a real game-service process (identical ordered
+  streams, private card isolation, replay, resync outside the window,
+  idempotent commands, stale seq, unauthorized subscription, auth/close
+  codes, revocation) with every frame validated against realtime.yaml.
+
+### Fixed
+
+- Gateway close codes: explicit HELLO timeout (4408) and failure close
+  codes are no longer replaced by a normal closure.
+
 ### Added — M4 Table service
 
 - Migration `000006_tables`: tables, leases, runtime, seats, hands, hand
