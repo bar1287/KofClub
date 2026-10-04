@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { as, registerUser, TestUser } from './support/api';
 import { startTestApp, TestContext } from './support/app';
 import { expectSchema } from './support/contract';
+import { enrollMfa } from './support/mfa';
 
 describe('clubs (integration)', () => {
   let ctx: TestContext;
@@ -240,6 +241,10 @@ describe('clubs (integration)', () => {
     await ctx.db.query(`UPDATE users SET platform_role = 'PLATFORM_ADMIN' WHERE id = $1`, [
       admin.id,
     ]);
+    // Oversight needs a session verified with a second factor (ADR-017).
+    const denied = await as(ctx.app, admin).get(`/v1/clubs/${clubId}`).expect(403);
+    expect(denied.body.error.code).toBe('MFA_REQUIRED');
+    await enrollMfa(ctx.app, admin);
     const club = await as(ctx.app, admin).get(`/v1/clubs/${clubId}`).expect(200);
     expect(club.body.myRole).toBeNull();
     expect(club.body.joinCode).toBeUndefined();

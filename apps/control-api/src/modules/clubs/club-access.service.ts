@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { AppError } from '../../common/errors/app-error';
 import type { AuthContext } from '../../common/request-context';
+import { APP_CONFIG, AppConfig } from '../../config/config';
 import { Queryable } from '../../infra/database/database';
 import { ClubPermission, platformAdminHasPermission, roleHasPermission } from './club-permissions';
 import { ClubRow, ClubsRepository, MembershipRow } from './clubs.repository';
@@ -18,7 +19,10 @@ export interface ClubAccess {
  */
 @Injectable()
 export class ClubAccessService {
-  constructor(private readonly repo: ClubsRepository) {}
+  constructor(
+    private readonly repo: ClubsRepository,
+    @Inject(APP_CONFIG) private readonly config: AppConfig,
+  ) {}
 
   async require(
     clubId: string,
@@ -43,8 +47,16 @@ export class ClubAccessService {
       }
       return { club, membership };
     }
-    if (platformAdminHasPermission(auth.platformRole, permission))
+    if (platformAdminHasPermission(auth.platformRole, permission)) {
+      // Oversight is a platform-admin power: it needs a second factor (ADR-017).
+      if (this.config.ADMIN_MFA_REQUIRED && !auth.mfa) {
+        throw new AppError(
+          'MFA_REQUIRED',
+          'Platform administration needs two-factor authentication',
+        );
+      }
       return { club, membership: null };
+    }
     if (membership?.status === 'BANNED')
       throw new AppError('CLUB_BANNED', 'You are banned from this club');
     throw new AppError('NOT_CLUB_MEMBER', 'You are not a member of this club');

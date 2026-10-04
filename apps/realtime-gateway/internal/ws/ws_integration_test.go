@@ -80,7 +80,7 @@ type dbChecker struct{ pool *pgxpool.Pool }
 
 // CheckTable mirrors control-api's rule (active member of the table's club);
 // the real endpoint is covered by control-api's integration tests.
-func (c dbChecker) CheckTable(ctx context.Context, userID, tableID string) (access.Decision, error) {
+func (c dbChecker) CheckTable(ctx context.Context, userID, _, tableID string) (access.Decision, error) {
 	var status string
 	err := c.pool.QueryRow(ctx, `SELECT m.status FROM tables t JOIN club_members m ON m.club_id = t.club_id
 	                             WHERE t.id = $1 AND m.user_id = $2`, tableID, userID).Scan(&status)

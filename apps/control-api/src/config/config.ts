@@ -33,6 +33,18 @@ const envSchema = z.object({
     .max(90 * 24 * 3600)
     .default(30 * 24 * 3600),
   IP_HASH_SECRET: z.string().min(32, 'must be at least 32 characters'),
+  /** AES-256-GCM key (32 bytes, base64) for TOTP secrets at rest (ADR-017). */
+  MFA_ENCRYPTION_KEY_B64: z
+    .string()
+    .refine(
+      (v) => Buffer.from(v, 'base64').length === 32,
+      'must be 32 random bytes, base64 (run scripts/init-env.sh)',
+    ),
+  /** Platform-admin routes require a session verified with a second factor. */
+  ADMIN_MFA_REQUIRED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((v) => v === 'true'),
   /** Argon2id memory cost in KiB (OWASP baseline 19 MiB). Lowered only in tests. */
   ARGON2_MEMORY_KIB: z.coerce.number().int().min(1024).default(19456),
   GAME_SERVICE_URL: z.string().url().default('http://localhost:4200'),
@@ -82,6 +94,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
           code: 'custom',
           path: ['TRUST_PROXY'],
           message: 'must name hops or proxy addresses, not trust everything',
+        });
+      }
+      if (cfg.APP_ENV === 'production' && !cfg.ADMIN_MFA_REQUIRED) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['ADMIN_MFA_REQUIRED'],
+          message: 'cannot be disabled in production',
         });
       }
       if (cfg.APP_ENV === 'production' && !cfg.RATE_LIMIT_ENABLED) {

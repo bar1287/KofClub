@@ -7,6 +7,8 @@ export interface AuthContext {
   userId: string;
   sessionId: string;
   platformRole: PlatformRole;
+  /** The session was verified with a second factor (ADR-017). */
+  mfa: boolean;
 }
 
 /** Per-request metadata used for audit/security records. */

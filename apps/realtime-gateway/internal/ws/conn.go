@@ -319,7 +319,7 @@ func (c *Conn) handleAuth(ctx context.Context, data []byte) {
 func (c *Conn) authorize(ctx context.Context, tableID string) (string, bool) {
 	actx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	d, err := c.hub.access.CheckTable(actx, c.userID(), tableID)
+	d, err := c.hub.access.CheckTable(actx, c.userID(), c.sessionID(), tableID)
 	if err != nil {
 		c.log.Warn("access_check_failed", slog.String("error", err.Error()))
 		return "SERVICE_UNAVAILABLE", false

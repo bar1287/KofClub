@@ -9,6 +9,7 @@ import { Database, isUniqueViolation } from '../../infra/database/database';
 import { MetricsService } from '../../metrics/metrics.service';
 import { RiskService } from '../risk/risk.service';
 import type { LoginInput, RegisterInput } from './identity.schemas';
+import { MfaService } from './mfa/mfa.service';
 import { PasswordService } from './password.service';
 import { SessionRevocationPublisher } from './session-revocation.publisher';
 import { SessionRow, SessionsRepository } from './sessions.repository';
@@ -67,6 +68,7 @@ export class AuthService {
     private readonly tokens: TokenService,
     private readonly revocations: SessionRevocationPublisher,
     private readonly risk: RiskService,
+    private readonly mfa: MfaService,
     private readonly metrics: MetricsService,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
@@ -114,6 +116,16 @@ export class AuthService {
       this.securityEvent('login_blocked', { userId: user.id, status: user.status });
       throw new AppError('ACCOUNT_SUSPENDED', 'Account is not active');
     }
+    // Second factor (ADR-017): only after the password was verified.
+    let mfa: boolean;
+    try {
+      mfa = await this.mfa.verifyLogin(user, input.mfaCode, ctx);
+    } catch (err) {
+      if (err instanceof AppError && err.code === 'MFA_INVALID') {
+        this.securityEvent('login_failed', { userId: user.id, reason: 'bad_mfa_code' });
+      }
+      throw err;
+    }
     if (this.passwords.needsRehash(user.passwordHash)) {
       await this.users.updatePasswordHash(user.id, await this.passwords.hash(input.password));
     }
@@ -121,10 +133,10 @@ export class AuthService {
     const deviceId = input.deviceId ?? null;
     const history = await this.sessions.hasPriorSessionFrom(user.id, deviceId, ctx.ipHash);
     const refreshToken = randomToken(REFRESH_PREFIX);
-    const session = await this.sessions.insert(
-      this.db,
-      this.newSession(user.id, refreshToken, input.deviceId, ctx),
-    );
+    const session = await this.sessions.insert(this.db, {
+      ...this.newSession(user.id, refreshToken, input.deviceId, ctx),
+      mfa,
+    });
     if (history.anyPrior && !history.known) {
       // Suspicious-login signal: new device and new network for this account.
       await this.risk.record({

@@ -162,7 +162,7 @@ export class ApiClient {
     return result.user;
   }
 
-  async login(input: { login: string; password: string }): Promise<User> {
+  async login(input: { login: string; password: string; mfaCode?: string }): Promise<User> {
     const result = await this.send<AuthResult>(
       'POST',
       '/v1/auth/login',

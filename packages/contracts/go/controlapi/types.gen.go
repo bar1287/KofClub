@@ -183,6 +183,10 @@ const (
 	ErrorCodeINVALIDRAISE             ErrorCode = "INVALID_RAISE"
 	ErrorCodeINVITEINVALID            ErrorCode = "INVITE_INVALID"
 	ErrorCodeLEDGERINVARIANTVIOLATION ErrorCode = "LEDGER_INVARIANT_VIOLATION"
+	ErrorCodeMFAALREADYENABLED        ErrorCode = "MFA_ALREADY_ENABLED"
+	ErrorCodeMFAINVALID               ErrorCode = "MFA_INVALID"
+	ErrorCodeMFANOTENABLED            ErrorCode = "MFA_NOT_ENABLED"
+	ErrorCodeMFAREQUIRED              ErrorCode = "MFA_REQUIRED"
 	ErrorCodeNOTCLUBMEMBER            ErrorCode = "NOT_CLUB_MEMBER"
 	ErrorCodeNOTENOUGHPLAYERS         ErrorCode = "NOT_ENOUGH_PLAYERS"
 	ErrorCodeNOTFOUND                 ErrorCode = "NOT_FOUND"
@@ -261,6 +265,14 @@ func (e ErrorCode) Valid() bool {
 	case ErrorCodeINVITEINVALID:
 		return true
 	case ErrorCodeLEDGERINVARIANTVIOLATION:
+		return true
+	case ErrorCodeMFAALREADYENABLED:
+		return true
+	case ErrorCodeMFAINVALID:
+		return true
+	case ErrorCodeMFANOTENABLED:
+		return true
+	case ErrorCodeMFAREQUIRED:
 		return true
 	case ErrorCodeNOTCLUBMEMBER:
 		return true
@@ -1381,8 +1393,14 @@ type LoginRequest struct {
 	DeviceId *string `json:"deviceId,omitempty"`
 
 	// Login Email or username
-	Login    string `json:"login"`
-	Password string `json:"password"`
+	Login string `json:"login"`
+
+	// MfaCode Six-digit authenticator code or a recovery code, for accounts with
+	// two-factor authentication. Without it such accounts get
+	// `MFA_REQUIRED` (after the password was checked); resubmit the same
+	// request with the code.
+	MfaCode  *string `json:"mfaCode,omitempty"`
+	Password string  `json:"password"`
 }
 
 // Member defines model for Member.
@@ -1420,6 +1438,28 @@ type MemberPage struct {
 
 // MemberStatus defines model for MemberStatus.
 type MemberStatus string
+
+// MfaCodeRequest defines model for MfaCodeRequest.
+type MfaCodeRequest struct {
+	Code string `json:"code"`
+}
+
+// MfaRecoveryCodes defines model for MfaRecoveryCodes.
+type MfaRecoveryCodes struct {
+	RecoveryCodes []string `json:"recoveryCodes"`
+}
+
+// MfaStatus defines model for MfaStatus.
+type MfaStatus struct {
+	Enabled bool `json:"enabled"`
+
+	// Pending A secret was issued but not confirmed yet.
+	Pending           bool `json:"pending"`
+	RecoveryCodesLeft int  `json:"recoveryCodesLeft"`
+
+	// SessionVerified The current session was established with a second factor.
+	SessionVerified bool `json:"sessionVerified"`
+}
 
 // PlatformOverview defines model for PlatformOverview.
 type PlatformOverview struct {
@@ -1656,6 +1696,15 @@ type TableSeat struct {
 
 // Timestamp UTC RFC 3339 timestamp
 type Timestamp = time.Time
+
+// TotpEnrollment defines model for TotpEnrollment.
+type TotpEnrollment struct {
+	// OtpauthUri otpauth://totp/... URI (QR code content).
+	OtpauthUri string `json:"otpauthUri"`
+
+	// Secret Base32 secret for manual entry in an authenticator app.
+	Secret string `json:"secret"`
+}
 
 // Tournament No additionalProperties restriction because TournamentDetail extends it (allOf).
 type Tournament struct {
@@ -2153,6 +2202,12 @@ type CreateTournamentJSONRequestBody = CreateTournamentRequest
 
 // TransferClubOwnershipJSONRequestBody defines body for TransferClubOwnership for application/json ContentType.
 type TransferClubOwnershipJSONRequestBody = TransferOwnershipRequest
+
+// ConfirmTotpEnrollmentJSONRequestBody defines body for ConfirmTotpEnrollment for application/json ContentType.
+type ConfirmTotpEnrollmentJSONRequestBody = MfaCodeRequest
+
+// DisableTotpJSONRequestBody defines body for DisableTotp for application/json ContentType.
+type DisableTotpJSONRequestBody = MfaCodeRequest
 
 // TakeSeatJSONRequestBody defines body for TakeSeat for application/json ContentType.
 type TakeSeatJSONRequestBody = SeatRequest

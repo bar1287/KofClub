@@ -141,7 +141,9 @@ catalogue (e.g. `NOT_CLUB_MEMBER`, `CLUB_BANNED`, `TABLE_NOT_FOUND`,
   ring of recent events (default 1024) for replays; streams reconnect with
   `after=lastSeq` and reset (forcing client resyncs) when continuity is lost.
 - Authorization (`SUBSCRIBE_TABLE`, `COMMAND`) asks control-api
-  (`GET /internal/v1/tables/{id}/access`) and caches decisions ~15 s.
+  (`GET /internal/v1/tables/{id}/access?userId=&sessionId=`; the session
+  decides whether a platform administrator's oversight has a second factor,
+  ADR-017) and caches decisions ~15 s per user, session and table.
 - Per-connection bounded send queue (2048 frames); overflow disconnects the
   client rather than blocking the table feed.
 - Metrics: `ws_connections`, `ws_table_subscriptions`, `gateway_table_feeds`,

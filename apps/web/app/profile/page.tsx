@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { TwoFactorPanel } from '@/components/account/TwoFactorPanel';
 import { ErrorAlert } from '@/components/ErrorAlert';
 import { RequireAuth } from '@/components/RequireAuth';
 import { errorMessage } from '@/lib/api/client';
@@ -41,6 +42,7 @@ function ProfileView() {
           <strong>{user?.username}</strong> <span className="muted">· {user?.email}</span>
         </p>
       </div>
+      <TwoFactorPanel />
       <div className="panel">
         <h2>Signed-in devices</h2>
         <ErrorAlert error={error} />

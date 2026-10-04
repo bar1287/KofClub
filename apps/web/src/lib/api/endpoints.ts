@@ -23,7 +23,9 @@ import type {
   LedgerTransaction,
   MemberPage,
   SeatResult,
+  MfaStatus,
   Session,
+  TotpEnrollment,
   Table,
   TableDetail,
   CreateTournamentRequest,
@@ -44,6 +46,15 @@ export function endpoints(api: ApiClient) {
     sessions: async (): Promise<Session[]> =>
       (await api.request<{ items: Session[] }>('GET', '/v1/me/sessions')).items,
     revokeSession: (id: string) => api.request<void>('DELETE', `/v1/me/sessions/${enc(id)}`),
+    // --- two-factor authentication (ADR-017) ----------------------------------
+    mfa: () => api.request<MfaStatus>('GET', '/v1/me/mfa'),
+    startTotp: () => api.request<TotpEnrollment>('POST', '/v1/me/mfa/totp'),
+    confirmTotp: (code: string) =>
+      api.request<{ recoveryCodes: string[] }>('POST', '/v1/me/mfa/totp/confirm', {
+        body: { code },
+      }),
+    disableTotp: (code: string) =>
+      api.request<void>('POST', '/v1/me/mfa/totp/disable', { body: { code } }),
 
     myClubs: async (): Promise<Club[]> =>
       (await api.request<{ items: Club[] }>('GET', '/v1/clubs')).items,

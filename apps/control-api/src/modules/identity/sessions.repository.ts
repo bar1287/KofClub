@@ -15,6 +15,8 @@ export interface SessionRow {
   lastUsedAt: Date;
   expiresAt: Date;
   revokedAt: Date | null;
+  /** When the session was verified with a second factor (ADR-017). */
+  mfaAt: Date | null;
 }
 
 interface DbSession {
@@ -27,10 +29,11 @@ interface DbSession {
   last_used_at: Date;
   expires_at: Date;
   revoked_at: Date | null;
+  mfa_at: Date | null;
 }
 
 const COLUMNS =
-  'id, user_id, device_id, user_agent, ip_hash, created_at, last_used_at, expires_at, revoked_at';
+  'id, user_id, device_id, user_agent, ip_hash, created_at, last_used_at, expires_at, revoked_at, mfa_at';
 
 function map(r: DbSession): SessionRow {
   return {
@@ -43,6 +46,7 @@ function map(r: DbSession): SessionRow {
     lastUsedAt: r.last_used_at,
     expiresAt: r.expires_at,
     revokedAt: r.revoked_at,
+    mfaAt: r.mfa_at,
   };
 }
 
@@ -51,6 +55,7 @@ export interface SessionAuthState {
   sessionExpired: boolean;
   userStatus: UserStatus;
   platformRole: PlatformRole;
+  mfa: boolean;
 }
 
 @Injectable()
@@ -67,12 +72,22 @@ export class SessionsRepository {
       userAgent: string | null;
       ipHash: string | null;
       expiresAt: Date;
+      mfa?: boolean;
     },
   ): Promise<SessionRow> {
     const res = await q.query<DbSession>(
-      `INSERT INTO sessions (id, user_id, refresh_hash, device_id, user_agent, ip_hash, expires_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING ${COLUMNS}`,
-      [s.id, s.userId, s.refreshHash, s.deviceId, s.userAgent, s.ipHash, s.expiresAt],
+      `INSERT INTO sessions (id, user_id, refresh_hash, device_id, user_agent, ip_hash, expires_at, mfa_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, CASE WHEN $8::boolean THEN now() END) RETURNING ${COLUMNS}`,
+      [
+        s.id,
+        s.userId,
+        s.refreshHash,
+        s.deviceId,
+        s.userAgent,
+        s.ipHash,
+        s.expiresAt,
+        s.mfa ?? false,
+      ],
     );
     return map(res.rows[0]!);
   }
@@ -168,14 +183,22 @@ export class SessionsRepository {
   }
 
   /** Loads what AuthGuard needs to accept an access token. */
+  /** Marks a session as verified with a second factor. */
+  async markMfa(q: Queryable, sessionId: string): Promise<void> {
+    await q.query(`UPDATE sessions SET mfa_at = now() WHERE id = $1 AND mfa_at IS NULL`, [
+      sessionId,
+    ]);
+  }
+
   async authState(sessionId: string, userId: string): Promise<SessionAuthState | null> {
     const res = await this.db.query<{
       revoked_at: Date | null;
       expires_at: Date;
       status: UserStatus;
       platform_role: PlatformRole;
+      mfa_at: Date | null;
     }>(
-      `SELECT s.revoked_at, s.expires_at, u.status, u.platform_role
+      `SELECT s.revoked_at, s.expires_at, u.status, u.platform_role, s.mfa_at
          FROM sessions s JOIN users u ON u.id = s.user_id
         WHERE s.id = $1 AND s.user_id = $2`,
       [sessionId, userId],
@@ -187,6 +210,7 @@ export class SessionsRepository {
       sessionExpired: r.expires_at.getTime() <= Date.now(),
       userStatus: r.status,
       platformRole: r.platform_role,
+      mfa: r.mfa_at !== null,
     };
   }
 }

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState, type FormEvent } from 'react';
 import { ErrorAlert } from '@/components/ErrorAlert';
-import { errorMessage } from '@/lib/api/client';
+import { ApiError, errorMessage } from '@/lib/api/client';
 import { safeNext } from '@/lib/nav';
 import { useSession } from '@/lib/session';
 
@@ -12,7 +12,10 @@ function LoginForm() {
   const { login } = useSession();
   const router = useRouter();
   const params = useSearchParams();
-  const [form, setForm] = useState({ login: '', password: '' });
+  const [form, setForm] = useState({ login: '', password: '', code: '' });
+  // Accounts with two-factor authentication: the password was accepted and
+  // the same request is sent again with a code (ADR-017).
+  const [needsCode, setNeedsCode] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -21,10 +24,14 @@ function LoginForm() {
     setBusy(true);
     setError(null);
     try {
-      await login(form.login.trim(), form.password);
+      await login(form.login.trim(), form.password, needsCode ? form.code.trim() : undefined);
       router.replace(safeNext(params.get('next')));
     } catch (err) {
-      setError(errorMessage(err));
+      if (err instanceof ApiError && err.code === 'MFA_REQUIRED') {
+        setNeedsCode(true);
+      } else {
+        setError(errorMessage(err));
+      }
     } finally {
       setBusy(false);
     }
@@ -53,6 +60,24 @@ function LoginForm() {
           onChange={(e) => setForm({ ...form, password: e.target.value })}
         />
       </label>
+      {needsCode && (
+        <label className="field">
+          Authentication code
+          <input
+            name="code"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            autoFocus
+            required
+            data-testid="mfa-code"
+            value={form.code}
+            onChange={(e) => setForm({ ...form, code: e.target.value })}
+          />
+          <span className="muted small">
+            The 6-digit code from your authenticator app, or one of your recovery codes.
+          </span>
+        </label>
+      )}
       <ErrorAlert error={error} />
       <button className="btn primary" type="submit" disabled={busy}>
         {busy ? 'Logging in…' : 'Log in'}

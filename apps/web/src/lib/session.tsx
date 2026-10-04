@@ -25,7 +25,8 @@ interface SessionValue {
   api: ApiClient;
   ep: Endpoints;
   realtime: RealtimeClient;
-  login(login: string, password: string): Promise<void>;
+  /** Rejects with `MFA_REQUIRED` for accounts with two-factor authentication. */
+  login(login: string, password: string, mfaCode?: string): Promise<void>;
   register(email: string, username: string, password: string): Promise<void>;
   logout(): Promise<void>;
 }
@@ -101,8 +102,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [realtime]);
 
   const login = useCallback(
-    async (loginName: string, password: string) => {
-      await api.login({ login: loginName, password });
+    async (loginName: string, password: string, mfaCode?: string) => {
+      await api.login({ login: loginName, password, ...(mfaCode ? { mfaCode } : {}) });
       setSignedOut(false);
     },
     [api],

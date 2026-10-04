@@ -7,6 +7,17 @@ All notable changes to this project are documented here. The format follows
 
 ### Security
 
+- Two-factor authentication (ADR-017): TOTP (RFC 6238 on node:crypto) with
+  ten single-use recovery codes, secrets encrypted at rest
+  (`MFA_ENCRYPTION_KEY_B64`), codes accepted once, login asks for the code
+  after the password (`mfaCode`, `MFA_REQUIRED`/`MFA_INVALID`), sessions
+  record the second factor (migration 000012). Platform administration and
+  club oversight require an MFA session (also for the gateway's table access
+  check, which now passes the session id); `ADMIN_MFA_REQUIRED` cannot be
+  off in production; `platform-admin reset-mfa` for lost devices. Web:
+  profile enrollment with recovery codes, code step at login, admin console
+  gate. Tests: RFC vectors, integration (enrollment, login, replay, recovery,
+  refresh, disable, admin and oversight enforcement, CLI reset), Playwright.
 - Deck-key rotation (ADR-008 amendment): game nodes read a keyring
   (`DECK_ENCRYPTION_KEYS`, first key active; `DECK_ENCRYPTION_KEY_B64` stays
   as a single key with id 1); migration 000011 records the sealing key per

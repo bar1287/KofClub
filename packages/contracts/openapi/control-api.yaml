@@ -39,7 +39,7 @@ tags:
   - name: tournaments
     description: Virtual-chip tournaments (registration, blind levels, balancing, prize payouts)
   - name: admin
-    description: Platform administration (PLATFORM_ADMIN only)
+    description: Platform administration (PLATFORM_ADMIN in a session verified with a second factor; otherwise 403 MFA_REQUIRED, ADR-017)
 paths:
   /health/live:
     get:
@@ -213,6 +213,95 @@ paths:
         '204':
           description: Revoked
         '404':
+          $ref: '#/components/responses/Error'
+  /v1/me/mfa:
+    get:
+      tags: [me]
+      operationId: getMyMfa
+      summary: Two-factor authentication state (ADR-017)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: State
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MfaStatus'
+        '401':
+          $ref: '#/components/responses/Error'
+  /v1/me/mfa/totp:
+    post:
+      tags: [me]
+      operationId: startTotpEnrollment
+      summary: Issue a new TOTP secret (pending until confirmed)
+      description: |
+        Returns the secret once, for an authenticator app. Starting again
+        replaces a pending secret; an active one must be disabled first
+        (`MFA_ALREADY_ENABLED`).
+      security:
+        - bearerAuth: []
+      responses:
+        '201':
+          description: Pending secret
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TotpEnrollment'
+        '401':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+  /v1/me/mfa/totp/confirm:
+    post:
+      tags: [me]
+      operationId: confirmTotpEnrollment
+      summary: Activate the pending secret with a code from the app
+      description: |
+        Marks the current session as verified with a second factor and
+        returns ten single-use recovery codes. They are shown only once.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MfaCodeRequest'
+      responses:
+        '200':
+          description: Enabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MfaRecoveryCodes'
+        '401':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+  /v1/me/mfa/totp/disable:
+    post:
+      tags: [me]
+      operationId: disableTotp
+      summary: Turn two-factor authentication off (needs a code or a recovery code)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MfaCodeRequest'
+      responses:
+        '204':
+          description: Disabled
+        '401':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '429':
           $ref: '#/components/responses/Error'
   /v1/clubs:
     post:
@@ -1496,6 +1585,14 @@ components:
         deviceId:
           type: string
           maxLength: 128
+        mfaCode:
+          type: string
+          maxLength: 32
+          description: |
+            Six-digit authenticator code or a recovery code, for accounts with
+            two-factor authentication. Without it such accounts get
+            `MFA_REQUIRED` (after the password was checked); resubmit the same
+            request with the code.
     RefreshRequest:
       type: object
       additionalProperties: false
@@ -1542,6 +1639,53 @@ components:
           $ref: '#/components/schemas/Timestamp'
         current:
           type: boolean
+    MfaStatus:
+      type: object
+      additionalProperties: false
+      required: [enabled, pending, recoveryCodesLeft, sessionVerified]
+      properties:
+        enabled:
+          type: boolean
+        pending:
+          type: boolean
+          description: A secret was issued but not confirmed yet.
+        recoveryCodesLeft:
+          type: integer
+          minimum: 0
+        sessionVerified:
+          type: boolean
+          description: The current session was established with a second factor.
+    TotpEnrollment:
+      type: object
+      additionalProperties: false
+      required: [secret, otpauthUri]
+      properties:
+        secret:
+          type: string
+          description: Base32 secret for manual entry in an authenticator app.
+        otpauthUri:
+          type: string
+          description: otpauth://totp/... URI (QR code content).
+    MfaCodeRequest:
+      type: object
+      additionalProperties: false
+      required: [code]
+      properties:
+        code:
+          type: string
+          minLength: 6
+          maxLength: 32
+    MfaRecoveryCodes:
+      type: object
+      additionalProperties: false
+      required: [recoveryCodes]
+      properties:
+        recoveryCodes:
+          type: array
+          minItems: 10
+          maxItems: 10
+          items:
+            type: string
     SessionList:
       type: object
       additionalProperties: false
@@ -2878,6 +3022,10 @@ components:
         - EMAIL_TAKEN
         - USERNAME_TAKEN
         - FORBIDDEN
+        - MFA_REQUIRED
+        - MFA_INVALID
+        - MFA_ALREADY_ENABLED
+        - MFA_NOT_ENABLED
         # clubs
         - CLUB_NOT_FOUND
         - NOT_CLUB_MEMBER

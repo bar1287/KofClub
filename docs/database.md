@@ -46,6 +46,7 @@ ephemeral data.
 | 000009_tournaments            | tournaments, registrations, runtime, entries, transfers, tournament tables; `TOURNAMENT_POOL` + tournament ledger kinds (down refuses once tournaments exist) |
 | 000010_tournament_health      | views `tournament_invariant_violations` (chips, pools, results) and `tournament_health` (running, transfers, overdue starts) for monitoring                   |
 | 000011_seal_key_ids           | `hands.seal_key_id`: keyring key that sealed the deck and hole cards (existing hands: 1); deck-key rotation                                                   |
+| 000012_mfa                    | `user_mfa` (encrypted TOTP secret, last used step), `user_mfa_recovery_codes` (hashes), `sessions.mfa_at` (ADR-017)                                           |
 
 (The table is extended by each milestone; see the migration files for
 authoritative definitions.)

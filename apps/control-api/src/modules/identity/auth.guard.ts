@@ -46,6 +46,7 @@ export class AuthGuard implements CanActivate {
       userId: claims.userId,
       sessionId: claims.sessionId,
       platformRole: state.platformRole,
+      mfa: state.mfa,
     };
     return true;
   }

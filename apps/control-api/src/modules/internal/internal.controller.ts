@@ -6,11 +6,16 @@ import { NoRateLimit } from '../../common/rate-limit/no-rate-limit.decorator';
 import { uuidSchema } from '../../common/validation/schemas';
 import { ZodPipe } from '../../common/validation/zod.pipe';
 import { ClubAccessService } from '../clubs/club-access.service';
+import { SessionsRepository } from '../identity/sessions.repository';
 import { UsersRepository } from '../identity/users.repository';
 import { TablesRepository } from '../tables/tables.repository';
 import { InternalServiceGuard } from './internal-service.guard';
 
-const accessQuery = z.object({ userId: uuidSchema });
+const accessQuery = z.object({
+  userId: uuidSchema,
+  // The viewer's session: platform-admin oversight needs a second factor.
+  sessionId: uuidSchema.optional(),
+});
 
 export interface TableAccessDecision {
   allowed: boolean;
@@ -31,6 +36,7 @@ export class InternalController {
   constructor(
     private readonly tables: TablesRepository,
     private readonly users: UsersRepository,
+    private readonly sessions: SessionsRepository,
     private readonly access: ClubAccessService,
   ) {}
 
@@ -44,10 +50,19 @@ export class InternalController {
     const user = await this.users.findById(query.userId);
     if (!user) return { allowed: false, code: 'AUTH_REQUIRED' };
     if (user.status !== 'ACTIVE') return { allowed: false, code: 'ACCOUNT_SUSPENDED' };
+    const session = query.sessionId
+      ? await this.sessions.authState(query.sessionId, user.id)
+      : null;
+    const mfa = !!session && session.mfa && !session.sessionRevoked && !session.sessionExpired;
     try {
       await this.access.require(
         table.clubId,
-        { userId: user.id, sessionId: 'internal', platformRole: user.platformRole },
+        {
+          userId: user.id,
+          sessionId: query.sessionId ?? 'internal',
+          platformRole: user.platformRole,
+          mfa,
+        },
         'CLUB_VIEW',
       );
       return { allowed: true, clubId: table.clubId };

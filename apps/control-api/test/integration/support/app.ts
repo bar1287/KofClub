@@ -34,6 +34,7 @@ export function testConfig(overrides: Record<string, string> = {}): AppConfig {
     AUTH_JWT_PRIVATE_KEY_B64: Buffer.from(keys.privatePem).toString('base64'),
     AUTH_JWT_PUBLIC_KEY_B64: Buffer.from(keys.publicPem).toString('base64'),
     IP_HASH_SECRET: randomBytes(32).toString('hex'),
+    MFA_ENCRYPTION_KEY_B64: randomBytes(32).toString('base64'),
     // Cheap hashing keeps the suite fast; production enforces >= 19 MiB.
     ARGON2_MEMORY_KIB: '1024',
     GAME_SERVICE_URL: `http://127.0.0.1:${env.gameServicePort}`,

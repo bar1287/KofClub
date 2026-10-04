@@ -69,6 +69,7 @@ async function main(): Promise<void> {
         userId: result.user.id,
         sessionId: result.sessionId,
         platformRole: result.user.platformRole,
+        mfa: false,
       });
     }
 

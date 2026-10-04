@@ -51,7 +51,8 @@ only, 007 no event bus yet, 008 card privacy, 009 camelCase wire + `/v1`,
 012 browser session handling + reference realtime client, 013 history
 visibility, table closure and administrative enforcement, 014 OpenTelemetry
 tracing, 015 game variants as rule modules in the engine, 016 tournaments on
-the shared table infrastructure.
+the shared table infrastructure, 017 two-factor authentication (TOTP) required
+for platform administration.
 
 ## How to verify the current state
 
@@ -75,7 +76,7 @@ make dev   # full stack in Docker; open http://localhost:3000 (make seed for dem
 - Node Docker images copy the whole workspace into the build stage; image size not optimized.
 - Game-service → gateway event fan-out is not linked to the originating trace (ADR-014).
 - Rate limiter fails open when Redis is down except for register/login/refresh, which fall back to per-process memory counters (N replicas allow N times the budget).
-- No MFA for platform administrators yet; read endpoints rely on edge rate limiting (docs/security-review.md).
+- Read endpoints rely on edge rate limiting (docs/security-review.md); TOTP is the only second factor (no WebAuthn yet) and the TOTP secret key has no keyring (rotation means re-enrollment).
 - Docker builds in restricted networks need a CA-trusting base image (sandbox-only; CI builds normally).
 - Club _closure_ (terminal status CLOSED) has no endpoint yet; suspension and reinstatement do.
 - Demo seed passwords are fixed for local convenience (seed refuses `APP_ENV=production`).
@@ -93,8 +94,9 @@ make dev   # full stack in Docker; open http://localhost:3000 (make seed for dem
 
 ## Implemented API (control-api, `/v1`)
 
-Auth: `POST /auth/register|login|refresh|logout`. Me: `GET /me`,
-`GET /me/sessions`, `DELETE /me/sessions/{id}`. Clubs: `POST|GET /clubs`,
+Auth: `POST /auth/register|login|refresh|logout` (login takes `mfaCode`). Me: `GET /me`,
+`GET /me/sessions`, `DELETE /me/sessions/{id}`, `GET /me/mfa`,
+`POST /me/mfa/totp`, `POST /me/mfa/totp/confirm|disable`. Clubs: `POST|GET /clubs`,
 `POST /clubs/join`, `GET /clubs/{id}`, `POST /clubs/{id}/join|leave`,
 `POST /clubs/{id}/join-code/rotate`, `GET /clubs/{id}/members`,
 `PATCH /clubs/{id}/members/{userId}`, `POST|GET /clubs/{id}/invites`,
@@ -116,15 +118,16 @@ Canonical contract: `packages/contracts/openapi/control-api.yaml`
 
 The spec §16 roadmap is complete. Suggested next steps, in priority order:
 
-1. Security follow-up from docs/security-review.md: MFA (TOTP) for platform
-   administrators (the login rate-limit fallback and deck-key rotation are
-   done).
-2. Product depth: antes and configurable blind/payout structures,
+1. Product depth: antes and configurable blind/payout structures,
    re-entry/late registration, a realtime tournament channel instead of
    polling (would also replace the unseated player's `myTableId` re-check),
    re-buy at cash tables.
+2. Security depth: WebAuthn/passkeys as a phishing-resistant second factor,
+   an optional MFA policy for club staff, a keyring for
+   `MFA_ENCRYPTION_KEY_B64` (like the deck keys).
 3. Mobile/native client on the same protocol (ADR-010) once the web client
    is validated.
 
-Done after the roadmap: tournament operations (metrics, health views,
-alerts, runbook, chaos and load drills; see CHANGELOG).
+Done after the roadmap (see CHANGELOG): tournament operations (metrics,
+health views, alerts, runbook, chaos and load drills); security follow-ups
+from the review (login rate-limit fallback, deck-key rotation, admin MFA).

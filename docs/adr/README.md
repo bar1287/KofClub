@@ -22,6 +22,7 @@ to the same thing.
 | [014](ADR-014-opentelemetry-tracing.md)                 | Distributed tracing with OpenTelemetry                                 | Accepted |
 | [015](ADR-015-game-variant-rule-modules.md)             | Game variants (Hold'em, Pot-Limit Omaha) as rule modules in the engine | Accepted |
 | [016](ADR-016-tournaments.md)                           | Tournaments on the shared table infrastructure                         | Accepted |
+| [017](ADR-017-mfa.md)                                   | Two-factor authentication (TOTP) and admin enforcement                 | Accepted |
 
 ## Template
 

@@ -5,6 +5,7 @@ import request from 'supertest';
 import { as, registerUser, TestUser } from './support/api';
 import { startTestApp, TestContext } from './support/app';
 import { expectSchema } from './support/contract';
+import { enrollMfa } from './support/mfa';
 
 const appRoot = path.resolve(__dirname, '../..');
 
@@ -33,6 +34,10 @@ describe('platform administration (integration)', () => {
     ]);
     expect(cli(ctx.config.DATABASE_URL, 'grant', admin.username)).toContain('PLATFORM_ADMIN');
     expect(cli(ctx.config.DATABASE_URL, 'grant', admin.username)).toContain('already');
+    // Administration needs a session verified with a second factor (ADR-017).
+    const denied = await as(ctx.app, admin).get('/v1/admin/overview').expect(403);
+    expect(denied.body.error).toMatchObject({ code: 'MFA_REQUIRED', details: { enrolled: false } });
+    await enrollMfa(ctx.app, admin);
     const club = await as(ctx.app, alice).post('/v1/clubs').send({ name: 'Watched Club' });
     clubId = club.body.id;
     await as(ctx.app, bob).post('/v1/clubs/join').send({ code: club.body.joinCode }).expect(200);

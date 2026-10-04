@@ -48,14 +48,21 @@ service reports `draining` for `DRAIN_DELAY` before closing listeners.
 - `CORS_ORIGINS` and the gateway's allowed origins: the web origin only.
 - Secrets from the secret store: `AUTH_JWT_PRIVATE_KEY_B64` (control-api
   only), `AUTH_JWT_PUBLIC_KEY_B64` (control-api, gateway),
-  `INTERNAL_SERVICE_TOKEN`, `IP_HASH_SECRET`, `DECK_ENCRYPTION_KEYS` (or the
+  `INTERNAL_SERVICE_TOKEN`, `IP_HASH_SECRET`, `MFA_ENCRYPTION_KEY_B64`
+  (control-api only), `DECK_ENCRYPTION_KEYS` (or the
   single-key `DECK_ENCRYPTION_KEY_B64`; game nodes only; rotation:
   [runbooks/deck-key-rotation.md](runbooks/deck-key-rotation.md)).
 - Web: served over HTTPS; the web tier sends a per-request nonce CSP and,
   with `APP_ENV=production|staging`, HSTS.
 - Platform administrators: granted with the operator CLI
   (`node dist/cli/platform-admin.js grant <username>` in a one-off control-api
-  task); never over HTTP.
+  task); never over HTTP. They must enroll two-factor authentication on their
+  profile before the console works (ADR-017; `ADMIN_MFA_REQUIRED` cannot be
+  disabled in production). A user who lost both authenticator and recovery
+  codes is reset with `platform-admin.js reset-mfa <username>` after an
+  out-of-band identity check (audited; revokes their sessions).
+- `MFA_ENCRYPTION_KEY_B64` (control-api only, 32 bytes base64) encrypts TOTP
+  secrets; losing it means resetting every enrolled user.
 
 ## Backups
 

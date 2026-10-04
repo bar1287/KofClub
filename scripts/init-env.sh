@@ -11,6 +11,10 @@ fi
 
 set_if_empty() {
   local key="$1" value="$2"
+  # A key added to .env.example after .env was created: append it.
+  if ! grep -qE "^${key}=" .env; then
+    echo "${key}=" >> .env
+  fi
   if grep -qE "^${key}=$" .env; then
     # Use a delimiter that cannot appear in base64/hex values.
     sed -i.bak "s|^${key}=$|${key}=${value}|" .env && rm -f .env.bak
@@ -31,4 +35,5 @@ if grep -qE '^AUTH_JWT_PRIVATE_KEY_B64=$' .env; then
 fi
 set_if_empty INTERNAL_SERVICE_TOKEN "$(rand_hex 32)"
 set_if_empty IP_HASH_SECRET "$(rand_hex 32)"
+set_if_empty MFA_ENCRYPTION_KEY_B64 "$(rand_b64 32)"
 set_if_empty DECK_ENCRYPTION_KEY_B64 "$(rand_b64 32)"

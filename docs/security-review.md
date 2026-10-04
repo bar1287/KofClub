@@ -27,7 +27,7 @@ was found and what remains.
 | Ledger integrity   | Single write path `ledger_post()` (zero-sum, non-negative, idempotent refs), append-only triggers, invariant view monitored, restore drill re-verifies                                                         | OK     |
 | Command integrity  | Identity from the connection, turn/legal-action validation on the server, `requestId` idempotency (persisted), `expectedSeq` staleness check                                                                   | OK     |
 | Ownership fencing  | Every game write in a transaction that locks the lease row and checks the epoch; chaos drill (SIGKILL) shows no double-apply                                                                                   | OK     |
-| AuthN              | Argon2id; EdDSA JWT (15 min) with iss/aud/typ; refresh rotation + reuse detection; session/role/status re-read from PostgreSQL on every request                                                                | OK     |
+| AuthN              | Argon2id; EdDSA JWT (15 min) with iss/aud/typ; refresh rotation + reuse detection; session/role/status re-read from PostgreSQL on every request; TOTP two-factor (ADR-017), required for platform admins       | OK     |
 | Browser tokens     | Access token in memory; refresh token HttpOnly + SameSite=Strict + path `/v1/auth`; E2E asserts the cookie is invisible to `document.cookie`                                                                   | OK     |
 | CSRF               | APIs require a bearer token header; the only cookie is path-scoped, SameSite=Strict and used only by `/v1/auth/refresh` behind a CORS allowlist                                                                | OK     |
 | AuthZ              | Central `ClubAccessService` permission matrix (unit tested), platform-admin guard reading the role from the database, negative integration tests                                                               | OK     |
@@ -76,7 +76,9 @@ was found and what remains.
   per-hand key ids, and `game-service reseal` re-encrypts stored cards so a
   compromised key can be retired; backups taken before the re-seal remain
   readable with the old key (docs/runbooks/deck-key-rotation.md).
-- **No MFA** for platform administrators yet (spec lists MFA-ready hooks);
-  required before production for admin accounts.
+- **MFA** (TOTP, ADR-017) is required for platform administration and
+  optional for everyone else; TOTP can be phished by a real-time relay, so
+  WebAuthn/passkeys are the stronger follow-up. Club staff are not required
+  to use it yet.
 - **Collusion/fraud detection** is limited to the risk-event plumbing and
   review queue; behavioral detectors are future work (spec §11).

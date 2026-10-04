@@ -21,9 +21,10 @@ type Decision struct {
 	Code    string `json:"code,omitempty"` // error code when denied
 }
 
-// Checker decides table access.
+// Checker decides table access for a user's session (the session matters
+// for platform administrators, whose oversight needs a second factor).
 type Checker interface {
-	CheckTable(ctx context.Context, userID, tableID string) (Decision, error)
+	CheckTable(ctx context.Context, userID, sessionID, tableID string) (Decision, error)
 }
 
 // HTTPChecker calls control-api's internal access endpoint.
@@ -48,8 +49,8 @@ func NewHTTPChecker(baseURL, token string, ttl time.Duration) *HTTPChecker {
 }
 
 // CheckTable returns a (possibly cached) decision.
-func (c *HTTPChecker) CheckTable(ctx context.Context, userID, tableID string) (Decision, error) {
-	key := userID + "|" + tableID
+func (c *HTTPChecker) CheckTable(ctx context.Context, userID, sessionID, tableID string) (Decision, error) {
+	key := userID + "|" + sessionID + "|" + tableID
 	c.mu.Lock()
 	if e, ok := c.cache[key]; ok && time.Now().Before(e.expires) {
 		c.mu.Unlock()
@@ -57,7 +58,8 @@ func (c *HTTPChecker) CheckTable(ctx context.Context, userID, tableID string) (D
 	}
 	c.mu.Unlock()
 
-	u := fmt.Sprintf("%s/internal/v1/tables/%s/access?userId=%s", c.baseURL, url.PathEscape(tableID), url.QueryEscape(userID))
+	u := fmt.Sprintf("%s/internal/v1/tables/%s/access?userId=%s&sessionId=%s",
+		c.baseURL, url.PathEscape(tableID), url.QueryEscape(userID), url.QueryEscape(sessionID))
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return Decision{}, err

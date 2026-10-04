@@ -750,6 +750,83 @@ export type paths = {
     patch?: never;
     trace?: never;
   };
+  '/v1/me/mfa': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Two-factor authentication state (ADR-017) */
+    get: operations['getMyMfa'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/me/mfa/totp': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Issue a new TOTP secret (pending until confirmed)
+     * @description Returns the secret once, for an authenticator app. Starting again
+     *     replaces a pending secret; an active one must be disabled first
+     *     (`MFA_ALREADY_ENABLED`).
+     */
+    post: operations['startTotpEnrollment'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/me/mfa/totp/confirm': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Activate the pending secret with a code from the app
+     * @description Marks the current session as verified with a second factor and
+     *     returns ten single-use recovery codes. They are shown only once.
+     */
+    post: operations['confirmTotpEnrollment'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/me/mfa/totp/disable': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Turn two-factor authentication off (needs a code or a recovery code) */
+    post: operations['disableTotp'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/me/sessions': {
     parameters: {
       query?: never;
@@ -1233,6 +1310,10 @@ export type components = {
       | 'EMAIL_TAKEN'
       | 'USERNAME_TAKEN'
       | 'FORBIDDEN'
+      | 'MFA_REQUIRED'
+      | 'MFA_INVALID'
+      | 'MFA_ALREADY_ENABLED'
+      | 'MFA_NOT_ENABLED'
       | 'CLUB_NOT_FOUND'
       | 'NOT_CLUB_MEMBER'
       | 'CLUB_BANNED'
@@ -1564,6 +1645,13 @@ export type components = {
       deviceId?: string;
       /** @description Email or username */
       login: string;
+      /**
+       * @description Six-digit authenticator code or a recovery code, for accounts with
+       *     two-factor authentication. Without it such accounts get
+       *     `MFA_REQUIRED` (after the password was checked); resubmit the same
+       *     request with the code.
+       */
+      mfaCode?: string;
       password: string;
     };
     Member: {
@@ -1589,6 +1677,20 @@ export type components = {
     };
     /** @enum {string} */
     MemberStatus: 'ACTIVE' | 'BANNED' | 'LEFT';
+    MfaCodeRequest: {
+      code: string;
+    };
+    MfaRecoveryCodes: {
+      recoveryCodes: string[];
+    };
+    MfaStatus: {
+      enabled: boolean;
+      /** @description A secret was issued but not confirmed yet. */
+      pending: boolean;
+      recoveryCodesLeft: number;
+      /** @description The current session was established with a second factor. */
+      sessionVerified: boolean;
+    };
     PlatformOverview: {
       clubs: {
         active: number;
@@ -1911,6 +2013,12 @@ export type components = {
      * @description UTC RFC 3339 timestamp
      */
     Timestamp: string;
+    TotpEnrollment: {
+      /** @description otpauth://totp/... URI (QR code content). */
+      otpauthUri: string;
+      /** @description Base32 secret for manual entry in an authenticator app. */
+      secret: string;
+    };
     /** @description No additionalProperties restriction because TournamentDetail extends it (allOf). */
     Tournament: {
       actionTimeoutSec: number;
@@ -3341,6 +3449,101 @@ export interface operations {
         };
       };
       401: components['responses']['Error'];
+    };
+  };
+  getMyMfa: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description State */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MfaStatus'];
+        };
+      };
+      401: components['responses']['Error'];
+    };
+  };
+  startTotpEnrollment: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Pending secret */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TotpEnrollment'];
+        };
+      };
+      401: components['responses']['Error'];
+      409: components['responses']['Error'];
+    };
+  };
+  confirmTotpEnrollment: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['MfaCodeRequest'];
+      };
+    };
+    responses: {
+      /** @description Enabled */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MfaRecoveryCodes'];
+        };
+      };
+      401: components['responses']['Error'];
+      409: components['responses']['Error'];
+      429: components['responses']['Error'];
+    };
+  };
+  disableTotp: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['MfaCodeRequest'];
+      };
+    };
+    responses: {
+      /** @description Disabled */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      401: components['responses']['Error'];
+      409: components['responses']['Error'];
+      429: components['responses']['Error'];
     };
   };
   listMySessions: {

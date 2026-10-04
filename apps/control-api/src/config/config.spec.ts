@@ -6,6 +6,7 @@ const base = {
   AUTH_JWT_PRIVATE_KEY_B64: 'x',
   AUTH_JWT_PUBLIC_KEY_B64: 'y',
   IP_HASH_SECRET: 'h'.repeat(32), // test fixture, not a secret
+  MFA_ENCRYPTION_KEY_B64: Buffer.alloc(32).toString('base64'), // test fixture
   INTERNAL_SERVICE_TOKEN: 'x'.repeat(32),
 };
 
@@ -24,6 +25,12 @@ describe('loadConfig', () => {
     expect(() =>
       loadConfig({ ...base, APP_ENV: 'production', RATE_LIMIT_ENABLED: 'false' }),
     ).toThrow(/RATE_LIMIT_ENABLED/);
+    expect(() =>
+      loadConfig({ ...base, APP_ENV: 'production', ADMIN_MFA_REQUIRED: 'false' }),
+    ).toThrow(/ADMIN_MFA_REQUIRED/);
+    expect(() => loadConfig({ ...base, MFA_ENCRYPTION_KEY_B64: 'c2hvcnQ=' })).toThrow(
+      /MFA_ENCRYPTION_KEY_B64/,
+    );
   });
 
   it('parses which proxies may set X-Forwarded-For and refuses trusting all', () => {
