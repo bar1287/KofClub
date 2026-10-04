@@ -11,7 +11,9 @@ Alerts: `ServiceDown` (`up == 0`), `HttpErrorRate` (> 2% 5xx), page.
      commands (no state changes without durability). Restore the database,
      then verify `SELECT * FROM ledger_invariant_violations;` is empty.
    - Redis down → rate limiting fails open (`security_events_total{type="rate_limit_degraded"}`
-     and a "rate limiter unavailable" warning); HTTP authentication still
+     and a "rate limiter unavailable" warning), except registration, login
+     and refresh, which keep their limits in each control-api process's
+     memory (per replica, so N replicas allow N times the budget); HTTP authentication still
      checks sessions in PostgreSQL on every request; the gateway keeps
      existing connections but cannot receive live revocations until Redis
      returns.

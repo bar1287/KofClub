@@ -63,9 +63,10 @@ was found and what remains.
 - **Rate limiting of reads**: authenticated read endpoints (history,
   lobby, admin search) have no application-level limits; rely on edge rate
   limiting (ALB/WAF) per user/IP.
-- **Redis outage** makes the rate limiter fail open (documented tradeoff);
-  Argon2 cost still bounds password guessing. Consider an in-process
-  fallback limiter for login.
+- **Redis outage** makes most rate limits fail open (documented tradeoff).
+  Credential endpoints (register, login, refresh) fall back to bounded
+  in-process counters, so guessing stays limited per replica (N replicas
+  allow N times the budget); Argon2 cost bounds it further.
 - **XSS impact**: a script running in the page can act as the user while the
   page is open (inherent to browser sessions); the CSP makes injection
   substantially harder but `style-src 'unsafe-inline'` remains for React

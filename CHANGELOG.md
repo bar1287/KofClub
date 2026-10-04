@@ -5,6 +5,13 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Security
+
+- Credential endpoints (register, login, refresh) keep rate limiting in
+  bounded per-process memory while Redis is unavailable instead of failing
+  open; other limits still fail open (ADR-005). Integration test runs the API
+  against an unreachable Redis.
+
 ### Added — Tournament operations
 
 - Monitoring: game-service counters (tournaments started/cancelled/finished,

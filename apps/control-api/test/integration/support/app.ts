@@ -42,11 +42,16 @@ export function testConfig(overrides: Record<string, string> = {}): AppConfig {
   });
 }
 
-export async function startTestApp(overrides: Record<string, string> = {}): Promise<TestContext> {
+export async function startTestApp(
+  overrides: Record<string, string> = {},
+  { flushRedis = true } = {},
+): Promise<TestContext> {
   const config = testConfig(overrides);
-  const redis = new Redis(config.REDIS_URL);
-  await redis.flushdb();
-  redis.disconnect();
+  if (flushRedis) {
+    const redis = new Redis(config.REDIS_URL);
+    await redis.flushdb();
+    redis.disconnect();
+  }
   const app = await createApp(config);
   await app.init();
   const db = new Pool({ connectionString: config.DATABASE_URL, max: 2 });

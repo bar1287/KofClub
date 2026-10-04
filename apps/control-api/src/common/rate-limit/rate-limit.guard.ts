@@ -44,7 +44,13 @@ export class RateLimitGuard implements CanActivate {
     for (const rule of rules) {
       const subject = this.subjectFor(rule, req);
       if (subject === null) continue;
-      const result = await this.limiter.hit(rule.name, subject, rule.limit, rule.windowSec);
+      const result = await this.limiter.hit(
+        rule.name,
+        subject,
+        rule.limit,
+        rule.windowSec,
+        rule.memoryFallback,
+      );
       if (!result.allowed) {
         res.setHeader('Retry-After', String(result.retryAfterSec));
         throw new AppError('RATE_LIMITED', 'Too many requests', {

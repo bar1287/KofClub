@@ -7,6 +7,11 @@ export interface RateLimitRule {
   by: 'ip' | 'user' | { body: string };
   limit: number;
   windowSec: number;
+  /**
+   * Keep limiting in process memory while Redis is unavailable instead of
+   * allowing the request (credential endpoints: guessing must stay bounded).
+   */
+  memoryFallback?: boolean;
 }
 
 export const RATE_LIMIT_RULES = 'kofclub:rateLimitRules';

@@ -74,7 +74,7 @@ make dev   # full stack in Docker; open http://localhost:3000 (make seed for dem
 - NestJS pinned to 11 (v12 is ESM-only; needs ESM + Vitest migration) — ADR-011.
 - Node Docker images copy the whole workspace into the build stage; image size not optimized.
 - Game-service → gateway event fan-out is not linked to the originating trace (ADR-014).
-- Rate limiter fails open when Redis is down (documented tradeoff; Argon2 cost still bounds brute force).
+- Rate limiter fails open when Redis is down except for register/login/refresh, which fall back to per-process memory counters (N replicas allow N times the budget).
 - No MFA for platform administrators; no deck-key rotation (key id) yet; read endpoints rely on edge rate limiting (docs/security-review.md).
 - Docker builds in restricted networks need a CA-trusting base image (sandbox-only; CI builds normally).
 - Club _closure_ (terminal status CLOSED) has no endpoint yet; suspension and reinstatement do.
@@ -116,9 +116,9 @@ Canonical contract: `packages/contracts/openapi/control-api.yaml`
 
 The spec §16 roadmap is complete. Suggested next steps, in priority order:
 
-1. Security follow-ups from docs/security-review.md: MFA for platform
-   administrators, deck-key rotation with key ids, in-process login rate
-   limiting fallback.
+1. Security follow-ups from docs/security-review.md: deck-key rotation with
+   key ids, then MFA (TOTP) for platform administrators (the in-process
+   login rate-limit fallback is done).
 2. Product depth: antes and configurable blind/payout structures,
    re-entry/late registration, a realtime tournament channel instead of
    polling (would also replace the unseated player's `myTableId` re-check),

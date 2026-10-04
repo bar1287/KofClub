@@ -33,7 +33,13 @@ export class AuthController {
 
   @Public()
   @Post('register')
-  @RateLimit({ name: 'auth:register:ip', by: 'ip', limit: 10, windowSec: 3600 })
+  @RateLimit({
+    name: 'auth:register:ip',
+    by: 'ip',
+    limit: 10,
+    windowSec: 3600,
+    memoryFallback: true,
+  })
   async register(
     @Body(new ZodPipe(registerSchema)) body: RegisterInput,
     @Ctx() ctx: RequestContext,
@@ -47,8 +53,14 @@ export class AuthController {
   @Post('login')
   @HttpCode(200)
   @RateLimit(
-    { name: 'auth:login:ip', by: 'ip', limit: 30, windowSec: 300 },
-    { name: 'auth:login:account', by: { body: 'login' }, limit: 10, windowSec: 900 },
+    { name: 'auth:login:ip', by: 'ip', limit: 30, windowSec: 300, memoryFallback: true },
+    {
+      name: 'auth:login:account',
+      by: { body: 'login' },
+      limit: 10,
+      windowSec: 900,
+      memoryFallback: true,
+    },
   )
   async login(
     @Body(new ZodPipe(loginSchema)) body: LoginInput,
@@ -62,7 +74,13 @@ export class AuthController {
   @Public()
   @Post('refresh')
   @HttpCode(200)
-  @RateLimit({ name: 'auth:refresh:ip', by: 'ip', limit: 60, windowSec: 60 })
+  @RateLimit({
+    name: 'auth:refresh:ip',
+    by: 'ip',
+    limit: 60,
+    windowSec: 60,
+    memoryFallback: true,
+  })
   async refresh(
     @Body(new ZodPipe(refreshSchema)) body: RefreshInput,
     @Ctx() ctx: RequestContext,
