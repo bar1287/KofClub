@@ -156,6 +156,7 @@ export type components = {
       /** Format: int64 */
       smallBlind: number;
       smallBlindSeat: number;
+      tournament?: components['schemas']['TournamentTableInfo'];
     };
     HandView: {
       /** Format: date-time */
@@ -267,9 +268,17 @@ export type components = {
        * @enum {string}
        */
       kind: 'PLAYER_LEFT';
-      /** @enum {string} */
-      reason: 'LEFT' | 'BUSTED' | 'TABLE_CLOSED';
+      place?: number;
+      /**
+       * @description Tournaments: MOVED (balancing; see toTableId), ELIMINATED (with the
+       *     finishing place) and FINISHED (the tournament ended; the winner's
+       *     place is 1).
+       * @enum {string}
+       */
+      reason: 'LEFT' | 'BUSTED' | 'TABLE_CLOSED' | 'MOVED' | 'ELIMINATED' | 'FINISHED';
       seat: number;
+      /** Format: uuid */
+      toTableId?: string;
       /** Format: uuid */
       userId: string;
     };
@@ -465,6 +474,7 @@ export type components = {
       smallBlind: number;
       /** @enum {string} */
       status: 'OPEN' | 'CLOSED';
+      tournament?: components['schemas']['TournamentTableInfo'];
     };
     /** @description Complete viewer-sanitized table state; clients replace (never merge) state with it. */
     TableSnapshot: {
@@ -491,6 +501,26 @@ export type components = {
       tableId: string;
       /** @enum {string} */
       type: 'TABLE_SNAPSHOT';
+    };
+    /** @description Tournament context of a tournament table (level and blinds in effect for new hands). */
+    TournamentTableInfo: {
+      /** Format: int64 */
+      bigBlind: number;
+      level: number;
+      /** Format: date-time */
+      levelEndsAt: string;
+      name: string;
+      /** Format: int64 */
+      nextBigBlind: number;
+      /** Format: int64 */
+      nextSmallBlind: number;
+      /** Format: int64 */
+      smallBlind: number;
+      /** @enum {string} */
+      status: 'RUNNING' | 'FINISHED';
+      tableNo: number;
+      /** Format: uuid */
+      tournamentId: string;
     };
     TurnStartedEvent: {
       /** Format: int64 */

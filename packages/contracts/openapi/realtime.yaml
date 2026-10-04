@@ -375,10 +375,19 @@ components:
           format: uuid
         reason:
           type: string
-          enum: [LEFT, BUSTED, TABLE_CLOSED]
+          enum: [LEFT, BUSTED, TABLE_CLOSED, MOVED, ELIMINATED, FINISHED]
+          description: |
+            Tournaments: MOVED (balancing; see toTableId), ELIMINATED (with the
+            finishing place) and FINISHED (the tournament ended; the winner's
+            place is 1).
         cashOut:
           type: integer
           format: int64
+        toTableId:
+          type: string
+          format: uuid
+        place:
+          type: integer
     TableClosedEvent:
       type: object
       additionalProperties: false
@@ -456,6 +465,8 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/HandPlayer'
+        tournament:
+          $ref: '#/components/schemas/TournamentTableInfo'
     BlindPostedEvent:
       type: object
       additionalProperties: false
@@ -730,6 +741,51 @@ components:
       type: string
       pattern: '^[2-9TJQKA][cdhs]$'
       description: Rank + suit, e.g. "As", "Td", "2c".
+    TournamentTableInfo:
+      type: object
+      additionalProperties: false
+      description: Tournament context of a tournament table (level and blinds in effect for new hands).
+      required:
+        [
+          tournamentId,
+          name,
+          tableNo,
+          status,
+          level,
+          smallBlind,
+          bigBlind,
+          nextSmallBlind,
+          nextBigBlind,
+          levelEndsAt,
+        ]
+      properties:
+        tournamentId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        tableNo:
+          type: integer
+        status:
+          type: string
+          enum: [RUNNING, FINISHED]
+        level:
+          type: integer
+        smallBlind:
+          type: integer
+          format: int64
+        bigBlind:
+          type: integer
+          format: int64
+        nextSmallBlind:
+          type: integer
+          format: int64
+        nextBigBlind:
+          type: integer
+          format: int64
+        levelEndsAt:
+          type: string
+          format: date-time
     GameType:
       type: string
       enum: [NLHE, PLO]
@@ -801,6 +857,8 @@ components:
         status:
           type: string
           enum: [OPEN, CLOSED]
+        tournament:
+          $ref: '#/components/schemas/TournamentTableInfo'
     SeatView:
       type: object
       additionalProperties: false

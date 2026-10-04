@@ -21,6 +21,7 @@ to the same thing.
 | [013](ADR-013-history-admin-policies.md)                | Hand history, table closure and administrative enforcement             | Accepted |
 | [014](ADR-014-opentelemetry-tracing.md)                 | Distributed tracing with OpenTelemetry                                 | Accepted |
 | [015](ADR-015-game-variant-rule-modules.md)             | Game variants (Hold'em, Pot-Limit Omaha) as rule modules in the engine | Accepted |
+| [016](ADR-016-tournaments.md)                           | Tournaments on the shared table infrastructure                         | Accepted |
 
 ## Template
 

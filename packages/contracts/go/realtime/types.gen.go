@@ -402,7 +402,10 @@ func (e PlayerLeftEventKind) Valid() bool {
 // Defines values for PlayerLeftEventReason.
 const (
 	PlayerLeftEventReasonBUSTED      PlayerLeftEventReason = "BUSTED"
+	PlayerLeftEventReasonELIMINATED  PlayerLeftEventReason = "ELIMINATED"
+	PlayerLeftEventReasonFINISHED    PlayerLeftEventReason = "FINISHED"
 	PlayerLeftEventReasonLEFT        PlayerLeftEventReason = "LEFT"
+	PlayerLeftEventReasonMOVED       PlayerLeftEventReason = "MOVED"
 	PlayerLeftEventReasonTABLECLOSED PlayerLeftEventReason = "TABLE_CLOSED"
 )
 
@@ -411,7 +414,13 @@ func (e PlayerLeftEventReason) Valid() bool {
 	switch e {
 	case PlayerLeftEventReasonBUSTED:
 		return true
+	case PlayerLeftEventReasonELIMINATED:
+		return true
+	case PlayerLeftEventReasonFINISHED:
+		return true
 	case PlayerLeftEventReasonLEFT:
+		return true
+	case PlayerLeftEventReasonMOVED:
 		return true
 	case PlayerLeftEventReasonTABLECLOSED:
 		return true
@@ -759,6 +768,24 @@ func (e TableSnapshotMessageType) Valid() bool {
 	}
 }
 
+// Defines values for TournamentTableInfoStatus.
+const (
+	TournamentTableInfoStatusFINISHED TournamentTableInfoStatus = "FINISHED"
+	TournamentTableInfoStatusRUNNING  TournamentTableInfoStatus = "RUNNING"
+)
+
+// Valid indicates whether the value is a known member of the TournamentTableInfoStatus enum.
+func (e TournamentTableInfoStatus) Valid() bool {
+	switch e {
+	case TournamentTableInfoStatusFINISHED:
+		return true
+	case TournamentTableInfoStatusRUNNING:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for TurnStartedEventKind.
 const (
 	TurnStartedEventKindTURNSTARTED TurnStartedEventKind = "TURN_STARTED"
@@ -989,6 +1016,9 @@ type HandStartedEvent struct {
 	Players        []HandPlayer         `json:"players"`
 	SmallBlind     int64                `json:"smallBlind"`
 	SmallBlindSeat int                  `json:"smallBlindSeat"`
+
+	// Tournament Tournament context of a tournament table (level and blinds in effect for new hands).
+	Tournament *TournamentTableInfo `json:"tournament,omitempty"`
 }
 
 // HandStartedEventKind defines model for HandStartedEvent.Kind.
@@ -1099,17 +1129,25 @@ type PlayerActedEventKind string
 
 // PlayerLeftEvent defines model for PlayerLeftEvent.
 type PlayerLeftEvent struct {
-	CashOut int64                 `json:"cashOut"`
-	Kind    PlayerLeftEventKind   `json:"kind"`
-	Reason  PlayerLeftEventReason `json:"reason"`
-	Seat    int                   `json:"seat"`
-	UserId  openapi_types.UUID    `json:"userId"`
+	CashOut int64               `json:"cashOut"`
+	Kind    PlayerLeftEventKind `json:"kind"`
+	Place   *int                `json:"place,omitempty"`
+
+	// Reason Tournaments: MOVED (balancing; see toTableId), ELIMINATED (with the
+	// finishing place) and FINISHED (the tournament ended; the winner's
+	// place is 1).
+	Reason    PlayerLeftEventReason `json:"reason"`
+	Seat      int                   `json:"seat"`
+	ToTableId *openapi_types.UUID   `json:"toTableId,omitempty"`
+	UserId    openapi_types.UUID    `json:"userId"`
 }
 
 // PlayerLeftEventKind defines model for PlayerLeftEvent.Kind.
 type PlayerLeftEventKind string
 
-// PlayerLeftEventReason defines model for PlayerLeftEvent.Reason.
+// PlayerLeftEventReason Tournaments: MOVED (balancing; see toTableId), ELIMINATED (with the
+// finishing place) and FINISHED (the tournament ended; the winner's
+// place is 1).
 type PlayerLeftEventReason string
 
 // PlayerSeatedEvent defines model for PlayerSeatedEvent.
@@ -1296,6 +1334,9 @@ type TableInfo struct {
 	Name       string          `json:"name"`
 	SmallBlind int64           `json:"smallBlind"`
 	Status     TableInfoStatus `json:"status"`
+
+	// Tournament Tournament context of a tournament table (level and blinds in effect for new hands).
+	Tournament *TournamentTableInfo `json:"tournament,omitempty"`
 }
 
 // TableInfoStatus defines model for TableInfo.Status.
@@ -1331,6 +1372,23 @@ type TableSnapshotMessage struct {
 
 // TableSnapshotMessageType defines model for TableSnapshotMessage.Type.
 type TableSnapshotMessageType string
+
+// TournamentTableInfo Tournament context of a tournament table (level and blinds in effect for new hands).
+type TournamentTableInfo struct {
+	BigBlind       int64                     `json:"bigBlind"`
+	Level          int                       `json:"level"`
+	LevelEndsAt    time.Time                 `json:"levelEndsAt"`
+	Name           string                    `json:"name"`
+	NextBigBlind   int64                     `json:"nextBigBlind"`
+	NextSmallBlind int64                     `json:"nextSmallBlind"`
+	SmallBlind     int64                     `json:"smallBlind"`
+	Status         TournamentTableInfoStatus `json:"status"`
+	TableNo        int                       `json:"tableNo"`
+	TournamentId   openapi_types.UUID        `json:"tournamentId"`
+}
+
+// TournamentTableInfoStatus defines model for TournamentTableInfo.Status.
+type TournamentTableInfoStatus string
 
 // TurnStartedEvent defines model for TurnStartedEvent.
 type TurnStartedEvent struct {

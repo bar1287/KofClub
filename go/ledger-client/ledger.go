@@ -38,6 +38,11 @@ const (
 	KindTableCashOut   Kind = "TABLE_CASH_OUT"
 	KindHandSettlement Kind = "HAND_SETTLEMENT"
 	KindClubGrant      Kind = "CLUB_GRANT"
+	// Tournament buy-ins/refunds move chips between a wallet and the
+	// tournament's prize pool; payouts move the pool to winners' wallets.
+	KindTournamentBuyIn  Kind = "TOURNAMENT_BUY_IN"
+	KindTournamentRefund Kind = "TOURNAMENT_REFUND"
+	KindTournamentPayout Kind = "TOURNAMENT_PAYOUT"
 )
 
 // AccountKind is a ledger account kind.
@@ -48,6 +53,8 @@ const (
 	AccountClubTreasury AccountKind = "CLUB_TREASURY"
 	AccountMemberWallet AccountKind = "MEMBER_WALLET"
 	AccountTableStack   AccountKind = "TABLE_STACK"
+	// AccountTournamentPool is a tournament's prize pool (owner = tournament id).
+	AccountTournamentPool AccountKind = "TOURNAMENT_POOL"
 )
 
 // ActorGameService marks postings made by the game service.

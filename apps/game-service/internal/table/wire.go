@@ -43,8 +43,12 @@ type playerLeftPayload struct {
 	Kind    string `json:"kind"`
 	Seat    int    `json:"seat"`
 	UserID  string `json:"userId"`
-	Reason  string `json:"reason"` // LEFT | BUSTED
+	Reason  string `json:"reason"` // LEFT | BUSTED | TABLE_CLOSED | MOVED | ELIMINATED | FINISHED
 	CashOut int64  `json:"cashOut"`
+	// Tournaments: the table a moved player goes to, the finishing place of
+	// an eliminated player or of the winner.
+	ToTableID string `json:"toTableId,omitempty"`
+	Place     int    `json:"place,omitempty"`
 }
 
 type sittingOutPayload struct {
@@ -73,6 +77,8 @@ type handStartedPayload struct {
 	BigBlind       int64        `json:"bigBlind"`
 	DeckCommitment string       `json:"deckCommitment"`
 	Players        []handPlayer `json:"players"`
+	// Tournament is set at tournament tables (level and blinds of the hand).
+	Tournament *tournamentInfo `json:"tournament,omitempty"`
 }
 
 type blindPostedPayload struct {

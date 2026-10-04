@@ -33,11 +33,14 @@ func New(pool *pgxpool.Pool, nodeID string) *Store { return &Store{Pool: pool, N
 
 // TableConfig is the table directory row.
 type TableConfig struct {
-	ID            string
-	ClubID        string
-	Name          string
-	GameType      string
-	MaxSeats      int
+	ID       string
+	ClubID   string
+	Name     string
+	GameType string
+	MaxSeats int
+	// TournamentID is set for tournament tables (TableNo is then 1-based).
+	TournamentID  string
+	TableNo       int
 	SmallBlind    int64
 	BigBlind      int64
 	BuyInMin      int64
@@ -51,9 +54,11 @@ func (s *Store) LoadTable(ctx context.Context, tableID string) (TableConfig, err
 	var c TableConfig
 	var timeoutMs int
 	err := s.Pool.QueryRow(ctx, `
-		SELECT id::text, club_id::text, name, game_type, max_seats, small_blind, big_blind, buyin_min, buyin_max, action_timeout_ms, status
+		SELECT id::text, club_id::text, name, game_type, max_seats, small_blind, big_blind, buyin_min, buyin_max, action_timeout_ms, status,
+		       coalesce(tournament_id::text, ''), coalesce(tournament_table_no, 0)
 		  FROM tables WHERE id = $1`, tableID).
-		Scan(&c.ID, &c.ClubID, &c.Name, &c.GameType, &c.MaxSeats, &c.SmallBlind, &c.BigBlind, &c.BuyInMin, &c.BuyInMax, &timeoutMs, &c.Status)
+		Scan(&c.ID, &c.ClubID, &c.Name, &c.GameType, &c.MaxSeats, &c.SmallBlind, &c.BigBlind, &c.BuyInMin, &c.BuyInMax, &timeoutMs, &c.Status,
+			&c.TournamentID, &c.TableNo)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return c, ErrNotFound
 	}
@@ -206,14 +211,16 @@ func (s *Store) LedgerTxExists(ctx context.Context, externalRef string) (bool, e
 	return ok, err
 }
 
-// OrphanedTables lists open tables that have seated players or an
-// unfinished hand but no live lease (their owner died or released them).
+// OrphanedTables lists open tables that have seated players, players on
+// their way to them (tournament moves) or an unfinished hand but no live
+// lease (their owner died or released them).
 func (s *Store) OrphanedTables(ctx context.Context, limit int) ([]string, error) {
 	rows, err := s.Pool.Query(ctx, `
 		SELECT t.id::text FROM tables t
 		  LEFT JOIN table_leases l ON l.table_id = t.id
 		 WHERE (l.table_id IS NULL OR l.expires_at < now())
 		   AND (EXISTS (SELECT 1 FROM table_seats s WHERE s.table_id = t.id)
+		        OR EXISTS (SELECT 1 FROM tournament_transfers x WHERE x.to_table_id = t.id)
 		        OR EXISTS (SELECT 1 FROM hands h WHERE h.table_id = t.id AND h.status = 'IN_PROGRESS'))
 		 LIMIT $1`, limit)
 	if err != nil {

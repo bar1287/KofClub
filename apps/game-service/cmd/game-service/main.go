@@ -21,6 +21,7 @@ import (
 	"github.com/bar1287/kofclub/apps/game-service/internal/sealer"
 	"github.com/bar1287/kofclub/apps/game-service/internal/store"
 	"github.com/bar1287/kofclub/apps/game-service/internal/table"
+	"github.com/bar1287/kofclub/apps/game-service/internal/tournaments"
 	"github.com/bar1287/kofclub/go/observability"
 	"github.com/bar1287/kofclub/go/service"
 )
@@ -69,11 +70,19 @@ func run() error {
 		Timing: table.Timing{
 			StartDelay: cfg.StartDelay, HandInterval: cfg.HandInterval,
 			RetryBackoff: table.DefaultTiming.RetryBackoff, MaxTimeouts: table.DefaultTiming.MaxTimeouts,
+			TournamentPoll: cfg.TournamentPoll,
 		},
 	}
+	var tables *registry.Registry
+	deps.Wake = func(tableID string) { tables.Wake(tableID) }
 	leases := lease.NewManager(pool, cfg.NodeID, cfg.AdvertiseURL, cfg.LeaseTTL)
-	tables := registry.New(deps, leases, registry.Options{OrphanScanInterval: cfg.OrphanScanInterval, IdleCheckInterval: cfg.IdleCheckInterval})
+	tables = registry.New(deps, leases, registry.Options{OrphanScanInterval: cfg.OrphanScanInterval, IdleCheckInterval: cfg.IdleCheckInterval})
 	go tables.Run(ctx)
+	starter := tournaments.New(deps.Store, rand.Reader, func(ctx context.Context, tableID string) error {
+		_, err := tables.Get(ctx, tableID)
+		return err
+	}, logger, cfg.TournamentScanInterval)
+	go starter.Run(ctx)
 
 	health := observability.NewHealth(serviceName, 2*time.Second,
 		observability.Check{Name: "postgres", Fn: pool.Ping},

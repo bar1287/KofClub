@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -25,7 +26,12 @@ const saltSize = 16
 // commitment) before any card is shown to anyone.
 func (a *Actor) startHand() {
 	defer a.afterChange()
-	if h := a.table.Hand(); (h != nil && !h.IsComplete()) || a.draining || a.cfg.Status != "OPEN" || !a.table.CanStartHand() {
+	if h := a.table.Hand(); (h != nil && !h.IsComplete()) || a.draining || a.cfg.Status != "OPEN" {
+		return
+	}
+	// Tournament tables seat arrivals and rebalance before dealing.
+	a.tourTick()
+	if !a.table.CanStartHand() || (a.tour != nil && a.tour.finished) {
 		return
 	}
 	if a.refreshStatus(); a.cfg.Status != "OPEN" {
@@ -46,6 +52,13 @@ func (a *Actor) startHand() {
 	handID := uuid.Must(uuid.NewV7()).String()
 
 	next := a.table.Clone()
+	if a.tour != nil {
+		lvl := a.tour.level(time.Now())
+		if err := next.SetBlinds(lvl.SmallBlind, lvl.BigBlind); err != nil {
+			a.log.Error("set_blinds_failed", slog.String("error", err.Error()))
+			return
+		}
+	}
 	hand, evs, err := next.StartHand(deck)
 	if err != nil {
 		a.log.Error("start_hand_failed", slog.String("error", err.Error()))
@@ -59,7 +72,7 @@ func (a *Actor) startHand() {
 	}
 	newHand := store.NewHand{
 		ID: handID, GameType: string(hand.Game()), TableID: a.cfg.ID, ClubID: a.cfg.ClubID, HandNo: hand.HandNo(), ButtonSeat: hand.ButtonSeat(),
-		SmallBlind: a.cfg.SmallBlind, BigBlind: a.cfg.BigBlind, DeckCommitment: commitHex, DeckEnc: deckEnc, LeaseEpoch: a.fence.Epoch,
+		SmallBlind: hand.SmallBlind(), BigBlind: hand.BigBlind(), DeckCommitment: commitHex, DeckEnc: deckEnc, LeaseEpoch: a.fence.Epoch,
 	}
 	for _, p := range hand.Players() {
 		enc, err := a.deps.Sealer.Seal(cardBytes(p.HoleCards), "hole:"+handID+":"+string(p.Player))
@@ -75,27 +88,39 @@ func (a *Actor) startHand() {
 	prevHandID, prevCommitment := a.handID, a.commitment
 	a.handID, a.commitment = handID, commitHex
 	drafts := translate(handID, commitHex, evs, false)
-	var endWork func(ctx context.Context, tx pgx.Tx) error
+	if a.tour != nil {
+		info := a.tour.info(time.Now())
+		for i := range drafts {
+			if p, ok := drafts[i].public.(handStartedPayload); ok {
+				p.Tournament = &info
+				drafts[i].public = p
+			}
+		}
+	}
+	var endBuild func(ctx context.Context, tx pgx.Tx) ([]draft, error)
 	if hand.IsComplete() {
 		// Everyone was all-in from the blinds: the hand settles immediately.
-		extra, work, err := a.prepareHandEnd(next, evs)
+		endBuild, err = a.handEnd(next, evs)
 		if err != nil {
 			a.handID, a.commitment = prevHandID, prevCommitment
 			a.log.Error("hand_end_failed", slog.String("error", err.Error()))
 			return
 		}
-		drafts, endWork = append(drafts, extra...), work
 	} else if t := a.turnDraft(next); t != nil {
 		drafts = append(drafts, *t)
 	}
-	_, err = a.commit(next, drafts, func(ctx context.Context, tx pgx.Tx) error {
+	_, err = a.commitTx(next, func(ctx context.Context, tx pgx.Tx) ([]draft, error) {
 		if err := store.InsertHand(ctx, tx, newHand); err != nil {
-			return err
+			return nil, err
 		}
-		if endWork != nil {
-			return endWork(ctx, tx)
+		if endBuild == nil {
+			return drafts, nil
 		}
-		return nil
+		extra, err := endBuild(ctx, tx)
+		if err != nil {
+			return nil, err
+		}
+		return append(append([]draft(nil), drafts...), extra...), nil
 	})
 	if err != nil {
 		a.handID, a.commitment = prevHandID, prevCommitment
@@ -119,32 +144,7 @@ func (a *Actor) prepareHandEnd(next *poker.Table, evs []poker.Event) ([]draft, f
 	hand := next.Hand()
 	results := hand.Results()
 	handID := a.handID
-	shown := map[int][]string{}
-	for _, e := range evs {
-		if cr, ok := e.(poker.CardsRevealed); ok {
-			shown[cr.Seat] = cardStrings(cr.Cards)
-		}
-	}
-	if hand.ShowdownReached() {
-		for _, p := range hand.Players() {
-			if !p.Folded {
-				shown[p.Seat] = cardStrings(p.HoleCards)
-			}
-		}
-	}
-
-	players := make([]store.PlayerResult, len(results))
-	for i, r := range results {
-		players[i] = store.PlayerResult{
-			UserID: string(r.Player), EndingStack: r.EndingStack, Contributed: r.Contributed,
-			Won: r.Won, Net: r.Net, Folded: r.Folded, ShownCards: shown[r.Seat],
-		}
-	}
-	board := make([]string, 0, 5)
-	for _, c := range hand.Board() {
-		board = append(board, c.String())
-	}
-	resultHash := hashResults(handID, board, players)
+	players, board, resultHash := handRecord(handID, hand, evs)
 
 	// Post-hand departures.
 	next.FinishHand()
@@ -222,6 +222,56 @@ func (a *Actor) prepareHandEnd(next *poker.Table, evs []poker.Event) ([]draft, f
 	return extra, work, nil
 }
 
+// handRecord derives the persisted results of a completed hand: per-player
+// outcomes (with the cards shown at showdown), the board and a result hash.
+func handRecord(handID string, hand *poker.Hand, evs []poker.Event) ([]store.PlayerResult, []string, string) {
+	results := hand.Results()
+	shown := map[int][]string{}
+	for _, e := range evs {
+		if cr, ok := e.(poker.CardsRevealed); ok {
+			shown[cr.Seat] = cardStrings(cr.Cards)
+		}
+	}
+	if hand.ShowdownReached() {
+		for _, p := range hand.Players() {
+			if !p.Folded {
+				shown[p.Seat] = cardStrings(p.HoleCards)
+			}
+		}
+	}
+	players := make([]store.PlayerResult, len(results))
+	for i, r := range results {
+		players[i] = store.PlayerResult{
+			UserID: string(r.Player), EndingStack: r.EndingStack, Contributed: r.Contributed,
+			Won: r.Won, Net: r.Net, Folded: r.Folded, ShownCards: shown[r.Seat],
+		}
+	}
+	board := make([]string, 0, 5)
+	for _, c := range hand.Board() {
+		board = append(board, c.String())
+	}
+	return players, board, hashResults(handID, board, players)
+}
+
+// handEnd returns the work that completes a hand inside the fenced
+// transaction, together with the events it adds (departures, tournament
+// eliminations). It mutates next (standing players up).
+func (a *Actor) handEnd(next *poker.Table, evs []poker.Event) (func(ctx context.Context, tx pgx.Tx) ([]draft, error), error) {
+	if a.tour != nil {
+		return a.tournamentHandEnd(next, evs), nil
+	}
+	extra, work, err := a.prepareHandEnd(next, evs)
+	if err != nil {
+		return nil, err
+	}
+	return func(ctx context.Context, tx pgx.Tx) ([]draft, error) {
+		if err := work(ctx, tx); err != nil {
+			return nil, err
+		}
+		return extra, nil
+	}, nil
+}
+
 // onHandFinished updates in-memory bookkeeping after a hand was settled.
 func (a *Actor) onHandFinished() {
 	a.deps.Metrics.HandsCompleted.Inc()
@@ -285,7 +335,8 @@ func (a *Actor) recover(ctx context.Context) error {
 		states[i] = poker.SeatState{Seat: s.SeatNo, Player: poker.PlayerID(s.UserID), Stack: s.Stack, SittingOut: s.SittingOut}
 		a.usernames[s.UserID] = s.Username
 	}
-	table, err := poker.RestoreTable(poker.TableConfig{Game: poker.GameType(a.cfg.GameType), MaxSeats: a.cfg.MaxSeats, SmallBlind: a.cfg.SmallBlind, BigBlind: a.cfg.BigBlind},
+	table, err := poker.RestoreTable(poker.TableConfig{Game: poker.GameType(a.cfg.GameType), MaxSeats: a.cfg.MaxSeats,
+		SmallBlind: a.cfg.SmallBlind, BigBlind: a.cfg.BigBlind, DealSittingOut: a.tour != nil},
 		states, rt.ButtonSeat, rt.LastHandNo)
 	if err != nil {
 		return fmt.Errorf("restore table: %w", err)
@@ -388,7 +439,7 @@ func (a *Actor) voidHand(handID string, handNo int64, reason string) error {
 		if err := store.VoidHand(ctx, tx, handID, reason); err != nil {
 			return err
 		}
-		return store.VerifyTableStacks(ctx, tx, a.cfg.ID, seatStacks(next))
+		return a.verifyChips(ctx, tx, next)
 	})
 	if err != nil {
 		return err

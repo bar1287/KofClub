@@ -43,6 +43,9 @@ func (a *Actor) Sit(ctx context.Context, req SitRequest) (SitResult, error) {
 
 func (a *Actor) handleSit(req SitRequest, username string) (SitResult, error) {
 	defer a.afterChange()
+	if a.tour != nil {
+		return SitResult{}, newError("ILLEGAL_ACTION", "seats at tournament tables are assigned by the tournament")
+	}
 	if seat := a.table.SeatOf(poker.PlayerID(req.UserID)); seat != 0 {
 		if prev, ok := a.sitRequests[req.RequestID]; ok && prev == seat {
 			s, _ := a.table.SeatState(seat)
@@ -132,6 +135,9 @@ func (a *Actor) Leave(ctx context.Context, userID, requestID string) (LeaveResul
 
 func (a *Actor) handleLeave(userID, requestID string) (LeaveResult, error) {
 	defer a.afterChange()
+	if a.tour != nil {
+		return LeaveResult{}, newError("ILLEGAL_ACTION", "tournament players cannot cash out; sit out instead")
+	}
 	seat := a.table.SeatOf(poker.PlayerID(userID))
 	if seat == 0 {
 		return LeaveResult{}, newError("PLAYER_NOT_SEATED", "not seated at this table")
@@ -357,13 +363,11 @@ func (a *Actor) applyAction(action poker.Action, req *CommandRequest) (CommandRe
 			works = append(works, func(ctx context.Context, tx pgx.Tx) error { return store.SetSittingOut(ctx, tx, a.cfg.ID, user, true) })
 		}
 	}
+	var endBuild func(ctx context.Context, tx pgx.Tx) ([]draft, error)
 	if next.Hand().IsComplete() {
-		endExtra, endWork, err := a.prepareHandEnd(next, evs)
-		if err != nil {
+		if endBuild, err = a.handEnd(next, evs); err != nil {
 			return CommandResult{}, err
 		}
-		extra = append(extra, endExtra...)
-		works = append(works, endWork)
 	}
 	drafts = append(drafts, extra...)
 	if t := a.turnDraft(next); t != nil {
@@ -371,21 +375,28 @@ func (a *Actor) applyAction(action poker.Action, req *CommandRequest) (CommandRe
 	}
 
 	handID := a.handID
-	events, err := a.commit(next, drafts, func(ctx context.Context, tx pgx.Tx) error {
+	events, err := a.commitTx(next, func(ctx context.Context, tx pgx.Tx) ([]draft, error) {
 		if req != nil {
 			if err := store.InsertCommand(ctx, tx, a.cfg.ID, req.CommandID, req.UserID, handID, req.Kind, req.Amount, a.seq+1); err != nil {
 				if errors.Is(err, store.ErrDuplicate) {
-					return newError("ACTION_ALREADY_PROCESSED", "command already applied")
+					return nil, newError("ACTION_ALREADY_PROCESSED", "command already applied")
 				}
-				return err
+				return nil, err
 			}
 		}
 		for _, w := range works {
 			if err := w(ctx, tx); err != nil {
-				return err
+				return nil, err
 			}
 		}
-		return nil
+		if endBuild == nil {
+			return drafts, nil
+		}
+		more, err := endBuild(ctx, tx)
+		if err != nil {
+			return nil, err
+		}
+		return append(append([]draft(nil), drafts...), more...), nil
 	})
 	if err != nil {
 		return CommandResult{}, err

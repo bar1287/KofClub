@@ -239,6 +239,18 @@ func (r *Registry) stopIdle(ctx context.Context) {
 	}
 }
 
+// Wake nudges a locally running table (tournament players were moved to
+// it); remote or inactive tables pick the work up on their next poll or
+// when the orphan scan adopts them.
+func (r *Registry) Wake(tableID string) {
+	r.mu.Lock()
+	e, ok := r.actors[tableID]
+	r.mu.Unlock()
+	if ok {
+		e.actor.Wake()
+	}
+}
+
 // Tables lists the ids of locally running tables.
 func (r *Registry) Tables() []string {
 	var out []string

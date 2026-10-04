@@ -126,6 +126,8 @@ func (s *Server) actor(w http.ResponseWriter, r *http.Request) (*table.Actor, bo
 			map[string]any{"ownerUrl": notOwner.OwnerURL})
 	case errors.Is(err, store.ErrNotFound):
 		writeError(w, r, http.StatusNotFound, "TABLE_NOT_FOUND", "table not found", nil)
+	case errors.Is(err, table.ErrTournamentNotStarted):
+		writeError(w, r, http.StatusNotFound, "TABLE_NOT_FOUND", "the tournament has not started", nil)
 	case errors.Is(err, registry.ErrDraining):
 		writeError(w, r, http.StatusServiceUnavailable, "TABLE_UNAVAILABLE", "node is draining", nil)
 	default:

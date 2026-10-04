@@ -19,6 +19,9 @@ type TableInfo struct {
 	BuyInMax        int64  `json:"buyInMax"`
 	ActionTimeoutMs int64  `json:"actionTimeoutMs"`
 	Status          string `json:"status"`
+	// Tournament is set at tournament tables; the blinds above are then the
+	// current level's.
+	Tournament *tournamentInfo `json:"tournament,omitempty"`
 }
 
 // SeatView is one seat as visible to every subscriber.
@@ -90,6 +93,11 @@ func (a *Actor) snapshot(viewer string) Snapshot {
 			ActionTimeoutMs: a.cfg.ActionTimeout.Milliseconds(), Status: a.cfg.Status,
 		},
 		Seats: []SeatView{},
+	}
+	if a.tour != nil {
+		info := a.tour.info(time.Now())
+		s.Table.Tournament = &info
+		s.Table.SmallBlind, s.Table.BigBlind = info.SmallBlind, info.BigBlind
 	}
 	hand := a.table.Hand()
 	inHand := map[int]poker.PlayerView{}

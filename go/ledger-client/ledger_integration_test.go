@@ -460,3 +460,54 @@ func TestRandomOperationsConserveChips(t *testing.T) {
 	}
 	f.assertNoViolations()
 }
+
+// Tournament postings: buy-ins fill a prize pool owned by the tournament,
+// refunds and payouts drain it; any other flow is rejected by ledger_post.
+func TestTournamentPoolFlows(t *testing.T) {
+	f := newFixture(t)
+	alice, bob := f.user("alice"), f.user("bob")
+	var owner string
+	_ = f.pool.QueryRow(f.ctx, `SELECT owner_user_id FROM clubs WHERE id = $1`, f.clubID).Scan(&owner)
+	tid := uuid.NewString()
+	if _, err := f.pool.Exec(f.ctx, `INSERT INTO tournaments (id, club_id, name, buy_in, starting_stack, small_blind, big_blind,
+		level_duration_sec, seats_per_table, min_players, max_players, start_mode, created_by)
+		VALUES ($1, $2, 'Cup', 100, 1500, 10, 20, 60, 6, 2, 6, 'SIT_AND_GO', $3)`, tid, f.clubID, owner); err != nil {
+		t.Fatal(err)
+	}
+	wa, wb := f.account(ledger.AccountMemberWallet, alice, ""), f.account(ledger.AccountMemberWallet, bob, "")
+	pool := f.account(ledger.AccountTournamentPool, tid, "")
+	treasury := f.account(ledger.AccountClubTreasury, f.clubID, "")
+	f.grant(wa, 1000)
+	f.grant(wb, 1000)
+	var ownerType string
+	_ = f.pool.QueryRow(f.ctx, `SELECT owner_type FROM ledger_accounts WHERE id = $1`, pool).Scan(&ownerType)
+	if ownerType != "TOURNAMENT" {
+		t.Fatalf("pool owner type %q", ownerType)
+	}
+
+	f.mustPost(ledger.Posting{Kind: ledger.KindTournamentBuyIn, Entries: []ledger.Entry{{AccountID: wa, Amount: -100}, {AccountID: pool, Amount: 100}}})
+	f.mustPost(ledger.Posting{Kind: ledger.KindTournamentBuyIn, Entries: []ledger.Entry{{AccountID: wb, Amount: -100}, {AccountID: pool, Amount: 100}}})
+	f.mustPost(ledger.Posting{Kind: ledger.KindTournamentRefund, Entries: []ledger.Entry{{AccountID: pool, Amount: -100}, {AccountID: wb, Amount: 100}}})
+	f.mustPost(ledger.Posting{Kind: ledger.KindTournamentBuyIn, Entries: []ledger.Entry{{AccountID: wb, Amount: -100}, {AccountID: pool, Amount: 100}}})
+
+	bad := []ledger.Posting{
+		{Kind: ledger.KindTournamentBuyIn, Entries: []ledger.Entry{{AccountID: wa, Amount: 10}, {AccountID: pool, Amount: -10}}},
+		{Kind: ledger.KindTournamentRefund, Entries: []ledger.Entry{{AccountID: wa, Amount: -10}, {AccountID: pool, Amount: 10}}},
+		{Kind: ledger.KindTournamentBuyIn, Entries: []ledger.Entry{{AccountID: treasury, Amount: -10}, {AccountID: pool, Amount: 10}}},
+		{Kind: ledger.KindTournamentPayout, Entries: []ledger.Entry{{AccountID: treasury, Amount: -10}, {AccountID: wa, Amount: 10}}},
+		{Kind: ledger.KindTournamentPayout, Entries: []ledger.Entry{{AccountID: pool, Amount: -10}, {AccountID: wa, Amount: 20}, {AccountID: wb, Amount: -10}}},
+		{Kind: ledger.KindTournamentPayout, Entries: []ledger.Entry{{AccountID: pool, Amount: -300}, {AccountID: wa, Amount: 300}}}, // more than the pool holds
+	}
+	for i, p := range bad {
+		if _, err := f.post(p); err == nil {
+			t.Errorf("bad tournament posting %d accepted", i)
+		}
+	}
+	f.mustPost(ledger.Posting{Kind: ledger.KindTournamentPayout, Entries: []ledger.Entry{
+		{AccountID: pool, Amount: -200}, {AccountID: wa, Amount: 130}, {AccountID: wb, Amount: 70},
+	}})
+	if f.balance(pool) != 0 || f.balance(wa) != 1030 || f.balance(wb) != 970 {
+		t.Fatalf("balances pool %d alice %d bob %d", f.balance(pool), f.balance(wa), f.balance(wb))
+	}
+	f.assertNoViolations()
+}
