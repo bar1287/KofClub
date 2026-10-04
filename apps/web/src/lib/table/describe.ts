@@ -32,7 +32,8 @@ export function describeEvent(
         case 'TABLE_CLOSED':
           return `${name(ev.seat)} is cashed out (${ev.cashOut} back to wallet).`;
         case 'MOVED':
-          return `${name(ev.seat)} moves to another table.`;
+          // Seat 0: redirected before sitting down here; nothing to show.
+          return ev.seat === 0 ? null : `${name(ev.seat)} moves to another table.`;
         case 'ELIMINATED':
           return `${name(ev.seat)} is eliminated in ${ordinal(ev.place ?? 0)} place.`;
         case 'FINISHED':

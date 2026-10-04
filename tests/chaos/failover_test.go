@@ -183,7 +183,9 @@ func (d *drill) fixture(names ...string) {
 	}
 }
 
-func (d *drill) start(id string) *node {
+// start launches a game-service process; env entries override the
+// defaults (later entries win).
+func (d *drill) start(id string, env ...string) *node {
 	d.t.Helper()
 	port := freePort(d.t)
 	n := &node{id: id, url: fmt.Sprintf("http://127.0.0.1:%d", port), logs: &syncBuffer{}}
@@ -194,6 +196,7 @@ func (d *drill) start(id string) *node {
 		"INTERNAL_SERVICE_TOKEN="+d.token, "DECK_ENCRYPTION_KEY_B64="+d.key,
 		"LEASE_TTL=3s", "ORPHAN_SCAN_INTERVAL=200ms", "HAND_START_DELAY=100ms", "HAND_INTERVAL=30s",
 		"DRAIN_DELAY=10ms", "DRAIN_TIMEOUT=5s")
+	n.cmd.Env = append(n.cmd.Env, env...)
 	n.cmd.Stdout, n.cmd.Stderr = n.logs, n.logs
 	if err := n.cmd.Start(); err != nil {
 		d.t.Fatal(err)

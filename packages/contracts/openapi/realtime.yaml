@@ -370,6 +370,7 @@ components:
           enum: [PLAYER_LEFT]
         seat:
           type: integer
+          description: 0 for a tournament player redirected before taking a seat here (reason MOVED).
         userId:
           type: string
           format: uuid

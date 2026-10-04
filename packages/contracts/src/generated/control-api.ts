@@ -1660,6 +1660,7 @@ export type components = {
        * @enum {string}
        */
       reason: 'LEFT' | 'BUSTED' | 'TABLE_CLOSED' | 'MOVED' | 'ELIMINATED' | 'FINISHED';
+      /** @description 0 for a tournament player redirected before taking a seat here (reason MOVED). */
       seat: number;
       /** Format: uuid */
       toTableId?: string;

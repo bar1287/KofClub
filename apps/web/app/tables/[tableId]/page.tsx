@@ -16,6 +16,7 @@ import { errorMessage, newIdempotencyKey } from '@/lib/api/client';
 import { chips, ordinal } from '@/lib/format';
 import { formatCountdown, useNow } from '@/lib/time';
 import { useSession } from '@/lib/session';
+import { FOLLOW_INTERVAL_MS, followDecision } from '@/lib/table/follow';
 import { useTable } from '@/lib/table/useTable';
 
 function TableRoom({ tableId }: { tableId: string }) {
@@ -39,6 +40,30 @@ function TableRoom({ tableId }: { tableId: string }) {
       router.replace(`/tables/${departure.toTableId}`);
     }
   }, [departure, router]);
+  // An unseated tournament player may have missed that move (it happened
+  // before this page subscribed): ask the tournament where they play.
+  const tournamentId = tournament?.tournamentId;
+  const unseated = live && tournament?.status === 'RUNNING' && !me && !departure;
+  useEffect(() => {
+    if (!unseated || !tournamentId) return;
+    let done = false;
+    const timer = setInterval(() => {
+      void ep
+        .tournament(tournamentId)
+        .then((t) => {
+          const next = followDecision(t, tableId);
+          if (done || next === 'wait') return;
+          done = true;
+          clearInterval(timer);
+          if (next !== 'stop') router.replace(`/tables/${next.go}`);
+        })
+        .catch(() => undefined);
+    }, FOLLOW_INTERVAL_MS);
+    return () => {
+      done = true;
+      clearInterval(timer);
+    };
+  }, [unseated, tournamentId, tableId, ep, router]);
 
   async function leave() {
     setHttpError(null);

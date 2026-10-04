@@ -344,6 +344,12 @@ func (a *Actor) tourRebalance() bool {
 				if err := store.SetEntryTable(ctx, tx, a.tour.id, inbound[k].UserID, dest); err != nil {
 					return nil, err
 				}
+				// The player may already be watching this table, waiting to
+				// be seated: tell them where they go instead (seat 0 = they
+				// never sat down here).
+				drafts = append(drafts, draft{kind: KindPlayerLeft, public: playerLeftPayload{
+					Kind: KindPlayerLeft, Seat: 0, UserID: inbound[k].UserID, Reason: "MOVED", ToTableID: dest,
+				}})
 				continue
 			}
 			s, _ := next.SeatState(order[i])
@@ -374,8 +380,8 @@ func (a *Actor) tourRebalance() bool {
 		return false
 	}
 	a.deps.Metrics.TournamentMoves.Add(float64(len(events)))
-	if len(events) > 0 || len(woken) > 0 {
-		a.log.Info("tournament_players_moved", slog.Int("players", len(events)), slog.Int("redirected", len(woken)-len(events)))
+	if len(events) > 0 {
+		a.log.Info("tournament_players_moved", slog.Int("players", len(events)))
 	}
 	if a.deps.Wake != nil {
 		for _, id := range woken {

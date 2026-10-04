@@ -1136,10 +1136,12 @@ type PlayerLeftEvent struct {
 	// Reason Tournaments: MOVED (balancing; see toTableId), ELIMINATED (with the
 	// finishing place) and FINISHED (the tournament ended; the winner's
 	// place is 1).
-	Reason    PlayerLeftEventReason `json:"reason"`
-	Seat      int                   `json:"seat"`
-	ToTableId *openapi_types.UUID   `json:"toTableId,omitempty"`
-	UserId    openapi_types.UUID    `json:"userId"`
+	Reason PlayerLeftEventReason `json:"reason"`
+
+	// Seat 0 for a tournament player redirected before taking a seat here (reason MOVED).
+	Seat      int                 `json:"seat"`
+	ToTableId *openapi_types.UUID `json:"toTableId,omitempty"`
+	UserId    openapi_types.UUID  `json:"userId"`
 }
 
 // PlayerLeftEventKind defines model for PlayerLeftEvent.Kind.

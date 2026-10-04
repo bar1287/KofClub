@@ -78,6 +78,15 @@ use the normal realtime protocol; snapshots and `HAND_STARTED` carry a
 reasons `MOVED` (with `toTableId`), `ELIMINATED` and `FINISHED` (with
 `place`).
 
+Following moves: a moved player's client switches to `toTableId` and waits
+there to be seated. If that table breaks before seating them, it redirects
+the transfer and emits `PLAYER_LEFT MOVED` with `seat: 0` (never seated
+there) and the new `toTableId`. Events are not replayed to a fresh
+subscription, so a client that subscribes just after such a move sees a
+snapshot without the player: while unseated at a running tournament's table,
+clients re-read `myTableId` from `GET /v1/tournaments/{id}` (the source of
+truth; null once eliminated) and follow it.
+
 ## Operations
 
 | Setting                    | Default | Meaning                                                |

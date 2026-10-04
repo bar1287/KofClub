@@ -60,6 +60,8 @@ make bootstrap && make deps && make migrate
 make lint typecheck test integration
 make e2e   # two browsers play a full hand against the real stack (Playwright)
 make load-smoke && make backup-restore-check   # load baseline + restore drill
+make load-smoke ARGS="-tournaments 10 -tournament-players 30"   # tournament load drill
+make observability-check   # alert rules + dashboards (promtool)
 make dev   # full stack in Docker; open http://localhost:3000 (make seed for demo data)
 ```
 
@@ -82,7 +84,7 @@ make dev   # full stack in Docker; open http://localhost:3000 (make seed for dem
 - Tables cannot be reopened or edited after creation (close and create a new one).
 - Engine simplifications (documented in docs/game-engine.md): no antes/straddles, no dead button or missed-blind tracking, no mucking at showdown, no hi/lo split games.
 - A table's game type is fixed at creation (by design; hands record their own game).
-- Tournaments (ADR-016): fixed blind progression and payout table, no antes, rebuys, add-ons, late registration, breaks or hand-for-hand; levels follow the wall clock; tables are polled (1 s) for arrivals/balancing; tournament pages poll the API (no realtime tournament channel).
+- Tournaments (ADR-016): fixed blind progression and payout table, no antes, rebuys, add-ons, late registration, breaks or hand-for-hand; levels follow the wall clock; tables are polled (1 s) for arrivals/balancing; tournament pages poll the API (no realtime tournament channel), and an unseated player at a tournament table re-checks `myTableId` every 3 s.
 - Web: a page reload that aborts an in-flight token refresh can lose the rotated cookie; the next refresh counts as reuse and the user must log in again (ADR-012).
 - Web: other players only see "leaving after hand" after a resync (no event is emitted for a deferred leave).
 - Admin console uses browser `prompt`/`confirm` dialogs for reasons and confirmations (functional, not polished).
@@ -114,14 +116,15 @@ Canonical contract: `packages/contracts/openapi/control-api.yaml`
 
 The spec §16 roadmap is complete. Suggested next steps, in priority order:
 
-1. Tournament operations: a load/chaos drill for tournaments (many tables,
-   node kills during balancing) and tournament metrics (running tournaments,
-   transfers pending, start/finish counts) with an alert for stuck transfers.
-2. Security follow-ups from docs/security-review.md: MFA for platform
+1. Security follow-ups from docs/security-review.md: MFA for platform
    administrators, deck-key rotation with key ids, in-process login rate
    limiting fallback.
-3. Product depth: antes and configurable blind/payout structures,
+2. Product depth: antes and configurable blind/payout structures,
    re-entry/late registration, a realtime tournament channel instead of
-   polling, re-buy at cash tables.
-4. Mobile/native client on the same protocol (ADR-010) once the web client
+   polling (would also replace the unseated player's `myTableId` re-check),
+   re-buy at cash tables.
+3. Mobile/native client on the same protocol (ADR-010) once the web client
    is validated.
+
+Done after the roadmap: tournament operations (metrics, health views,
+alerts, runbook, chaos and load drills; see CHANGELOG).

@@ -75,4 +75,13 @@ describe('tournament log lines', () => {
       ),
     ).toBe('carol wins the tournament!');
   });
+
+  it('says nothing about a player redirected before sitting down', () => {
+    expect(
+      describeEvent(
+        { kind: 'PLAYER_LEFT', seat: 0, userId: 'u', reason: 'MOVED', cashOut: 0, toTableId: 't' },
+        name,
+      ),
+    ).toBeNull();
+  });
 });

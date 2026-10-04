@@ -492,4 +492,22 @@ describe('tournament tables', () => {
     expect(s.mySeat).toBe(0);
     expect(s.log.at(-1)?.text).toBe('alice moves to another table.');
   });
+
+  it('follows a redirect for a viewer who was waiting to be seated (seat 0)', () => {
+    const waiting = ready(snapshot({ seats: [seat(2, BOB, 'bob', 1000)], you: undefined }));
+    expect(waiting.mySeat).toBe(0);
+    const s = play(waiting, [
+      {
+        kind: 'PLAYER_LEFT',
+        seat: 0,
+        userId: ALICE,
+        reason: 'MOVED',
+        cashOut: 0,
+        toTableId: TABLE,
+      },
+    ]);
+    expect(s.departure).toEqual({ reason: 'MOVED', toTableId: TABLE, place: undefined });
+    expect(Object.keys(s.seats)).toEqual(['2']);
+    expect(s.log).toEqual(waiting.log);
+  });
 });

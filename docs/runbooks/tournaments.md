@@ -93,3 +93,19 @@ log lines.
   sit-and-go to the end with a node crash and checks the views.
 - Chaos: `tests/chaos` kills the game node that runs a tournament
   (`SIGKILL`) and verifies another node finishes it.
+- Load: `make load-smoke ARGS="-tournaments 10 -tournament-players 30"` plays
+  many sit-and-gos with bots through the public API and gateway (CI runs a
+  small one). Server-side timeouts during the run mean clients lost track
+  of their table.
+
+## Player waiting for a seat that never comes
+
+A player moved by balancing follows `PLAYER_LEFT MOVED` (`toTableId`) to the
+new table. If their destination broke before seating them, the breaking
+table emits `PLAYER_LEFT MOVED` with `seat` 0 and the new destination; a
+client that subscribed after either event re-reads `myTableId` from
+`GET /v1/tournaments/{id}` (the web table page does this every 3 s while the
+viewer is unseated). If a player still waits: check their entry
+(`SELECT table_id, place FROM tournament_entries WHERE user_id = ...`) and
+pending transfer; a transfer older than a minute raises
+`TournamentTransferStuck`.

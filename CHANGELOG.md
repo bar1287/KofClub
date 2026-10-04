@@ -5,6 +5,30 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added — Tournament operations
+
+- Monitoring: game-service counters (tournaments started/cancelled/finished,
+  eliminations, moves, failed operations by `op`); migration 000010 views
+  `tournament_invariant_violations` and `tournament_health`, exported by the
+  worker; alerts `TournamentInvariantViolation`, `TournamentTransferStuck`,
+  `TournamentStartOverdue`, `TournamentOperationFailures`; Grafana row;
+  docs/runbooks/tournaments.md; `make observability-check` (promtool) in CI.
+- Chaos drill `tests/chaos/tournament_test.go`: SIGKILL the node owning most
+  tables of a running multi-table sit-and-go; the survivor finishes it with
+  exact results, payouts and clean health views.
+- Load smoke tournament mode (`-tournaments N`, CI runs 4 x 12 players):
+  bots register, follow balancing moves and play to the end; results,
+  payouts and the ledger must reconcile and every bot must learn its result.
+
+### Fixed
+
+- Tournament players redirected while moving between tables (their
+  destination broke before seating them) could lose track of their table and
+  be timed out hand after hand. The breaking table now emits
+  `PLAYER_LEFT MOVED` with `seat: 0` and the new `toTableId`, and the web
+  table page re-reads `myTableId` from the tournament API while the viewer
+  is unseated (covers moves that happened before it subscribed).
+
 ### Added — M10 Tournaments
 
 - Sit-and-go (starts when full) and scheduled tournaments (cancelled and

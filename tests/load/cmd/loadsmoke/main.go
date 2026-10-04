@@ -4,6 +4,11 @@
 // fixed duration, then has every bot leave and verifies the club's ledger
 // reconciles. It reports command round-trip latency, rejections and resyncs
 // and exits non-zero when a threshold is exceeded.
+//
+// With -tournaments N it runs N sit-and-gos instead: bots register (buy-ins
+// into prize pools), follow their table through balancing moves and play
+// until every tournament finished; results, payouts and the ledger must
+// reconcile.
 package main
 
 import (
@@ -20,8 +25,6 @@ import (
 	mrand "math/rand/v2"
 	"net/http"
 	"os"
-	"slices"
-	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -42,6 +45,12 @@ type config struct {
 	thinkMax       time.Duration
 	leaveTimeout   time.Duration
 	requestTimeout time.Duration
+
+	tournaments       int
+	tournamentPlayers int
+	tournamentSeats   int
+	tournamentLevel   time.Duration
+	tournamentTimeout time.Duration
 }
 
 func main() {
@@ -57,6 +66,11 @@ func main() {
 	flag.DurationVar(&c.thinkMin, "think-min", 50*time.Millisecond, "minimum bot think time")
 	flag.DurationVar(&c.thinkMax, "think-max", 300*time.Millisecond, "maximum bot think time")
 	flag.DurationVar(&c.leaveTimeout, "leave-timeout", 90*time.Second, "time allowed for bots to finish hands and leave")
+	flag.IntVar(&c.tournaments, "tournaments", 0, "run this many sit-and-go tournaments instead of cash tables")
+	flag.IntVar(&c.tournamentPlayers, "tournament-players", 9, "players per tournament (2-100)")
+	flag.IntVar(&c.tournamentSeats, "tournament-seats", 3, "seats per tournament table (2-10)")
+	flag.DurationVar(&c.tournamentLevel, "tournament-level", time.Minute, "blind level duration")
+	flag.DurationVar(&c.tournamentTimeout, "tournament-timeout", 5*time.Minute, "time allowed for every tournament to finish")
 	flag.Parse()
 	if c.game != "NLHE" && c.game != "PLO" && c.game != "MIXED" {
 		fmt.Fprintln(os.Stderr, "-game must be NLHE, PLO or MIXED")
@@ -66,7 +80,14 @@ func main() {
 	if c.seats < 2 || c.seats > 6 || c.tables < 1 {
 		fail("players must be 2-6 and tables >= 1")
 	}
-	if err := run(c); err != nil {
+	scenario := run
+	if c.tournaments > 0 {
+		if c.tournamentPlayers < 2 || c.tournamentPlayers > 100 || c.tournamentSeats < 2 || c.tournamentSeats > 10 {
+			fail("tournament-players must be 2-100 and tournament-seats 2-10")
+		}
+		scenario = runTournaments
+	}
+	if err := scenario(c); err != nil {
 		fail(err.Error())
 	}
 }
@@ -182,6 +203,9 @@ type event struct {
 	Kind         string        `json:"kind"`
 	Seat         int           `json:"seat"`
 	UserID       string        `json:"userId"`
+	HandID       string        `json:"handId"`
+	Reason       string        `json:"reason"`
+	ToTableID    string        `json:"toTableId"`
 	LegalActions []legalAction `json:"legalActions"`
 }
 
@@ -205,6 +229,10 @@ type stats struct {
 	resyncs     atomic.Int64
 	protoErrors atomic.Int64
 	hands       atomic.Int64
+	handIDs     sync.Map // tournaments: completed hand ids (each seen by several bots)
+	moves       atomic.Int64
+	refollows   atomic.Int64 // tournaments: moves learned from the API instead of an event
+	lateResults atomic.Int64 // tournaments: eliminations/wins learned from the API instead of an event
 }
 
 func (s *stats) reject(code string) {
@@ -219,19 +247,47 @@ var benign = map[string]bool{"STALE_GAME_STATE": true, "NOT_YOUR_TURN": true, "H
 type bot struct {
 	cfg     config
 	acct    account
-	tableID string
 	st      *stats
 	counter bool // counts completed hands for its table
 
+	tableMu sync.Mutex
+	tableID string // tournaments: changes when the bot is moved
+	leftOne sync.Once
+
 	conn    *websocket.Conn
 	writeMu sync.Mutex
-	seat    int
+	seat    atomic.Int64
 	lastSeq atomic.Int64
 	pending sync.Map // requestId -> sent time
 	turns   chan []legalAction
 	left    chan struct{}
 	stopAct atomic.Bool
 }
+
+func (b *bot) table() string {
+	b.tableMu.Lock()
+	defer b.tableMu.Unlock()
+	return b.tableID
+}
+
+// move follows a tournament balancing move to another table.
+func (b *bot) move(ctx context.Context, to string) {
+	b.tableMu.Lock()
+	from := b.tableID
+	b.tableID = to
+	b.tableMu.Unlock()
+	if from == to {
+		return
+	}
+	b.seat.Store(0)
+	b.st.moves.Add(1)
+	_ = b.send(ctx, map[string]string{"type": "UNSUBSCRIBE_TABLE", "tableId": from})
+	if err := b.send(ctx, map[string]string{"type": "SUBSCRIBE_TABLE", "tableId": to}); err != nil {
+		b.st.unexpected.Add(1)
+	}
+}
+
+func (b *bot) leave() { b.leftOne.Do(func() { close(b.left) }) }
 
 func (b *bot) send(ctx context.Context, v any) error {
 	b.writeMu.Lock()
@@ -256,7 +312,7 @@ func (b *bot) connect(ctx context.Context) error {
 	if err := wsjson.Read(ctx, conn, &welcome); err != nil || welcome.Type != "WELCOME" {
 		return fmt.Errorf("handshake: %v %+v", err, welcome)
 	}
-	return b.send(ctx, map[string]string{"type": "SUBSCRIBE_TABLE", "tableId": b.tableID})
+	return b.send(ctx, map[string]string{"type": "SUBSCRIBE_TABLE", "tableId": b.table()})
 }
 
 // read dispatches frames until the connection closes.
@@ -266,13 +322,16 @@ func (b *bot) read(ctx context.Context) {
 		if err := wsjson.Read(ctx, b.conn, &f); err != nil {
 			return
 		}
+		if (f.Type == "TABLE_SNAPSHOT" || f.Type == "TABLE_EVENT") && f.TableID != b.table() {
+			continue // a table the bot was moved away from
+		}
 		switch f.Type {
 		case "TABLE_SNAPSHOT":
 			b.lastSeq.Store(f.Seq)
 			var s snapshotView
 			_ = json.Unmarshal(f.Snapshot, &s)
 			if s.You != nil {
-				b.seat = s.You.Seat
+				b.seat.Store(int64(s.You.Seat))
 				if s.Hand != nil && s.Hand.ToActSeat == s.You.Seat && len(s.You.LegalActions) > 0 {
 					b.offer(s.You.LegalActions)
 				}
@@ -283,16 +342,27 @@ func (b *bot) read(ctx context.Context) {
 			_ = json.Unmarshal(f.Event, &ev)
 			switch ev.Kind {
 			case "TURN_STARTED":
-				if ev.Seat == b.seat && len(ev.LegalActions) > 0 {
+				if int64(ev.Seat) == b.seat.Load() && len(ev.LegalActions) > 0 {
 					b.offer(ev.LegalActions)
 				}
 			case "HAND_COMPLETED", "HAND_VOIDED":
 				if b.counter {
 					b.st.hands.Add(1)
 				}
+				if ev.HandID != "" {
+					b.st.handIDs.Store(ev.HandID, true)
+				}
+			case "PLAYER_SEATED":
+				if ev.UserID == b.acct.ID {
+					b.seat.Store(int64(ev.Seat)) // arrived at a tournament table
+				}
 			case "PLAYER_LEFT":
 				if ev.UserID == b.acct.ID {
-					close(b.left)
+					if ev.Reason == "MOVED" && ev.ToTableID != "" {
+						b.move(ctx, ev.ToTableID)
+						continue
+					}
+					b.leave()
 				}
 			}
 		case "COMMAND_RESULT":
@@ -305,7 +375,9 @@ func (b *bot) read(ctx context.Context) {
 				b.st.accepted.Add(1)
 			} else if f.Error != nil {
 				b.st.reject(f.Error.Code)
-				if !benign[f.Error.Code] {
+				// A tournament bot may answer a turn of the table it was just moved from.
+				moved := b.cfg.tournaments > 0 && f.Error.Code == "PLAYER_NOT_SEATED"
+				if !benign[f.Error.Code] && !moved {
 					b.st.unexpected.Add(1)
 				}
 			}
@@ -350,6 +422,24 @@ func choose(legal []legalAction) map[string]any {
 	}
 }
 
+// chooseTournament plays aggressively so tournaments end in minutes.
+func chooseTournament(legal []legalAction) map[string]any {
+	kinds := map[string]bool{}
+	for _, la := range legal {
+		kinds[la.Kind] = true
+	}
+	switch r := mrand.Float64(); {
+	case r < 0.35 && kinds["ALL_IN"]:
+		return map[string]any{"kind": "ALL_IN"}
+	case kinds["CHECK"]:
+		return map[string]any{"kind": "CHECK"}
+	case r < 0.9 && kinds["CALL"]:
+		return map[string]any{"kind": "CALL"}
+	default:
+		return map[string]any{"kind": "FOLD"}
+	}
+}
+
 // act answers turns until stopped.
 func (b *bot) act(ctx context.Context) {
 	for {
@@ -369,9 +459,13 @@ func (b *bot) act(ctx context.Context) {
 			id := randomUUID()
 			b.pending.Store(id, time.Now())
 			b.st.commands.Add(1)
+			command := choose(legal)
+			if b.cfg.tournaments > 0 {
+				command = chooseTournament(legal)
+			}
 			err := b.send(ctx, map[string]any{
-				"type": "COMMAND", "requestId": id, "tableId": b.tableID,
-				"expectedSeq": b.lastSeq.Load(), "command": choose(legal),
+				"type": "COMMAND", "requestId": id, "tableId": b.table(),
+				"expectedSeq": b.lastSeq.Load(), "command": command,
 			})
 			if err != nil {
 				b.st.unexpected.Add(1)
@@ -484,7 +578,7 @@ func run(c config) error {
 		var res struct {
 			Status string `json:"status"`
 		}
-		if err := c.call(b.acct.Token, http.MethodPost, "/v1/tables/"+b.tableID+"/leave", nil, &res,
+		if err := c.call(b.acct.Token, http.MethodPost, "/v1/tables/"+b.table()+"/leave", nil, &res,
 			"Idempotency-Key", "leave-"+b.acct.ID); err != nil {
 			var ae *apiError
 			if !errors.As(err, &ae) || ae.Code != "PLAYER_NOT_SEATED" {
@@ -524,26 +618,11 @@ func percentile(sorted []time.Duration, p float64) time.Duration {
 }
 
 func report(c config, st *stats, played time.Duration, bots int, issued, inWallets, atTables int64) error {
-	st.mu.Lock()
-	rtts := slices.Clone(st.rtts)
-	st.mu.Unlock()
-	sort.Slice(rtts, func(i, j int) bool { return rtts[i] < rtts[j] })
-	p50, p95, p99 := percentile(rtts, 0.5), percentile(rtts, 0.95), percentile(rtts, 0.99)
 	commands := st.commands.Load()
 	fmt.Printf("played %.0fs: %d bots, %d hands (%.2f hands/s), %d commands (%.1f/s), %d accepted\n",
 		played.Seconds(), bots, st.hands.Load(), float64(st.hands.Load())/played.Seconds(),
 		commands, float64(commands)/played.Seconds(), st.accepted.Load())
-	fmt.Printf("command round trip: p50 %v, p95 %v, p99 %v, max %v (n=%d)\n",
-		p50.Round(time.Microsecond), p95.Round(time.Microsecond), p99.Round(time.Microsecond),
-		percentile(rtts, 1).Round(time.Microsecond), len(rtts))
-	var rejected []string
-	st.rejected.Range(func(k, v any) bool {
-		rejected = append(rejected, fmt.Sprintf("%s=%d", k, v.(*atomic.Int64).Load()))
-		return true
-	})
-	sort.Strings(rejected)
-	fmt.Printf("rejections: %v; unexpected errors: %d; resyncs: %d; protocol errors: %d\n",
-		rejected, st.unexpected.Load(), st.resyncs.Load(), st.protoErrors.Load())
+	p95 := latencyReport(st)
 	fmt.Printf("ledger: issued %d, in wallets %d, at tables %d\n", issued, inWallets, atTables)
 
 	var problems []string

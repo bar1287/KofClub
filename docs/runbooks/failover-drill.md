@@ -13,6 +13,15 @@ Automated in `tests/chaos/failover_test.go` (runs with `make integration`):
    exactly one `HAND_STARTED`/`HAND_COMPLETED`, zero ledger violations, exact
    chip conservation and seat/ledger agreement.
 
+Tournament variant: `tests/chaos/tournament_test.go` runs a 7-player
+sit-and-go on 3-handed tables across two `game-service` processes, kills
+(`SIGKILL`) the node owning the most tournament tables after the first
+eliminations, and checks that the survivor adopts the tables and pending
+transfers and finishes the tournament: one winner, every entrant placed,
+prizes equal to the pool paid exactly once, empty
+`tournament_invariant_violations`, no pending transfers, no seats left,
+gap-free event logs and `game_tournaments_finished_total` on the survivor.
+
 Manual version in a deployed environment (staging): pick a node with active
 tables (`game_active_tables`), kill the task (not a graceful stop), and watch
 `game_hands_resumed_total` increase on the surviving nodes while clients
