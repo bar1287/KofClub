@@ -7,11 +7,12 @@ with the repository at the end of every task.
 
 ## Current milestone
 
-**M10 — Tournaments** (next). M0–M9 are complete: No-Limit Hold'em and
-Pot-Limit Omaha cash tables are playable end to end in the browser (native
-and Docker Compose stacks), with hand history, club and platform
-administration, dashboards, alerts, runbooks, distributed tracing,
-failover/load/restore drills and a security review.
+**Roadmap complete (M0–M10).** No-Limit Hold'em and Pot-Limit Omaha cash
+tables and multi-table sit-and-go/scheduled tournaments are playable end to
+end in the browser (native and Docker Compose stacks), with hand history,
+club and platform administration, dashboards, alerts, runbooks, distributed
+tracing, failover/load/restore drills and a security review. Next work is
+post-roadmap hardening and product depth (see Next tasks).
 
 ## Milestones (spec §16)
 
@@ -27,7 +28,7 @@ failover/load/restore drills and a security review.
 | M7 — History + Admin     | ✅ Done | Hand history (ADR-008 visibility), club console, table closure with cash-out, ownership transfer, platform admin, Grafana/alerts, runbooks           |
 | M8 — Hardening           | ✅ Done | Chaos (SIGKILL) failover drill, load smoke (230 cmd/s, p95 10 ms), restore drill, nonce CSP, TRUST_PROXY, audits + secret scan, OpenTelemetry traces |
 | M9 — Omaha               | ✅ Done | Pot-Limit Omaha rule module (ADR-015): 4 hole cards, 2+3 evaluation, pot-limit caps; `gameType` on tables/hands/contracts; UI, history, PLO E2E      |
-| M10 — Tournaments        | Pending |                                                                                                                                                      |
+| M10 — Tournaments        | ✅ Done | ADR-016: SNG/scheduled, prize-pool ledger flows, level blinds, eliminations/ties/payouts, balancing/breaking via transfers, failover, UI, E2E        |
 
 ## Current architecture
 
@@ -49,7 +50,8 @@ only, 007 no event bus yet, 008 card privacy, 009 camelCase wire + `/v1`,
 010 web client first (Unity later), 011 toolchain pins (NestJS 11, TS 5.9, Go 1.26),
 012 browser session handling + reference realtime client, 013 history
 visibility, table closure and administrative enforcement, 014 OpenTelemetry
-tracing, 015 game variants as rule modules in the engine.
+tracing, 015 game variants as rule modules in the engine, 016 tournaments on
+the shared table infrastructure.
 
 ## How to verify the current state
 
@@ -80,6 +82,7 @@ make dev   # full stack in Docker; open http://localhost:3000 (make seed for dem
 - Tables cannot be reopened or edited after creation (close and create a new one).
 - Engine simplifications (documented in docs/game-engine.md): no antes/straddles, no dead button or missed-blind tracking, no mucking at showdown, no hi/lo split games.
 - A table's game type is fixed at creation (by design; hands record their own game).
+- Tournaments (ADR-016): fixed blind progression and payout table, no antes, rebuys, add-ons, late registration, breaks or hand-for-hand; levels follow the wall clock; tables are polled (1 s) for arrivals/balancing; tournament pages poll the API (no realtime tournament channel).
 - Web: a page reload that aborts an in-flight token refresh can lose the rotated cookie; the next refresh counts as reuse and the user must log in again (ADR-012).
 - Web: other players only see "leaving after hand" after a resync (no event is emitted for a deferred leave).
 - Admin console uses browser `prompt`/`confirm` dialogs for reasons and confirmations (functional, not polished).
@@ -100,6 +103,8 @@ Ledger: `GET /clubs/{id}/wallet`, `GET /clubs/{id}/wallet/entries`,
 Tables: `POST|GET /clubs/{id}/tables`, `GET /tables/{id}`, `POST /tables/{id}/seat|leave|close`,
 `GET /tables/{id}/state`. Club admin: `PATCH /clubs/{id}`, `POST /clubs/{id}/transfer-ownership`.
 History: `GET /me/hands`, `GET /hands/{id}`, `GET /clubs/{id}/hands`.
+Tournaments: `POST|GET /clubs/{id}/tournaments`, `GET /tournaments/{id}`,
+`POST /tournaments/{id}/register|unregister|start|cancel`.
 Platform admin: `GET /admin/overview`, `GET|PATCH /admin/users[/{id}]`,
 `GET|PATCH /admin/clubs[/{id}]`, `GET /admin/audit-log`, `GET|PATCH /admin/risk-events[/{id}]`.
 Canonical contract: `packages/contracts/openapi/control-api.yaml`
@@ -107,12 +112,16 @@ Canonical contract: `packages/contracts/openapi/control-api.yaml`
 
 ## Next tasks
 
-1. M10 (Tournaments, spec §16): ADR for the tournament model (registration
-   with a virtual-chip buy-in into a prize pool held by the ledger,
-   tournament chips separate from cash-table stacks, blind-level schedule,
-   table balancing/breaking, elimination order, payouts in virtual chips).
-2. M10: schema + ledger accounts (tournament prize pool), pure tournament
-   director logic in Go (levels, seating, balancing, payouts) with property
-   tests, game-service orchestration over the existing table actors.
-3. M10: contracts, control-api endpoints (create/register/unregister/list),
-   web lobby + tournament view, E2E for a small sit-and-go.
+The spec §16 roadmap is complete. Suggested next steps, in priority order:
+
+1. Tournament operations: a load/chaos drill for tournaments (many tables,
+   node kills during balancing) and tournament metrics (running tournaments,
+   transfers pending, start/finish counts) with an alert for stuck transfers.
+2. Security follow-ups from docs/security-review.md: MFA for platform
+   administrators, deck-key rotation with key ids, in-process login rate
+   limiting fallback.
+3. Product depth: antes and configurable blind/payout structures,
+   re-entry/late registration, a realtime tournament channel instead of
+   polling, re-buy at cash tables.
+4. Mobile/native client on the same protocol (ADR-010) once the web client
+   is validated.

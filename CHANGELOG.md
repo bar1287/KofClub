@@ -5,6 +5,32 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added — M10 Tournaments
+
+- Sit-and-go (starts when full) and scheduled tournaments (cancelled and
+  refunded when short of players), staff start/cancel (ADR-016,
+  docs/tournaments.md).
+- Ledger: per-tournament `TOURNAMENT_POOL` account; `TOURNAMENT_BUY_IN`,
+  `TOURNAMENT_REFUND` and `TOURNAMENT_PAYOUT` flows validated by
+  `ledger_post`; ledger summary reports chips in prize pools.
+- `go/tournament`: blind schedule, payout table, finishing places with ties,
+  prize splitting, seating and balancing/breaking with a whole-tournament
+  simulation test; golden file shared with the TypeScript mirror.
+- Game service: tournament scheduler (crypto seat draw, pool check) and a
+  tournament mode of the table actor (level blinds, absent players folded,
+  eliminations and the finish with payouts in the hand's transaction,
+  balancing through transfers, tournament-chip conservation checks).
+- Control API: tournament directory, registration with buy-ins, refunds,
+  detail with levels/payouts/entrants; tournament tables hidden from cash
+  lobbies and closed to buy-in/leave/close.
+- Realtime: tournament section in snapshots and `HAND_STARTED`;
+  `PLAYER_LEFT` reasons `MOVED`, `ELIMINATED`, `FINISHED`.
+- Web: tournaments in the club lobby, creation form, tournament page,
+  tournament table header with level countdown, automatic move to the new
+  table, finishing banner.
+- Tests: engine/rules unit and simulation tests, multi-table SNG with a node
+  crash (game service), API integration, Playwright sit-and-go to the end.
+
 ### Added — M9 Pot-Limit Omaha
 
 - Engine rule modules (ADR-015): `GameType` (`NLHE`, `PLO`) selects hole-card

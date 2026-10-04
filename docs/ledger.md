@@ -15,25 +15,29 @@ audited.
 
 Chips are scoped **per club** (each club is its own asset). Account kinds:
 
-| Kind            | Owner        | May go negative | Meaning                                               |
-| --------------- | ------------ | --------------- | ----------------------------------------------------- |
-| `CLUB_TREASURY` | club         | yes             | Issuer. `-balance` = chips in circulation in the club |
-| `MEMBER_WALLET` | user         | no              | A member's chips in the club                          |
-| `TABLE_STACK`   | user + table | no              | A member's chips sitting at one table (table escrow)  |
+| Kind              | Owner        | May go negative | Meaning                                               |
+| ----------------- | ------------ | --------------- | ----------------------------------------------------- |
+| `CLUB_TREASURY`   | club         | yes             | Issuer. `-balance` = chips in circulation in the club |
+| `MEMBER_WALLET`   | user         | no              | A member's chips in the club                          |
+| `TABLE_STACK`     | user + table | no              | A member's chips sitting at one table (table escrow)  |
+| `TOURNAMENT_POOL` | tournament   | no              | A tournament's prize pool (buy-ins until paid out)    |
 
 ## Transaction kinds and allowed flows
 
 Enforced inside `ledger_post()` (defense against caller bugs):
 
-| Kind                               | Flow                                                                                                          |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `CLUB_GRANT`, `PROMOTIONAL_CREDIT` | treasury → one wallet                                                                                         |
-| `CLUB_DEDUCTION`                   | one wallet → treasury                                                                                         |
-| `ADMIN_ADJUSTMENT`                 | treasury ↔ one wallet                                                                                         |
-| `TABLE_BUY_IN`                     | a player's wallet → the same player's table stack                                                             |
-| `TABLE_CASH_OUT`                   | a player's table stack → the same player's wallet (leaving, or the table closing: ref `close:<table>:<user>`) |
-| `HAND_SETTLEMENT`                  | between table stacks of **one** table (net result per player, `external_ref = hand:<hand_id>`)                |
-| `REVERSAL`                         | exact negation of an earlier transaction (at most one reversal each)                                          |
+| Kind                               | Flow                                                                                                            |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `CLUB_GRANT`, `PROMOTIONAL_CREDIT` | treasury → one wallet                                                                                           |
+| `CLUB_DEDUCTION`                   | one wallet → treasury                                                                                           |
+| `ADMIN_ADJUSTMENT`                 | treasury ↔ one wallet                                                                                           |
+| `TABLE_BUY_IN`                     | a player's wallet → the same player's table stack                                                               |
+| `TABLE_CASH_OUT`                   | a player's table stack → the same player's wallet (leaving, or the table closing: ref `close:<table>:<user>`)   |
+| `HAND_SETTLEMENT`                  | between table stacks of **one** table (net result per player, `external_ref = hand:<hand_id>`)                  |
+| `REVERSAL`                         | exact negation of an earlier transaction (at most one reversal each)                                            |
+| `TOURNAMENT_BUY_IN`                | a wallet → a tournament pool (ref `tournament-buyin:<registration>`)                                            |
+| `TOURNAMENT_REFUND`                | a tournament pool → a wallet (unregister/cancel; ref `tournament-refund:<registration>`, used by both services) |
+| `TOURNAMENT_PAYOUT`                | one tournament pool → winners' wallets, emptying the pool (ref `tournament-payout:<tournament>`)                |
 
 There are deliberately no deposit, withdrawal, payment or cash-out kinds.
 
@@ -90,6 +94,11 @@ table. During a hand, chips in the pot are still in the players' table-stack
 accounts; only the final net result is posted. A hand that cannot complete
 (crash, lost ownership) therefore never touches the ledger and stacks
 return to their start-of-hand values.
+
+Tournament stacks are tournament chips, not ledger chips: tournament hands
+never post `HAND_SETTLEMENT`; the game service instead verifies that the
+tournament's seat stacks plus chips in transit equal the chips put in play
+(docs/tournaments.md).
 
 ## HTTP API (control-api)
 

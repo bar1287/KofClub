@@ -82,6 +82,13 @@ export interface LogEntry {
   text: string;
 }
 
+/** Why the viewer left their seat (tournament moves, eliminations). */
+export interface Departure {
+  reason: string;
+  toTableId?: string;
+  place?: number;
+}
+
 export interface TableState {
   tableId: string;
   /** Last applied seq; -1 until the first snapshot. */
@@ -101,6 +108,8 @@ export interface TableState {
   holeCards: Card[];
   legalActions: LegalAction[];
   lastHand: HandSummary | null;
+  /** Set when the viewer's seat was removed (moved, eliminated, finished). */
+  departure: Departure | null;
   /** Presentation-only action log (not authoritative state). */
   log: LogEntry[];
 }
@@ -130,6 +139,7 @@ export function initialTableState(tableId: string, viewerId: string | null): Tab
     holeCards: [],
     legalActions: [],
     lastHand: null,
+    departure: null,
     log: [],
   };
 }
@@ -229,6 +239,7 @@ export function applySnapshot(
     holeCards: you?.holeCards ?? [],
     legalActions: you?.legalActions ?? [],
     lastHand: state.lastHand,
+    departure: you?.seat ? null : state.departure,
     log,
   };
 }
@@ -297,6 +308,7 @@ function applyEvent(state: TableState, msg: TableEventMessage, receivedAt: numbe
           },
         },
         mySeat: mine ? ev.seat : state.mySeat,
+        departure: mine ? null : state.departure,
         log: log(),
       };
     }
@@ -310,6 +322,9 @@ function applyEvent(state: TableState, msg: TableEventMessage, receivedAt: numbe
         mySeat: mine ? 0 : state.mySeat,
         holeCards: mine ? [] : state.holeCards,
         legalActions: mine ? [] : state.legalActions,
+        departure: mine
+          ? { reason: ev.reason, toTableId: ev.toTableId, place: ev.place }
+          : state.departure,
         log: log(),
       };
     }
@@ -339,8 +354,19 @@ function applyEvent(state: TableState, msg: TableEventMessage, receivedAt: numbe
           lastAction: undefined,
         };
       });
+      // Tournament tables: the hand's level and blinds.
+      const table =
+        state.table && ev.tournament
+          ? {
+              ...state.table,
+              tournament: ev.tournament,
+              smallBlind: ev.smallBlind,
+              bigBlind: ev.bigBlind,
+            }
+          : state.table;
       return {
         ...state,
+        table,
         phase: 'HAND_IN_PROGRESS',
         seats,
         hand: {

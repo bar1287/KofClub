@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import { useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { ErrorAlert } from '@/components/ErrorAlert';
 import { PlayingCard } from '@/components/PlayingCard';
 import { RequireAuth } from '@/components/RequireAuth';
@@ -13,7 +13,8 @@ import { ConnectionBadge } from '@/components/table/ConnectionBadge';
 import { gameLabel } from '@/lib/games';
 import { PokerTable } from '@/components/table/PokerTable';
 import { errorMessage, newIdempotencyKey } from '@/lib/api/client';
-import { chips } from '@/lib/format';
+import { chips, ordinal } from '@/lib/format';
+import { formatCountdown, useNow } from '@/lib/time';
 import { useSession } from '@/lib/session';
 import { useTable } from '@/lib/table/useTable';
 
@@ -27,6 +28,17 @@ function TableRoom({ tableId }: { tableId: string }) {
   const live = connection === 'open' && state.ready && !state.stale;
   const me = state.seats[state.mySeat];
   const table = state.table;
+  const tournament = table?.tournament;
+  const router = useRouter();
+  const now = useNow();
+
+  // Tournament balancing moved the viewer: follow them to their new table.
+  const departure = state.departure;
+  useEffect(() => {
+    if (departure?.reason === 'MOVED' && departure.toTableId) {
+      router.replace(`/tables/${departure.toTableId}`);
+    }
+  }, [departure, router]);
 
   async function leave() {
     setHttpError(null);
@@ -55,17 +67,35 @@ function TableRoom({ tableId }: { tableId: string }) {
   return (
     <div>
       <div className="table-header">
-        {table && (
+        {table && !tournament && (
           <Link href={`/clubs/${table.clubId}`} className="small">
             ← Lobby
+          </Link>
+        )}
+        {tournament && (
+          <Link href={`/tournaments/${tournament.tournamentId}`} className="small">
+            ← Tournament
           </Link>
         )}
         <h1 style={{ margin: 0 }} data-testid="table-name">
           {table?.name}
         </h1>
-        {table && (
+        {table && !tournament && (
           <span className="muted small" data-testid="table-game">
             {gameLabel(table.gameType)} · Blinds {chips(table.smallBlind)}/{chips(table.bigBlind)}
+          </span>
+        )}
+        {table && tournament && (
+          <span className="muted small" data-testid="table-game">
+            {gameLabel(table.gameType)} · Level {tournament.level} · Blinds{' '}
+            {chips(tournament.smallBlind)}/{chips(tournament.bigBlind)}
+            {tournament.status === 'RUNNING' && (
+              <span data-testid="level-countdown">
+                {' '}
+                · next {chips(tournament.nextSmallBlind)}/{chips(tournament.nextBigBlind)} in{' '}
+                {formatCountdown(Date.parse(tournament.levelEndsAt) - now)}
+              </span>
+            )}
           </span>
         )}
         <ConnectionBadge status={connection} syncing={state.stale} />
@@ -80,13 +110,34 @@ function TableRoom({ tableId }: { tableId: string }) {
             >
               {me.sittingOut ? 'Sit in' : 'Sit out'}
             </button>
-            <button className="btn small danger" disabled={me.leaving} onClick={() => void leave()}>
-              {me.leaving ? 'Leaving after hand' : 'Leave table'}
-            </button>
+            {!tournament && (
+              <button
+                className="btn small danger"
+                disabled={me.leaving}
+                onClick={() => void leave()}
+              >
+                {me.leaving ? 'Leaving after hand' : 'Leave table'}
+              </button>
+            )}
           </>
         )}
       </div>
 
+      {tournament && departure && departure.reason !== 'MOVED' && (
+        <div className="alert info" style={{ marginBottom: 12 }} data-testid="tournament-result">
+          {departure.place === 1
+            ? 'You won the tournament!'
+            : departure.place
+              ? `You finished in ${ordinal(departure.place)} place.`
+              : 'Your tournament is over.'}{' '}
+          <Link href={`/tournaments/${tournament.tournamentId}`}>See the results</Link>
+        </div>
+      )}
+      {departure?.reason === 'MOVED' && (
+        <div className="alert info" style={{ marginBottom: 12 }}>
+          You were moved to another table…
+        </div>
+      )}
       {table?.status === 'CLOSED' && (
         <div className="alert info" style={{ marginBottom: 12 }} data-testid="table-closed">
           This table is closed. No new hands are dealt and every seat is cashed out to the club
@@ -97,7 +148,9 @@ function TableRoom({ tableId }: { tableId: string }) {
         <div>
           <PokerTable
             state={state}
-            onSit={!me && live && table?.status === 'OPEN' ? setBuyInSeat : undefined}
+            onSit={
+              !me && !tournament && live && table?.status === 'OPEN' ? setBuyInSeat : undefined
+            }
           />
           {me && <ActionBar state={state} enabled={live} busy={busy} send={send} />}
           <div className="stack" style={{ marginTop: 12 }}>
@@ -170,7 +223,7 @@ export default function TablePage() {
   return (
     <main className="content wide">
       <RequireAuth>
-        <TableRoom tableId={tableId} />
+        <TableRoom key={tableId} tableId={tableId} />
       </RequireAuth>
     </main>
   );

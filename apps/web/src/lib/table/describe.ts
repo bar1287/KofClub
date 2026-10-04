@@ -1,3 +1,4 @@
+import { ordinal } from '../format';
 import type { EventOf, TableEventPayload } from '../types';
 
 const VERB: Record<EventOf<'PLAYER_ACTED'>['action'], string> = {
@@ -30,6 +31,14 @@ export function describeEvent(
           return `${name(ev.seat)} is out of chips and leaves.`;
         case 'TABLE_CLOSED':
           return `${name(ev.seat)} is cashed out (${ev.cashOut} back to wallet).`;
+        case 'MOVED':
+          return `${name(ev.seat)} moves to another table.`;
+        case 'ELIMINATED':
+          return `${name(ev.seat)} is eliminated in ${ordinal(ev.place ?? 0)} place.`;
+        case 'FINISHED':
+          return ev.place === 1
+            ? `${name(ev.seat)} wins the tournament!`
+            : `${name(ev.seat)} finishes in ${ordinal(ev.place ?? 0)} place.`;
         default:
           return `${name(ev.seat)} leaves the table (${ev.cashOut} back to wallet).`;
       }
@@ -38,7 +47,9 @@ export function describeEvent(
       return ev.sittingOut ? `${name(ev.seat)} sits out${why}.` : `${name(ev.seat)} is back.`;
     }
     case 'HAND_STARTED':
-      return `Hand #${ev.handNo} begins.`;
+      return ev.tournament
+        ? `Hand #${ev.handNo} begins (level ${ev.tournament.level}, blinds ${ev.tournament.smallBlind}/${ev.tournament.bigBlind}).`
+        : `Hand #${ev.handNo} begins.`;
     case 'BLIND_POSTED':
       return `${name(ev.seat)} posts the ${ev.blind === 'SMALL' ? 'small' : 'big'} blind ${ev.amount}.`;
     case 'HOLE_CARDS_DEALT':

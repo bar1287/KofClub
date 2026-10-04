@@ -38,6 +38,10 @@ export type HandSummaryRecord = Api['HandSummary'];
 export type HandSummaryPage = Api['HandSummaryPage'];
 export type HandDetail = Api['HandDetail'];
 export type HandParticipant = Api['HandParticipant'];
+export type Tournament = Api['Tournament'];
+export type TournamentDetail = Api['TournamentDetail'];
+export type TournamentStatus = Api['TournamentStatus'];
+export type CreateTournamentRequest = Api['CreateTournamentRequest'];
 
 /** Realtime (WebSocket) types, generated from realtime.yaml. */
 type Rt = Realtime.components['schemas'];
@@ -51,6 +55,7 @@ export type TableSnapshotMessage = Rt['TableSnapshotMessage'];
 export type TableEventMessage = Rt['TableEventMessage'];
 export type TableEventPayload = Rt['TableEventPayload'];
 export type TableInfo = Rt['TableInfo'];
+export type TournamentTableInfo = Rt['TournamentTableInfo'];
 export type SeatView = Rt['SeatView'];
 export type HandView = Rt['HandView'];
 export type HandResult = Rt['HandResult'];

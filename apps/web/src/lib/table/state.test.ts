@@ -439,3 +439,57 @@ describe('resume', () => {
     expect(s.stale).toBe(false);
   });
 });
+
+describe('tournament tables', () => {
+  const info = {
+    tournamentId: '0191a000-0000-7000-8000-0000000000aa',
+    name: 'Cup',
+    tableNo: 2,
+    status: 'RUNNING' as const,
+    level: 3,
+    smallBlind: 20,
+    bigBlind: 40,
+    nextSmallBlind: 30,
+    nextBigBlind: 60,
+    levelEndsAt: '2026-01-01T00:05:00.000Z',
+  };
+
+  it('takes the level and blinds of each hand', () => {
+    const s = play(ready(), [
+      { ...handStarted, smallBlind: 20, bigBlind: 40, tournament: info } as TableEventPayload,
+    ]);
+    expect(s.table?.tournament?.level).toBe(3);
+    expect(s.table).toMatchObject({ smallBlind: 20, bigBlind: 40 });
+  });
+
+  it('records why the viewer left (moved, eliminated)', () => {
+    let s = play(ready(), [
+      {
+        kind: 'PLAYER_LEFT',
+        seat: 2,
+        userId: BOB,
+        reason: 'ELIMINATED',
+        cashOut: 0,
+        place: 5,
+      },
+    ]);
+    expect(s.departure).toBeNull();
+    s = play(s, [
+      {
+        kind: 'PLAYER_LEFT',
+        seat: 1,
+        userId: ALICE,
+        reason: 'MOVED',
+        cashOut: 0,
+        toTableId: info.tournamentId,
+      },
+    ]);
+    expect(s.departure).toEqual({
+      reason: 'MOVED',
+      toTableId: info.tournamentId,
+      place: undefined,
+    });
+    expect(s.mySeat).toBe(0);
+    expect(s.log.at(-1)?.text).toBe('alice moves to another table.');
+  });
+});

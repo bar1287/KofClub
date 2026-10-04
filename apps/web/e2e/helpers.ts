@@ -130,3 +130,44 @@ export async function clubWithChips(owner: Player, member: Player, grant: number
   }
   return clubUrl;
 }
+
+/**
+ * Plays aggressively (all-in whenever possible, otherwise call/check) for
+ * whoever is to act until `done()` holds; tournaments end quickly this way.
+ */
+export async function playAllIn(players: Player[], done: () => Promise<boolean>): Promise<number> {
+  let actions = 0;
+  const deadline = Date.now() + 150_000;
+  while (Date.now() < deadline) {
+    if (await done()) return actions;
+    let acted = false;
+    for (const p of players) {
+      const page = p.page;
+      const preset = page.locator('.sizing').getByRole('button', { name: 'All-in', exact: true });
+      const aggressive = page.getByTestId('aggressive-action');
+      const allIn = page.getByRole('button', { name: /^All-in/ });
+      const call = page.getByRole('button', { name: /^Call \d/ });
+      const check = page.getByRole('button', { name: 'Check', exact: true });
+      const seq = await tableSeq(page);
+      if (await preset.isVisible()) {
+        await preset.click();
+        if (!(await aggressive.isEnabled())) continue;
+        await aggressive.click();
+      } else if ((await allIn.isVisible()) && (await allIn.isEnabled())) {
+        await allIn.first().click();
+      } else if ((await call.isVisible()) && (await call.isEnabled())) {
+        await call.click();
+      } else if ((await check.isVisible()) && (await check.isEnabled())) {
+        await check.click();
+      } else {
+        continue;
+      }
+      await expect.poll(() => tableSeq(page)).toBeGreaterThan(seq);
+      actions++;
+      acted = true;
+      break;
+    }
+    if (!acted) await players[0]!.page.waitForTimeout(150);
+  }
+  throw new Error('play did not finish in time');
+}

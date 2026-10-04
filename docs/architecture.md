@@ -21,16 +21,18 @@ tables) and Redis (ephemeral only).
 
 ## 2. Domain modules and data ownership (spec §3)
 
-| Domain          | Module                                             | Owns tables                                                           |
-| --------------- | -------------------------------------------------- | --------------------------------------------------------------------- |
-| Identity        | control-api `identity`                             | `users`, `sessions`, `session_refresh_tokens`                         |
-| Club            | control-api `clubs`                                | `clubs`, `club_members`, `club_invites`                               |
-| Table directory | control-api `tables` (config)                      | `tables` (configuration columns)                                      |
-| Game            | game-service                                       | `table_leases`, `table_seats`, `hands`, `hand_players`, `game_events` |
-| Ledger          | SQL function `ledger_post` (called by both planes) | `ledger_accounts`, `ledger_transactions`, `ledger_entries`            |
-| Audit           | control-api `audit`                                | `audit_log` (append-only)                                             |
-| Risk            | shared `risk_events` writer API                    | `risk_events` (append-only)                                           |
-| History         | control-api `history` (read-only)                  | reads `hands`, `hand_players`, `game_events`                          |
+| Domain          | Module                                                                             | Owns tables                                                            |
+| --------------- | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Identity        | control-api `identity`                                                             | `users`, `sessions`, `session_refresh_tokens`                          |
+| Club            | control-api `clubs`                                                                | `clubs`, `club_members`, `club_invites`                                |
+| Table directory | control-api `tables` (config)                                                      | `tables` (configuration columns)                                       |
+| Game            | game-service                                                                       | `table_leases`, `table_seats`, `hands`, `hand_players`, `game_events`  |
+| Ledger          | SQL function `ledger_post` (called by both planes)                                 | `ledger_accounts`, `ledger_transactions`, `ledger_entries`             |
+| Audit           | control-api `audit`                                                                | `audit_log` (append-only)                                              |
+| Risk            | shared `risk_events` writer API                                                    | `risk_events` (append-only)                                            |
+| History         | control-api `history` (read-only)                                                  | reads `hands`, `hand_players`, `game_events`                           |
+| Tournament      | control-api `tournaments` (directory)                                              | `tournaments`, `tournament_registrations`, tournament rows of `tables` |
+| Tournament      | game-service runtime (`internal/tournaments`, tournament mode of `internal/table`) | `tournament_runtime`, `tournament_entries`, `tournament_transfers`     |
 
 Rule (spec §3): a module owns its writes; other modules call its API. In the
 monorepo this is enforced by package boundaries and repositories; chip
@@ -93,14 +95,15 @@ gateway: filter private payloads per viewer -> TABLE_EVENT to each client
 
 ## 4.1 Game-service packages
 
-| Package             | Responsibility                                                                                       |
-| ------------------- | ---------------------------------------------------------------------------------------------------- |
-| `internal/table`    | Actor: serialized inbox, clone→apply→persist→swap pipeline, timers, wire events, snapshots, recovery |
-| `internal/store`    | PostgreSQL persistence; `InFencedTx` lease fencing                                                   |
-| `internal/lease`    | Lease acquire/renew/release with epochs                                                              |
-| `internal/registry` | Activation, renewal loop, orphan adoption (failover), idle stop, draining                            |
-| `internal/sealer`   | AES-256-GCM encryption of decks and hole cards at rest                                               |
-| `internal/api`      | Internal HTTP API (docs/protocols/internal-game-api.md)                                              |
+| Package                | Responsibility                                                                                       |
+| ---------------------- | ---------------------------------------------------------------------------------------------------- |
+| `internal/table`       | Actor: serialized inbox, clone→apply→persist→swap pipeline, timers, wire events, snapshots, recovery |
+| `internal/store`       | PostgreSQL persistence; `InFencedTx` lease fencing                                                   |
+| `internal/lease`       | Lease acquire/renew/release with epochs                                                              |
+| `internal/registry`    | Activation, renewal loop, orphan adoption (failover), idle stop, draining                            |
+| `internal/sealer`      | AES-256-GCM encryption of decks and hole cards at rest                                               |
+| `internal/api`         | Internal HTTP API (docs/protocols/internal-game-api.md)                                              |
+| `internal/tournaments` | Starts due tournaments (seat draw, prize-pool check) or cancels under-filled ones (ADR-016)          |
 
 ## 5. Realtime
 

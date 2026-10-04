@@ -8,6 +8,7 @@ import { RequireAuth } from '@/components/RequireAuth';
 import { errorMessage, newIdempotencyKey } from '@/lib/api/client';
 import { chips } from '@/lib/format';
 import { GAME_TYPES, gameLabel, gameName, type GameType } from '@/lib/games';
+import { TournamentsPanel } from '@/components/tournaments/TournamentsPanel';
 import { atLeast } from '@/lib/roles';
 import { useSession } from '@/lib/session';
 import type { Club, Member, Table, Wallet } from '@/lib/types';
@@ -144,6 +145,8 @@ function ClubLobby({ clubId }: { clubId: string }) {
           </table>
         )}
       </div>
+
+      <TournamentsPanel clubId={clubId} canManage={isAdmin} onWalletChange={() => void load()} />
 
       <div className="panel">
         <h2>Members</h2>

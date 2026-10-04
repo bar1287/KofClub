@@ -2,7 +2,8 @@
 
 An original private-club **social poker platform** with **virtual chips only**:
 users create or join clubs, sit at private tables and play realtime No-Limit
-Texas Hold'em or Pot-Limit Omaha against each other. Chips have **no monetary value** — there are no
+Texas Hold'em or Pot-Limit Omaha against each other, or enter multi-table
+sit-and-go and scheduled tournaments. Chips have **no monetary value** — there are no
 deposits, withdrawals, cash-outs or payment rails (see
 [ADR-006](docs/adr/ADR-006-virtual-chip-scope.md)).
 
@@ -108,6 +109,7 @@ a managed secret store ([docs/security.md](docs/security.md)).
 
 - [docs/architecture.md](docs/architecture.md) — components, boundaries, data flow
 - [docs/game-engine.md](docs/game-engine.md) — poker rules, state machine, pots
+- [docs/tournaments.md](docs/tournaments.md) — tournaments: lifecycle, structure, payouts, balancing
 - [docs/realtime-protocol.md](docs/realtime-protocol.md) — WebSocket protocol
 - [docs/web-client.md](docs/web-client.md) — web client architecture, table UI, E2E tests
 - [docs/observability.md](docs/observability.md) — metrics, dashboards, alerts

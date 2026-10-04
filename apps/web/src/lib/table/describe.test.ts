@@ -58,3 +58,21 @@ describe('describeEvent', () => {
     expect(describeEvent({ kind: 'HOLE_CARDS_DEALT', seats: [1, 2] }, name)).toBeNull();
   });
 });
+
+describe('tournament log lines', () => {
+  const name = () => 'carol';
+  it('describes eliminations and the finish', () => {
+    expect(
+      describeEvent(
+        { kind: 'PLAYER_LEFT', seat: 1, userId: 'u', reason: 'ELIMINATED', cashOut: 0, place: 3 },
+        name,
+      ),
+    ).toBe('carol is eliminated in 3rd place.');
+    expect(
+      describeEvent(
+        { kind: 'PLAYER_LEFT', seat: 1, userId: 'u', reason: 'FINISHED', cashOut: 0, place: 1 },
+        name,
+      ),
+    ).toBe('carol wins the tournament!');
+  });
+});

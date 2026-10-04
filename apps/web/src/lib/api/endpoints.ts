@@ -26,6 +26,9 @@ import type {
   Session,
   Table,
   TableDetail,
+  CreateTournamentRequest,
+  Tournament,
+  TournamentDetail,
   Wallet,
   WalletEntryPage,
 } from '../types';
@@ -83,6 +86,27 @@ export function endpoints(api: ApiClient) {
       }),
     closeTable: (tableId: string) =>
       api.request<CloseTableResult>('POST', `/v1/tables/${enc(tableId)}/close`),
+
+    // --- tournaments ------------------------------------------------------------
+    tournaments: async (clubId: string): Promise<Tournament[]> =>
+      (await api.request<{ items: Tournament[] }>('GET', `/v1/clubs/${enc(clubId)}/tournaments`))
+        .items,
+    tournament: (id: string) => api.request<TournamentDetail>('GET', `/v1/tournaments/${enc(id)}`),
+    createTournament: (clubId: string, body: CreateTournamentRequest, key = newIdempotencyKey()) =>
+      api.request<TournamentDetail>('POST', `/v1/clubs/${enc(clubId)}/tournaments`, {
+        body,
+        idempotencyKey: key,
+      }),
+    registerTournament: (id: string, key = newIdempotencyKey()) =>
+      api.request<TournamentDetail>('POST', `/v1/tournaments/${enc(id)}/register`, {
+        idempotencyKey: key,
+      }),
+    unregisterTournament: (id: string) =>
+      api.request<TournamentDetail>('POST', `/v1/tournaments/${enc(id)}/unregister`),
+    startTournament: (id: string) =>
+      api.request<TournamentDetail>('POST', `/v1/tournaments/${enc(id)}/start`),
+    cancelTournament: (id: string) =>
+      api.request<TournamentDetail>('POST', `/v1/tournaments/${enc(id)}/cancel`),
 
     // --- club administration (the API enforces every permission) -------------
     updateClub: (clubId: string, body: { name?: string; description?: string | null }) =>

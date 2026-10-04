@@ -11,8 +11,9 @@ ADR-012 (session handling, realtime client, state model).
 | `/`                         | Landing                                                                                                                                                  |
 | `/register`, `/login`       | Account creation / sign-in (`?next=` only follows same-origin paths)                                                                                     |
 | `/clubs`                    | My clubs, create a club, join with a join/invite code                                                                                                    |
-| `/clubs/[clubId]`           | Lobby: wallet, tables, members; staff (ADMIN+) create tables and grant chips                                                                             |
-| `/tables/[tableId]`         | Poker table                                                                                                                                              |
+| `/clubs/[clubId]`           | Lobby: wallet, tables, tournaments (register/unregister), members; staff (ADMIN+) create tables/tournaments and grant chips                              |
+| `/tournaments/[id]`         | Tournament: status, prize pool, payouts, players with places/stacks, blind levels, current level countdown, "Go to my table"; staff start/cancel         |
+| `/tables/[tableId]`         | Poker table (tournament tables: level/blinds countdown, no buy-in or leave, follows the player when moved, finishing banner)                             |
 | `/profile`                  | Signed-in devices (sessions) with remote sign-out                                                                                                        |
 | `/hands`, `/hands/[handId]` | Hand history: results, board, own cards, shown cards, public action log (ADR-008)                                                                        |
 | `/clubs/[clubId]/admin`     | Club console (AGENT+): members/roles/bans/ownership, invites, chips & ledger (grants, deductions, reversals), tables (close), hands, audit log, settings |

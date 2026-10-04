@@ -33,16 +33,17 @@ ephemeral data.
 
 ## Schema overview
 
-| Migration                     | Tables                                                                                                             |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| 000001_foundation             | extensions (`citext`, `pgcrypto`), helper functions                                                                |
-| 000002_identity               | `users`, `sessions`, `session_refresh_tokens`                                                                      |
-| 000003_audit_risk_idempotency | `audit_log` (append-only), `risk_events` (evidence immutable), `idempotency_keys`                                  |
-| 000004_clubs                  | `clubs`, `club_members` (one OWNER per club), `club_invites` (hashed codes)                                        |
-| 000005_ledger                 | `ledger_accounts`, `ledger_transactions`, `ledger_entries`, `ledger_post()`, invariant view                        |
-| 000006_tables                 | `tables`, `table_leases`, `table_runtime`, `table_seats`, `hands`, `hand_players`, `game_events`, `table_commands` |
-| 000007_history_admin          | club hand-history index, `risk_events.review_note`, admin prefix-search indexes                                    |
-| 000008_omaha                  | `tables.game_type` allows `PLO`; `hands.game_type` records each hand's game (down refuses while PLO tables exist)  |
+| Migration                     | Tables                                                                                                                                                        |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 000001_foundation             | extensions (`citext`, `pgcrypto`), helper functions                                                                                                           |
+| 000002_identity               | `users`, `sessions`, `session_refresh_tokens`                                                                                                                 |
+| 000003_audit_risk_idempotency | `audit_log` (append-only), `risk_events` (evidence immutable), `idempotency_keys`                                                                             |
+| 000004_clubs                  | `clubs`, `club_members` (one OWNER per club), `club_invites` (hashed codes)                                                                                   |
+| 000005_ledger                 | `ledger_accounts`, `ledger_transactions`, `ledger_entries`, `ledger_post()`, invariant view                                                                   |
+| 000006_tables                 | `tables`, `table_leases`, `table_runtime`, `table_seats`, `hands`, `hand_players`, `game_events`, `table_commands`                                            |
+| 000007_history_admin          | club hand-history index, `risk_events.review_note`, admin prefix-search indexes                                                                               |
+| 000008_omaha                  | `tables.game_type` allows `PLO`; `hands.game_type` records each hand's game (down refuses while PLO tables exist)                                             |
+| 000009_tournaments            | tournaments, registrations, runtime, entries, transfers, tournament tables; `TOURNAMENT_POOL` + tournament ledger kinds (down refuses once tournaments exist) |
 
 (The table is extended by each milestone; see the migration files for
 authoritative definitions.)
