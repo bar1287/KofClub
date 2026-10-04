@@ -81,7 +81,7 @@ func run() error {
 	starter := tournaments.New(deps.Store, rand.Reader, func(ctx context.Context, tableID string) error {
 		_, err := tables.Get(ctx, tableID)
 		return err
-	}, logger, cfg.TournamentScanInterval)
+	}, logger, deps.Metrics, cfg.TournamentScanInterval)
 	go starter.Run(ctx)
 
 	health := observability.NewHealth(serviceName, 2*time.Second,

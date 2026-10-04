@@ -44,6 +44,7 @@ ephemeral data.
 | 000007_history_admin          | club hand-history index, `risk_events.review_note`, admin prefix-search indexes                                                                               |
 | 000008_omaha                  | `tables.game_type` allows `PLO`; `hands.game_type` records each hand's game (down refuses while PLO tables exist)                                             |
 | 000009_tournaments            | tournaments, registrations, runtime, entries, transfers, tournament tables; `TOURNAMENT_POOL` + tournament ledger kinds (down refuses once tournaments exist) |
+| 000010_tournament_health      | views `tournament_invariant_violations` (chips, pools, results) and `tournament_health` (running, transfers, overdue starts) for monitoring                   |
 
 (The table is extended by each milestone; see the migration files for
 authoritative definitions.)

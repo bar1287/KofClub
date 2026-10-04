@@ -19,27 +19,35 @@ Platform administrators also get a live summary in the web console
 
 ## Metrics
 
-| Service          | Metric                                                                                             | Meaning                                        |
-| ---------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| all              | `http_requests_total{route,method,code}`, `http_request_duration_seconds`                          | HTTP traffic and latency                       |
-| control-api      | `security_events_total{type}`                                                                      | logins, failures, refresh reuse, rate limiting |
-| worker           | `ledger_invariant_violations{violation}`                                                           | must be 0                                      |
-| game-service     | `game_active_tables`, `game_hands_{started,completed,resumed}_total`                               | table activity                                 |
-| game-service     | `game_hands_voided_total{reason}`                                                                  | hands voided by recovery (no chips moved)      |
-| game-service     | `game_command_latency_seconds`, `game_actions_total{kind,source}`                                  | action processing (target p95 < 150 ms)        |
-| game-service     | `game_command_rejections_total{code}`, `game_duplicate_commands_total`                             | rejected / duplicate commands                  |
-| game-service     | `game_persist_failures_total{reason}`, `game_lease_losses_total`                                   | durability and ownership problems              |
-| game-service     | `game_turn_timeouts_total`                                                                         | automatic check/fold                           |
-| realtime-gateway | `ws_connections`, `ws_table_subscriptions`, `gateway_table_feeds`                                  | connection load                                |
-| realtime-gateway | `ws_frames_{in,out}_total{type}`, `ws_command_latency_seconds`                                     | traffic and command round trip                 |
-| realtime-gateway | `ws_resyncs_total{reason}`, `ws_slow_consumer_disconnects_total`, `ws_auth_failures_total{reason}` | continuity and auth problems                   |
+| Service          | Metric                                                                                                                        | Meaning                                        |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| all              | `http_requests_total{route,method,code}`, `http_request_duration_seconds`                                                     | HTTP traffic and latency                       |
+| control-api      | `security_events_total{type}`                                                                                                 | logins, failures, refresh reuse, rate limiting |
+| worker           | `ledger_invariant_violations{violation}`                                                                                      | must be 0                                      |
+| worker           | `tournament_invariant_violations{violation}`                                                                                  | must be 0 (chips, prize pools, results)        |
+| worker           | `tournaments_running`, `tournament_transfers_pending`, `tournament_transfer_oldest_age_seconds`, `tournaments_overdue_starts` | tournament operations                          |
+| game-service     | `game_tournaments_{started,cancelled,finished}_total`, `game_tournament_{eliminations,moves}_total`                           | tournament lifecycle and activity              |
+| game-service     | `game_tournament_failures_total{op}`                                                                                          | failed start/claim/rebalance/clear (retried)   |
+| game-service     | `game_active_tables`, `game_hands_{started,completed,resumed}_total`                                                          | table activity                                 |
+| game-service     | `game_hands_voided_total{reason}`                                                                                             | hands voided by recovery (no chips moved)      |
+| game-service     | `game_command_latency_seconds`, `game_actions_total{kind,source}`                                                             | action processing (target p95 < 150 ms)        |
+| game-service     | `game_command_rejections_total{code}`, `game_duplicate_commands_total`                                                        | rejected / duplicate commands                  |
+| game-service     | `game_persist_failures_total{reason}`, `game_lease_losses_total`                                                              | durability and ownership problems              |
+| game-service     | `game_turn_timeouts_total`                                                                                                    | automatic check/fold                           |
+| realtime-gateway | `ws_connections`, `ws_table_subscriptions`, `gateway_table_feeds`                                                             | connection load                                |
+| realtime-gateway | `ws_frames_{in,out}_total{type}`, `ws_command_latency_seconds`                                                                | traffic and command round trip                 |
+| realtime-gateway | `ws_resyncs_total{reason}`, `ws_slow_consumer_disconnects_total`, `ws_auth_failures_total{reason}`                            | continuity and auth problems                   |
 
 ## Alerts
 
-`infra/observability/alerts.yml` (validated with `promtool`); each alert
-links to a runbook in [docs/runbooks](runbooks/README.md):
-LedgerInvariantViolation, GamePersistFailures, HandsVoided, ServiceDown,
-HttpErrorRate, HighActionLatency, WebSocketResyncStorm, TableLeaseLosses.
+`infra/observability/alerts.yml` (validated with `promtool` by
+`make observability-check`; a unit test checks that every alert names an
+existing runbook); each alert links to a runbook in
+[docs/runbooks](runbooks/README.md): LedgerInvariantViolation,
+GamePersistFailures, HandsVoided, ServiceDown, HttpErrorRate,
+HighActionLatency, WebSocketResyncStorm, TableLeaseLosses,
+TournamentInvariantViolation, TournamentTransferStuck,
+TournamentStartOverdue, TournamentOperationFailures.
 
 ## Traces
 

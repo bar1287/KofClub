@@ -59,3 +59,32 @@ groups:
         annotations:
           summary: More than 2% of HTTP requests fail with 5xx
           runbook: docs/runbooks/service-down.md
+  - name: kofclub-tournaments
+    rules:
+      - alert: TournamentInvariantViolation
+        expr: sum(tournament_invariant_violations) > 0
+        for: 0m
+        labels: { severity: page }
+        annotations:
+          summary: Tournament chips, prize pools or results do not add up
+          runbook: docs/runbooks/tournaments.md
+      - alert: TournamentTransferStuck
+        expr: max(tournament_transfer_oldest_age_seconds) > 60
+        for: 2m
+        labels: { severity: page }
+        annotations:
+          summary: A tournament player has been moving between tables for over a minute
+          runbook: docs/runbooks/tournaments.md
+      - alert: TournamentStartOverdue
+        expr: max(tournaments_overdue_starts) > 0
+        for: 2m
+        labels: { severity: page }
+        annotations:
+          summary: A tournament that should have started has not
+          runbook: docs/runbooks/tournaments.md
+      - alert: TournamentOperationFailures
+        expr: sum(increase(game_tournament_failures_total[10m])) > 5
+        labels: { severity: ticket }
+        annotations:
+          summary: Tournament starts, moves or arrivals keep failing (retried automatically)
+          runbook: docs/runbooks/tournaments.md

@@ -50,6 +50,27 @@ type tourState struct {
 	// inbound and finished mirror the last poll.
 	inbound  int
 	finished bool
+	// pending holds metric increments decided inside a transaction; they
+	// are applied once the hand's commit succeeded (onHandFinished).
+	pending tourOutcome
+}
+
+type tourOutcome struct {
+	eliminated int
+	finished   bool
+}
+
+// recordHandOutcome applies the metrics of a committed tournament hand.
+func (a *Actor) recordHandOutcome() {
+	if a.tour == nil {
+		return
+	}
+	o := a.tour.pending
+	a.tour.pending = tourOutcome{}
+	a.deps.Metrics.TournamentEliminations.Add(float64(o.eliminated))
+	if o.finished {
+		a.deps.Metrics.TournamentsFinished.Inc()
+	}
 }
 
 func loadTourState(ctx context.Context, s *store.Store, cfg store.TableConfig) (*tourState, error) {
@@ -211,6 +232,7 @@ func (a *Actor) tourClaim() bool {
 		return drafts, store.VerifyTournamentChips(ctx, tx, a.tour.id, a.tour.totalChips)
 	})
 	if err != nil {
+		a.deps.Metrics.TournamentFailures.WithLabelValues("claim").Inc()
 		a.log.Warn("tournament_claim_failed", slog.String("error", err.Error()))
 		return false
 	}
@@ -347,9 +369,11 @@ func (a *Actor) tourRebalance() bool {
 		return drafts, store.VerifyTournamentChips(ctx, tx, a.tour.id, a.tour.totalChips)
 	})
 	if err != nil {
+		a.deps.Metrics.TournamentFailures.WithLabelValues("rebalance").Inc()
 		a.log.Warn("tournament_rebalance_failed", slog.String("error", err.Error()))
 		return false
 	}
+	a.deps.Metrics.TournamentMoves.Add(float64(len(events)))
 	if len(events) > 0 || len(woken) > 0 {
 		a.log.Info("tournament_players_moved", slog.Int("players", len(events)), slog.Int("redirected", len(woken)-len(events)))
 	}
@@ -386,6 +410,7 @@ func (a *Actor) tourClear() bool {
 		return drafts, nil
 	})
 	if err != nil {
+		a.deps.Metrics.TournamentFailures.WithLabelValues("clear").Inc()
 		a.log.Warn("tournament_clear_failed", slog.String("error", err.Error()))
 		return false
 	}
@@ -428,6 +453,7 @@ func (a *Actor) tournamentHandEnd(next *poker.Table, evs []poker.Event) func(ctx
 	}
 
 	return func(ctx context.Context, tx pgx.Tx) ([]draft, error) {
+		a.tour.pending = tourOutcome{}
 		rt, err := store.LockRuntime(ctx, tx, a.tour.id)
 		if err != nil {
 			return nil, err
@@ -470,9 +496,11 @@ func (a *Actor) tournamentHandEnd(next *poker.Table, evs []poker.Event) func(ctx
 				Kind: KindPlayerLeft, Seat: b.seat, UserID: b.user, Reason: "ELIMINATED", Place: place,
 			}})
 		}
+		a.tour.pending.eliminated = len(busts)
 		if len(alive)-len(busts) != 1 {
 			return drafts, nil
 		}
+		a.tour.pending.finished = true
 		more, err := a.finishTournament(ctx, tx, next, rt, alive, places)
 		if err != nil {
 			return nil, err

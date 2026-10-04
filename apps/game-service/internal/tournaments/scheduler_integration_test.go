@@ -23,6 +23,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 
 	"github.com/bar1287/kofclub/apps/game-service/internal/lease"
 	"github.com/bar1287/kofclub/apps/game-service/internal/registry"
@@ -53,6 +54,7 @@ type env struct {
 	names    map[string]string
 	treasury string
 	logs     *syncBuffer
+	metrics  map[string]*table.Metrics
 }
 
 type syncBuffer struct {
@@ -110,7 +112,7 @@ func newEnv(t *testing.T, players int) *env {
 	if err != nil {
 		t.Fatal(err)
 	}
-	e := &env{t: t, ctx: context.Background(), pool: pool, seal: seal, names: map[string]string{}, logs: &syncBuffer{}}
+	e := &env{t: t, ctx: context.Background(), pool: pool, seal: seal, names: map[string]string{}, logs: &syncBuffer{}, metrics: map[string]*table.Metrics{}}
 	for i := 0; i < players; i++ {
 		id := uuid.NewString()
 		name := fmt.Sprintf("p%d_%s", i, id[:6])
@@ -209,7 +211,8 @@ func (e *env) node(name string) (reg *registry.Registry, starter *tournaments.Sc
 	starter = tournaments.New(deps.Store, rand.Reader, func(ctx context.Context, id string) error {
 		_, err := reg.Get(ctx, id)
 		return err
-	}, deps.Log, time.Hour)
+	}, deps.Log, deps.Metrics, time.Hour)
+	e.metrics[name] = deps.Metrics
 	return reg, starter, stop
 }
 
@@ -437,7 +440,44 @@ func TestSitAndGoRunsToTheEnd(t *testing.T) {
 	if settlements != 0 {
 		t.Fatalf("%d hand settlements for tournament hands", settlements)
 	}
+	// Monitoring: the health views are clean and the counters add up across
+	// both nodes.
+	e.assertHealthy()
+	var finishedTotal, eliminations float64
+	for _, m := range e.metrics {
+		finishedTotal += testutil.ToFloat64(m.TournamentsFinished)
+		eliminations += testutil.ToFloat64(m.TournamentEliminations)
+	}
+	if got := testutil.ToFloat64(e.metrics["node-a"].TournamentsStarted); got != 1 || finishedTotal != 1 || eliminations > players-1 {
+		t.Fatalf("metrics: started %v finished %v eliminations %v", got, finishedTotal, eliminations)
+	}
 	t.Logf("finished: places %v, moved %d, crash survived %v", places, moved, crashed)
+}
+
+type health struct{ running, transfers, overdue int }
+
+func (e *env) health() health {
+	e.t.Helper()
+	var h health
+	if err := e.pool.QueryRow(e.ctx, `SELECT running, transfers_pending, overdue_starts FROM tournament_health`).
+		Scan(&h.running, &h.transfers, &h.overdue); err != nil {
+		e.t.Fatal(err)
+	}
+	return h
+}
+
+// assertHealthy checks the monitoring view the worker exports.
+func (e *env) assertHealthy() {
+	e.t.Helper()
+	rows, err := e.pool.Query(e.ctx, `SELECT violation, tournament_id::text, expected, actual FROM tournament_invariant_violations`)
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		v, _ := rows.Values()
+		e.t.Errorf("tournament invariant violation: %v", v)
+	}
 }
 
 func loadRealtimeSpec(t *testing.T) *openapi3.T {
@@ -474,12 +514,24 @@ func TestScheduledTournamentShortOfPlayersIsCancelled(t *testing.T) {
 		t.Fatalf("tables of a cancelled tournament stay closed: %v", err)
 	}
 
-	// Scheduled with enough players: Tick starts it once its time has come.
-	e2 := e.tournament("SCHEDULED", &past, 2, 6, e.users)
+	// A scheduled start a minute overdue shows up in the health view.
+	longAgo := time.Now().Add(-2 * time.Minute)
+	e2 := e.tournament("SCHEDULED", &longAgo, 2, 6, e.users)
+	if h := e.health(); h.overdue != 1 || h.running != 0 {
+		t.Fatalf("health before the start: %+v", h)
+	}
+	if got := testutil.ToFloat64(e.metrics["node-a"].TournamentsCancelled); got != 1 {
+		t.Fatalf("cancellations counted: %v", got)
+	}
+	// Tick starts it.
 	starter.Tick(e.ctx)
 	if e.status(e2) != "RUNNING" {
 		t.Fatalf("scheduled start: %s", e.status(e2))
 	}
+	if h := e.health(); h.overdue != 0 || h.running != 1 {
+		t.Fatalf("health after the start: %+v", h)
+	}
+	e.assertHealthy()
 	// Seats are assigned by the tournament: no buy-in or cash-out.
 	var t2 string
 	_ = e.pool.QueryRow(e.ctx, `SELECT t.id::text FROM tables t JOIN table_seats s ON s.table_id = t.id WHERE t.tournament_id = $1 LIMIT 1`, e2).Scan(&t2)
@@ -492,5 +544,16 @@ func TestScheduledTournamentShortOfPlayersIsCancelled(t *testing.T) {
 	}
 	if _, err := a.Leave(e.ctx, e.users[0], uuid.NewString()); err == nil {
 		t.Fatal("cash-out accepted at a tournament table")
+	}
+
+	// Corruption is detected: a stack changed outside the game service.
+	a.Stop(nil)
+	<-a.Done()
+	e.exec(`UPDATE table_seats SET stack_cached = stack_cached + 7 WHERE table_id = $1 AND seat_no = (SELECT min(seat_no) FROM table_seats WHERE table_id = $1)`, t2)
+	var violation string
+	var expected, actual int64
+	if err := e.pool.QueryRow(e.ctx, `SELECT violation, expected, actual FROM tournament_invariant_violations WHERE tournament_id = $1`, e2).
+		Scan(&violation, &expected, &actual); err != nil || violation != "CHIPS_NOT_CONSERVED" || actual != expected+7 {
+		t.Fatalf("violation %q %d %d (%v)", violation, expected, actual, err)
 	}
 }

@@ -6,6 +6,7 @@ import { loadConfig } from './config';
 import { Job, runJobs } from './jobs';
 import { ledgerInvariantCheck } from './ledger-jobs';
 import { purgeIdempotencyKeys } from './purge-jobs';
+import { tournamentHealthCheck } from './tournament-jobs';
 
 async function main(): Promise<void> {
   const config = loadConfig();
@@ -25,7 +26,11 @@ async function main(): Promise<void> {
   const registry = new Registry();
   registry.setDefaultLabels({ service: 'worker' });
   collectDefaultMetrics({ register: registry });
-  const jobs: Job[] = [purgeIdempotencyKeys(pool), ledgerInvariantCheck(pool, logger, registry)];
+  const jobs: Job[] = [
+    purgeIdempotencyKeys(pool),
+    ledgerInvariantCheck(pool, logger, registry),
+    tournamentHealthCheck(pool, logger, registry),
+  ];
 
   const server = createServer(async (req, res) => {
     res.setHeader('Content-Type', 'application/json');

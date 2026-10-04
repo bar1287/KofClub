@@ -275,6 +275,7 @@ func (a *Actor) handEnd(next *poker.Table, evs []poker.Event) (func(ctx context.
 // onHandFinished updates in-memory bookkeeping after a hand was settled.
 func (a *Actor) onHandFinished() {
 	a.deps.Metrics.HandsCompleted.Inc()
+	a.recordHandOutcome()
 	for user := range a.leaving {
 		if a.table.SeatOf(poker.PlayerID(user)) == 0 {
 			delete(a.leaving, user)

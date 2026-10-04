@@ -77,6 +77,14 @@ seed: ## Load demo data (users, club, table, chip grants)
 observability: ## Start Prometheus (:9090), Jaeger (:16686) and Grafana (:3001); see docs/observability.md
 	docker compose --profile observability up -d prometheus jaeger grafana
 
+.PHONY: observability-check
+observability-check: ## Validate Prometheus config and alert rules (promtool via Docker) and the Grafana dashboards
+	docker run --rm -v "$(CURDIR)/infra/observability:/etc/prometheus:ro" --entrypoint promtool \
+		prom/prometheus:v3.5.0 check config /etc/prometheus/prometheus.yml
+	@for f in infra/observability/grafana/dashboards/*.json; do \
+		node -e 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))' "$$f" || exit 1; done
+	@echo "dashboards: valid JSON"
+
 .PHONY: trace-check
 trace-check: ## Verify end-to-end tracing: Jaeger + short load smoke + span-tree check (needs Docker, `make deps`)
 	./scripts/trace-check.sh

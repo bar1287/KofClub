@@ -20,6 +20,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/bar1287/kofclub/apps/game-service/internal/store"
+	"github.com/bar1287/kofclub/apps/game-service/internal/table"
 	ledger "github.com/bar1287/kofclub/go/ledger-client"
 	"github.com/bar1287/kofclub/go/tournament"
 )
@@ -40,12 +41,15 @@ type Scheduler struct {
 	rand     io.Reader
 	activate func(ctx context.Context, tableID string) error
 	log      *slog.Logger
+	metrics  *table.Metrics
 	interval time.Duration
 }
 
 // New creates a scheduler. activate starts a table's actor (the registry).
-func New(s *store.Store, rng io.Reader, activate func(ctx context.Context, tableID string) error, log *slog.Logger, interval time.Duration) *Scheduler {
-	return &Scheduler{store: s, rand: rng, activate: activate, log: log.With(slog.String("component", "tournaments")), interval: interval}
+func New(s *store.Store, rng io.Reader, activate func(ctx context.Context, tableID string) error, log *slog.Logger,
+	metrics *table.Metrics, interval time.Duration) *Scheduler {
+	return &Scheduler{store: s, rand: rng, activate: activate, log: log.With(slog.String("component", "tournaments")),
+		metrics: metrics, interval: interval}
 }
 
 // Run polls until ctx ends.
@@ -72,7 +76,8 @@ func (s *Scheduler) Tick(ctx context.Context) {
 		return
 	}
 	for _, id := range ids {
-		if _, err := s.Start(ctx, id); err != nil {
+		if _, err := s.Start(ctx, id); err != nil && ctx.Err() == nil {
+			s.metrics.TournamentFailures.WithLabelValues("start").Inc()
 			s.log.Error("tournament_start_failed", slog.String("tournament_id", id), slog.String("error", err.Error()))
 		}
 	}
@@ -115,6 +120,7 @@ func (s *Scheduler) Start(ctx context.Context, id string) (Outcome, error) {
 	}
 	switch outcome {
 	case Started:
+		s.metrics.TournamentsStarted.Inc()
 		s.log.Info("tournament_started", slog.String("tournament_id", id), slog.Int("tables", len(tables)))
 		for _, tableID := range tables {
 			if err := s.activate(ctx, tableID); err != nil {
@@ -123,6 +129,7 @@ func (s *Scheduler) Start(ctx context.Context, id string) (Outcome, error) {
 			}
 		}
 	case Cancelled:
+		s.metrics.TournamentsCancelled.Inc()
 		s.log.Info("tournament_cancelled_short_of_players", slog.String("tournament_id", id))
 	}
 	return outcome, nil

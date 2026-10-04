@@ -185,6 +185,8 @@ jobs:
         run: make load-smoke ARGS="-game MIXED -tables 10 -players 4 -duration 20s"
       - name: Backup and restore drill
         run: make backup-restore-check
+      - name: Alert rules and dashboards (promtool)
+        run: make observability-check
       - name: End-to-end tracing check (Jaeger)
         run: make trace-check
 

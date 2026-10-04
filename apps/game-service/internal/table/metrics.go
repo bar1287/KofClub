@@ -16,6 +16,14 @@ type Metrics struct {
 	PersistFailures   *prometheus.CounterVec
 	LeaseLosses       prometheus.Counter
 	Timeouts          prometheus.Counter
+
+	// Tournaments (ADR-016).
+	TournamentsStarted     prometheus.Counter
+	TournamentsCancelled   prometheus.Counter
+	TournamentsFinished    prometheus.Counter
+	TournamentEliminations prometheus.Counter
+	TournamentMoves        prometheus.Counter
+	TournamentFailures     *prometheus.CounterVec
 }
 
 // NewMetrics registers the metrics on reg.
@@ -36,8 +44,19 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 		PersistFailures: prometheus.NewCounterVec(prometheus.CounterOpts{Name: "game_persist_failures_total", Help: "Failed durable writes."}, []string{"reason"}),
 		LeaseLosses:     prometheus.NewCounter(prometheus.CounterOpts{Name: "game_lease_losses_total", Help: "Table leases lost (actor stopped)."}),
 		Timeouts:        prometheus.NewCounter(prometheus.CounterOpts{Name: "game_turn_timeouts_total", Help: "Server-applied timeout actions."}),
+
+		TournamentsStarted:     prometheus.NewCounter(prometheus.CounterOpts{Name: "game_tournaments_started_total", Help: "Tournaments started by this node."}),
+		TournamentsCancelled:   prometheus.NewCounter(prometheus.CounterOpts{Name: "game_tournaments_cancelled_total", Help: "Scheduled tournaments cancelled for lack of players (buy-ins refunded)."}),
+		TournamentsFinished:    prometheus.NewCounter(prometheus.CounterOpts{Name: "game_tournaments_finished_total", Help: "Tournaments finished and paid out by this node."}),
+		TournamentEliminations: prometheus.NewCounter(prometheus.CounterOpts{Name: "game_tournament_eliminations_total", Help: "Players eliminated from tournaments."}),
+		TournamentMoves:        prometheus.NewCounter(prometheus.CounterOpts{Name: "game_tournament_moves_total", Help: "Players moved between tournament tables (balancing/breaking)."}),
+		TournamentFailures: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "game_tournament_failures_total", Help: "Failed tournament operations (retried on the next poll).",
+		}, []string{"op"}),
 	}
 	reg.MustRegister(m.ActiveTables, m.HandsStarted, m.HandsCompleted, m.HandsVoided, m.HandsResumed, m.Actions,
-		m.Rejections, m.DuplicateCommands, m.CommandLatency, m.PersistFailures, m.LeaseLosses, m.Timeouts)
+		m.Rejections, m.DuplicateCommands, m.CommandLatency, m.PersistFailures, m.LeaseLosses, m.Timeouts,
+		m.TournamentsStarted, m.TournamentsCancelled, m.TournamentsFinished, m.TournamentEliminations,
+		m.TournamentMoves, m.TournamentFailures)
 	return m
 }
