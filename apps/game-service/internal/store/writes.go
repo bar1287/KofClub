@@ -105,6 +105,7 @@ type NewHand struct {
 	BigBlind       int64
 	DeckCommitment string
 	DeckEnc        []byte
+	SealKeyID      int // keyring key that sealed the deck and hole cards
 	LeaseEpoch     int64
 	Players        []HandPlayerRecord
 }
@@ -113,9 +114,9 @@ type NewHand struct {
 func InsertHand(ctx context.Context, tx pgx.Tx, h NewHand) error {
 	_, err := tx.Exec(ctx, `
 		INSERT INTO hands (id, table_id, club_id, hand_no, status, button_seat, small_blind, big_blind,
-		                   deck_commitment, deck_enc, lease_epoch, game_type)
-		VALUES ($1, $2, $3, $4, 'IN_PROGRESS', $5, $6, $7, $8, $9, $10, $11)`,
-		h.ID, h.TableID, h.ClubID, h.HandNo, h.ButtonSeat, h.SmallBlind, h.BigBlind, h.DeckCommitment, h.DeckEnc, h.LeaseEpoch, h.GameType)
+		                   deck_commitment, deck_enc, seal_key_id, lease_epoch, game_type)
+		VALUES ($1, $2, $3, $4, 'IN_PROGRESS', $5, $6, $7, $8, $9, $10, $11, $12)`,
+		h.ID, h.TableID, h.ClubID, h.HandNo, h.ButtonSeat, h.SmallBlind, h.BigBlind, h.DeckCommitment, h.DeckEnc, h.SealKeyID, h.LeaseEpoch, h.GameType)
 	if err != nil {
 		return err
 	}

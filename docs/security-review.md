@@ -72,8 +72,10 @@ was found and what remains.
   substantially harder but `style-src 'unsafe-inline'` remains for React
   style attributes.
 - **Deck-key compromise** would expose stored hole cards of past hands; keep
-  `DECK_ENCRYPTION_KEY_B64` only on game nodes, rotate with a key id prefix
-  before production (not yet implemented).
+  the deck keys only on game nodes. Keys rotate through a keyring with
+  per-hand key ids, and `game-service reseal` re-encrypts stored cards so a
+  compromised key can be retired; backups taken before the re-seal remain
+  readable with the old key (docs/runbooks/deck-key-rotation.md).
 - **No MFA** for platform administrators yet (spec lists MFA-ready hooks);
   required before production for admin accounts.
 - **Collusion/fraud detection** is limited to the risk-event plumbing and

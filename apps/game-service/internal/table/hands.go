@@ -72,7 +72,7 @@ func (a *Actor) startHand() {
 	}
 	newHand := store.NewHand{
 		ID: handID, GameType: string(hand.Game()), TableID: a.cfg.ID, ClubID: a.cfg.ClubID, HandNo: hand.HandNo(), ButtonSeat: hand.ButtonSeat(),
-		SmallBlind: hand.SmallBlind(), BigBlind: hand.BigBlind(), DeckCommitment: commitHex, DeckEnc: deckEnc, LeaseEpoch: a.fence.Epoch,
+		SmallBlind: hand.SmallBlind(), BigBlind: hand.BigBlind(), DeckCommitment: commitHex, DeckEnc: deckEnc, SealKeyID: a.deps.Sealer.KeyID(), LeaseEpoch: a.fence.Epoch,
 	}
 	for _, p := range hand.Players() {
 		enc, err := a.deps.Sealer.Seal(cardBytes(p.HoleCards), "hole:"+handID+":"+string(p.Player))
@@ -382,7 +382,7 @@ func (a *Actor) recover(ctx context.Context) error {
 // rebuildHand decrypts the deck and replays the persisted actions,
 // verifying that every replayed action reproduces the persisted event.
 func (a *Actor) rebuildHand(hr *store.HandRecord) (*poker.Hand, string, error) {
-	plain, err := a.deps.Sealer.Open(hr.DeckEnc, "deck:"+hr.ID)
+	plain, err := a.deps.Sealer.Open(hr.SealKeyID, hr.DeckEnc, "deck:"+hr.ID)
 	if err != nil {
 		return nil, "", fmt.Errorf("decrypt deck: %w", err)
 	}

@@ -7,6 +7,12 @@ All notable changes to this project are documented here. The format follows
 
 ### Security
 
+- Deck-key rotation (ADR-008 amendment): game nodes read a keyring
+  (`DECK_ENCRYPTION_KEYS`, first key active; `DECK_ENCRYPTION_KEY_B64` stays
+  as a single key with id 1); migration 000011 records the sealing key per
+  hand (`hands.seal_key_id`); `game-service reseal` re-encrypts finished
+  hands with the active key; nodes refuse to start without the keys of hands
+  in progress. Runbook docs/runbooks/deck-key-rotation.md.
 - Credential endpoints (register, login, refresh) keep rate limiting in
   bounded per-process memory while Redis is unavailable instead of failing
   open; other limits still fail open (ADR-005). Integration test runs the API

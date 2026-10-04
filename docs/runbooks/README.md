@@ -17,4 +17,6 @@ Procedures and drills:
   automated restore drill (`make backup-restore-check`).
 - [failover-drill.md](failover-drill.md) — killing a game node mid-hand
   (automated in `tests/chaos`).
+- [deck-key-rotation.md](deck-key-rotation.md) — rotating the card
+  encryption key, re-sealing stored cards, retiring a key.
 - Load baseline: [../performance.md](../performance.md) (`make load-smoke`).

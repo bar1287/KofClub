@@ -73,8 +73,8 @@ func (f *fixture) table() string {
 func (f *fixture) hand(table string) string {
 	f.t.Helper()
 	id := uuid.NewString()
-	_, err := f.pool.Exec(f.ctx, `INSERT INTO hands (id, table_id, club_id, hand_no, status, button_seat, small_blind, big_blind, deck_commitment, deck_enc, lease_epoch)
-		VALUES ($1, $2, $3, (SELECT coalesce(max(hand_no), 0) + 1 FROM hands WHERE table_id = $2), 'IN_PROGRESS', 1, 5, 10, 'x', '\x00', 1)`, id, table, f.clubID)
+	_, err := f.pool.Exec(f.ctx, `INSERT INTO hands (id, table_id, club_id, hand_no, status, button_seat, small_blind, big_blind, deck_commitment, deck_enc, seal_key_id, lease_epoch)
+		VALUES ($1, $2, $3, (SELECT coalesce(max(hand_no), 0) + 1 FROM hands WHERE table_id = $2), 'IN_PROGRESS', 1, 5, 10, 'x', '\x00', 1, 1)`, id, table, f.clubID)
 	if err != nil {
 		f.t.Fatal(err)
 	}

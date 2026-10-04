@@ -48,8 +48,9 @@ service reports `draining` for `DRAIN_DELAY` before closing listeners.
 - `CORS_ORIGINS` and the gateway's allowed origins: the web origin only.
 - Secrets from the secret store: `AUTH_JWT_PRIVATE_KEY_B64` (control-api
   only), `AUTH_JWT_PUBLIC_KEY_B64` (control-api, gateway),
-  `INTERNAL_SERVICE_TOKEN`, `IP_HASH_SECRET`, `DECK_ENCRYPTION_KEY_B64`
-  (game nodes only).
+  `INTERNAL_SERVICE_TOKEN`, `IP_HASH_SECRET`, `DECK_ENCRYPTION_KEYS` (or the
+  single-key `DECK_ENCRYPTION_KEY_B64`; game nodes only; rotation:
+  [runbooks/deck-key-rotation.md](runbooks/deck-key-rotation.md)).
 - Web: served over HTTPS; the web tier sends a per-request nonce CSP and,
   with `APP_ENV=production|staging`, HSTS.
 - Platform administrators: granted with the operator CLI

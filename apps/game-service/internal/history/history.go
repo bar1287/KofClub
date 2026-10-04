@@ -42,7 +42,7 @@ func (r *Reader) OwnHoleCards(ctx context.Context, handID, userID string) ([]pok
 	if h.Status != "COMPLETED" && h.Status != "VOIDED" {
 		return nil, ErrNotAvailable
 	}
-	plain, err := r.sealer.Open(h.HoleCardsEnc, "hole:"+handID+":"+userID)
+	plain, err := r.sealer.Open(h.SealKeyID, h.HoleCardsEnc, "hole:"+handID+":"+userID)
 	if err != nil {
 		return nil, err
 	}

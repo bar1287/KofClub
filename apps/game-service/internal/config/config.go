@@ -21,12 +21,15 @@ type Config struct {
 	NodeID               string
 	AdvertiseURL         string
 	InternalServiceToken string
-	DeckEncryptionKeyB64 string
-	LeaseTTL             time.Duration
-	OrphanScanInterval   time.Duration
-	IdleCheckInterval    time.Duration
-	StartDelay           time.Duration
-	HandInterval         time.Duration
+	// DeckKeyring is the card-encryption keyring "id:base64key,..." (first
+	// key active), from DECK_ENCRYPTION_KEYS or, for a single key,
+	// DECK_ENCRYPTION_KEY_B64 (key id 1).
+	DeckKeyring        string
+	LeaseTTL           time.Duration
+	OrphanScanInterval time.Duration
+	IdleCheckInterval  time.Duration
+	StartDelay         time.Duration
+	HandInterval       time.Duration
 	// TournamentScanInterval is how often due tournaments are looked for;
 	// TournamentPoll how often tournament tables check arrivals/balancing.
 	TournamentScanInterval time.Duration
@@ -48,7 +51,6 @@ func load(l *envconfig.Loader) (Config, error) {
 		NodeID:                 l.Required("GAME_NODE_ID"),
 		AdvertiseURL:           l.String("GAME_NODE_ADVERTISE_URL", fmt.Sprintf("http://localhost:%d", port)),
 		InternalServiceToken:   l.Required("INTERNAL_SERVICE_TOKEN"),
-		DeckEncryptionKeyB64:   l.Required("DECK_ENCRYPTION_KEY_B64"),
 		LeaseTTL:               l.Duration("LEASE_TTL", 10*time.Second),
 		OrphanScanInterval:     l.Duration("ORPHAN_SCAN_INTERVAL", 5*time.Second),
 		IdleCheckInterval:      l.Duration("IDLE_CHECK_INTERVAL", time.Minute),
@@ -56,6 +58,17 @@ func load(l *envconfig.Loader) (Config, error) {
 		HandInterval:           l.Duration("HAND_INTERVAL", 4*time.Second),
 		TournamentScanInterval: l.Duration("TOURNAMENT_SCAN_INTERVAL", time.Second),
 		TournamentPoll:         l.Duration("TOURNAMENT_POLL_INTERVAL", time.Second),
+	}
+	keys, single := l.String("DECK_ENCRYPTION_KEYS", ""), l.String("DECK_ENCRYPTION_KEY_B64", "")
+	switch {
+	case keys != "" && single != "":
+		l.Fail(errors.New("set DECK_ENCRYPTION_KEYS or DECK_ENCRYPTION_KEY_B64, not both"))
+	case keys != "":
+		c.DeckKeyring = keys
+	case single != "":
+		c.DeckKeyring = "1:" + single
+	default:
+		l.Fail(errors.New("DECK_ENCRYPTION_KEYS (or DECK_ENCRYPTION_KEY_B64) is required"))
 	}
 	if len(c.InternalServiceToken) > 0 && len(c.InternalServiceToken) < 32 {
 		l.Fail(errors.New("INTERNAL_SERVICE_TOKEN must be at least 32 characters"))

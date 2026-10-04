@@ -75,7 +75,7 @@ make dev   # full stack in Docker; open http://localhost:3000 (make seed for dem
 - Node Docker images copy the whole workspace into the build stage; image size not optimized.
 - Game-service → gateway event fan-out is not linked to the originating trace (ADR-014).
 - Rate limiter fails open when Redis is down except for register/login/refresh, which fall back to per-process memory counters (N replicas allow N times the budget).
-- No MFA for platform administrators; no deck-key rotation (key id) yet; read endpoints rely on edge rate limiting (docs/security-review.md).
+- No MFA for platform administrators yet; read endpoints rely on edge rate limiting (docs/security-review.md).
 - Docker builds in restricted networks need a CA-trusting base image (sandbox-only; CI builds normally).
 - Club _closure_ (terminal status CLOSED) has no endpoint yet; suspension and reinstatement do.
 - Demo seed passwords are fixed for local convenience (seed refuses `APP_ENV=production`).
@@ -116,9 +116,9 @@ Canonical contract: `packages/contracts/openapi/control-api.yaml`
 
 The spec §16 roadmap is complete. Suggested next steps, in priority order:
 
-1. Security follow-ups from docs/security-review.md: deck-key rotation with
-   key ids, then MFA (TOTP) for platform administrators (the in-process
-   login rate-limit fallback is done).
+1. Security follow-up from docs/security-review.md: MFA (TOTP) for platform
+   administrators (the login rate-limit fallback and deck-key rotation are
+   done).
 2. Product depth: antes and configurable blind/payout structures,
    re-entry/late registration, a realtime tournament channel instead of
    polling (would also replace the unseated player's `myTableId` re-check),

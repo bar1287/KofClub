@@ -126,6 +126,7 @@ type HandRecord struct {
 	SmallBlind int64
 	BigBlind   int64
 	DeckEnc    []byte
+	SealKeyID  int
 	Players    []HandPlayerRecord
 	// Actions are the PLAYER_ACTED payloads in seq order.
 	Actions []json.RawMessage
@@ -135,9 +136,9 @@ type HandRecord struct {
 func (s *Store) LoadInProgressHand(ctx context.Context, tableID string) (*HandRecord, error) {
 	var h HandRecord
 	err := s.Pool.QueryRow(ctx, `
-		SELECT id::text, game_type, hand_no, button_seat, small_blind, big_blind, deck_enc
+		SELECT id::text, game_type, hand_no, button_seat, small_blind, big_blind, deck_enc, seal_key_id
 		  FROM hands WHERE table_id = $1 AND status = 'IN_PROGRESS'`, tableID).
-		Scan(&h.ID, &h.GameType, &h.HandNo, &h.ButtonSeat, &h.SmallBlind, &h.BigBlind, &h.DeckEnc)
+		Scan(&h.ID, &h.GameType, &h.HandNo, &h.ButtonSeat, &h.SmallBlind, &h.BigBlind, &h.DeckEnc, &h.SealKeyID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -262,6 +263,7 @@ func (s *Store) InFencedTx(ctx context.Context, f Fence, fn func(tx pgx.Tx) erro
 // status and game type.
 type SealedHand struct {
 	HoleCardsEnc []byte
+	SealKeyID    int
 	Status       string
 	GameType     string
 }
@@ -271,9 +273,9 @@ type SealedHand struct {
 func (s *Store) SealedHoleCards(ctx context.Context, handID, userID string) (SealedHand, error) {
 	var h SealedHand
 	err := s.Pool.QueryRow(ctx, `
-		SELECT hp.hole_cards_enc, h.status, h.game_type
+		SELECT hp.hole_cards_enc, h.seal_key_id, h.status, h.game_type
 		  FROM hand_players hp JOIN hands h ON h.id = hp.hand_id
-		 WHERE hp.hand_id = $1 AND hp.user_id = $2`, handID, userID).Scan(&h.HoleCardsEnc, &h.Status, &h.GameType)
+		 WHERE hp.hand_id = $1 AND hp.user_id = $2`, handID, userID).Scan(&h.HoleCardsEnc, &h.SealKeyID, &h.Status, &h.GameType)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return h, ErrNotFound
 	}
