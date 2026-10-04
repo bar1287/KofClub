@@ -34,6 +34,7 @@ type PlayerStart struct {
 
 // HandStarted is emitted first.
 type HandStarted struct {
+	Game           GameType      `json:"game"`
 	HandNo         int64         `json:"handNo"`
 	ButtonSeat     int           `json:"buttonSeat"`
 	SmallBlindSeat int           `json:"smallBlindSeat"`
@@ -57,7 +58,7 @@ type BlindPosted struct {
 type HoleCardsDealt struct {
 	Seat   int      `json:"seat"`
 	Player PlayerID `json:"player"`
-	Cards  [2]Card  `json:"cards"`
+	Cards  []Card   `json:"cards"`
 }
 
 // PlayerActed records an accepted action.
@@ -88,11 +89,11 @@ type StreetDealt struct {
 
 // CardsRevealed is emitted for every player who reaches showdown.
 type CardsRevealed struct {
-	Seat        int     `json:"seat"`
-	Cards       [2]Card `json:"cards"`
-	HandValue   uint32  `json:"handValue"`
-	Description string  `json:"description"`
-	BestFive    []Card  `json:"bestFive"`
+	Seat        int    `json:"seat"`
+	Cards       []Card `json:"cards"`
+	HandValue   uint32 `json:"handValue"`
+	Description string `json:"description"`
+	BestFive    []Card `json:"bestFive"`
 }
 
 // WinnerShare is one winner's share of a pot.

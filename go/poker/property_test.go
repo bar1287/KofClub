@@ -20,8 +20,8 @@ type randomHandStats struct {
 	hands, showdowns, uncontested, sidePots, splitPots, allInRunouts, actions int
 }
 
-// randomHand builds a random hand configuration from seed.
-func randomHand(seed uint64) (HandConfig, *mrand.Rand) {
+// randomHand builds a random hand configuration of the given game from seed.
+func randomHand(seed uint64, game GameType) (HandConfig, *mrand.Rand) {
 	r := mrand.New(mrand.NewPCG(seed, seed^0x9e3779b97f4a7c15))
 	n := 2 + r.IntN(8)
 	sb := []int64{1, 5, 10, 25}[r.IntN(4)]
@@ -42,7 +42,7 @@ func randomHand(seed uint64) (HandConfig, *mrand.Rand) {
 	}
 	deck, _ := NewShuffledDeck(newSeededReader(seed))
 	return HandConfig{
-		HandNo: int64(seed), SmallBlind: sb, BigBlind: bb,
+		Game: game, HandNo: int64(seed), SmallBlind: sb, BigBlind: bb,
 		ButtonSeat: setup[r.IntN(n)].Seat, Seats: setup, Deck: deck,
 	}, r
 }
@@ -187,6 +187,12 @@ func checkIllegalActionsRejected(t *testing.T, h *Hand, r *mrand.Rand) {
 			}
 		}
 	}
+	// All-in is only accepted when offered (in PLO it may exceed the limit).
+	if _, ok := legal(h, ActionAllIn); !ok {
+		if _, err := h.Act(Action{Seat: seat, Kind: ActionAllIn}); err == nil {
+			t.Fatal("all-in accepted although not offered")
+		}
+	}
 	if !reflect.DeepEqual(h, before) {
 		t.Fatal("rejected action mutated the hand")
 	}
@@ -272,10 +278,23 @@ func TestRandomHandsPreserveInvariants(t *testing.T) {
 	if testing.Short() {
 		n = 2000
 	}
+	runRandomHands(t, GameNLHE, n)
+}
+
+func TestRandomPLOHandsPreserveInvariants(t *testing.T) {
+	n := 8000
+	if testing.Short() {
+		n = 1500
+	}
+	runRandomHands(t, GamePLO, n)
+}
+
+func runRandomHands(t *testing.T, game GameType, n int) {
+	t.Helper()
 	var stats randomHandStats
 	streetsReached := map[Street]int{}
 	for seed := uint64(1); seed <= uint64(n); seed++ {
-		cfg, r := randomHand(seed)
+		cfg, r := randomHand(seed, game)
 		var startTotal int64
 		for _, s := range cfg.Seats {
 			startTotal += s.Stack
@@ -306,6 +325,11 @@ func TestRandomHandsPreserveInvariants(t *testing.T) {
 		}
 		checkRunningInvariants(t, h, startTotal)
 		checkFinalInvariants(t, h, cfg, events, &stats)
+		for _, p := range h.Players() {
+			if len(p.HoleCards) != game.HoleCardCount() {
+				t.Fatalf("seed %d: seat %d has %d hole cards", seed, p.Seat, len(p.HoleCards))
+			}
+		}
 		for _, sd := range eventsOf[StreetDealt](events) {
 			streetsReached[sd.Street]++
 		}
@@ -334,7 +358,7 @@ func TestRandomHandsPreserveInvariants(t *testing.T) {
 		}
 		stats.hands++
 	}
-	t.Logf("%+v streets=%v", stats, streetsReached)
+	t.Logf("%s: %+v streets=%v", game, stats, streetsReached)
 	// The generator must actually exercise the interesting paths.
 	if stats.showdowns < n/10 || stats.uncontested < n/10 || stats.sidePots == 0 || stats.splitPots == 0 ||
 		stats.allInRunouts == 0 || streetsReached[StreetRiver] < n/5 {
@@ -345,8 +369,14 @@ func TestRandomHandsPreserveInvariants(t *testing.T) {
 // Many consecutive hands at one table: chips are conserved across hands,
 // the button moves, and busted players stop being dealt in.
 func TestTableSessionConservesChips(t *testing.T) {
+	for _, game := range []GameType{GameNLHE, GamePLO} {
+		t.Run(string(game), func(t *testing.T) { tableSession(t, game) })
+	}
+}
+
+func tableSession(t *testing.T, game GameType) {
 	r := mrand.New(mrand.NewPCG(5, 6))
-	table, _ := NewTable(TableConfig{MaxSeats: 6, SmallBlind: 5, BigBlind: 10})
+	table, _ := NewTable(TableConfig{Game: game, MaxSeats: 6, SmallBlind: 5, BigBlind: 10})
 	var total int64
 	for seat := 1; seat <= 6; seat++ {
 		stack := int64(50 + r.IntN(500))

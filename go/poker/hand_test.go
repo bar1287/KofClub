@@ -11,6 +11,17 @@ import (
 // dealing order: first player left of the button first) and board.
 func stackedDeck(t *testing.T, holes [][2]string, board [5]string) []Card {
 	t.Helper()
+	all := make([][]string, len(holes))
+	for i, h := range holes {
+		all[i] = h[:]
+	}
+	return stackedDeckN(t, all, board)
+}
+
+// stackedDeckN is stackedDeck for any number of hole cards per player
+// (four in Omaha).
+func stackedDeckN(t *testing.T, holes [][]string, board [5]string) []Card {
+	t.Helper()
 	n := len(holes)
 	deck := make([]Card, 0, DeckSize)
 	used := map[Card]bool{}
@@ -22,7 +33,7 @@ func stackedDeck(t *testing.T, holes [][2]string, board [5]string) []Card {
 		used[c] = true
 		deck = append(deck, c)
 	}
-	for round := 0; round < 2; round++ {
+	for round := 0; round < len(holes[0]); round++ {
 		for i := 0; i < n; i++ {
 			add(holes[i][round])
 		}

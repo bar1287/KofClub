@@ -13,6 +13,8 @@ type SeatSetup struct {
 
 // HandConfig fully determines a hand together with the actions applied to it.
 type HandConfig struct {
+	// Game selects the rule module ("" = NLHE).
+	Game       GameType
 	HandNo     int64
 	SmallBlind int64
 	BigBlind   int64
@@ -29,7 +31,7 @@ type handPlayer struct {
 	stack         int64
 	streetBet     int64 // committed in the current betting round
 	contributed   int64 // committed in the whole hand
-	hole          [2]Card
+	hole          []Card
 	folded        bool
 	allIn         bool
 	acted         bool  // acted in the current betting round
@@ -38,10 +40,11 @@ type handPlayer struct {
 	showedDown    bool
 }
 
-// Hand is one Texas Hold'em hand. It is not safe for concurrent use; the
-// table actor serializes access (spec §4.1).
+// Hand is one hand of a flop game (Hold'em or Omaha, see GameType). It is
+// not safe for concurrent use; the table actor serializes access (spec §4.1).
 type Hand struct {
 	cfg        HandConfig
+	rules      rules
 	players    []*handPlayer // sorted by seat
 	button     int           // index into players
 	sb, bb     int
@@ -63,7 +66,7 @@ func NewHand(cfg HandConfig) (*Hand, []Event, error) {
 	if err := validateConfig(cfg); err != nil {
 		return nil, nil, err
 	}
-	h := &Hand{cfg: cfg, deck: append([]Card(nil), cfg.Deck...), street: StreetPreflop, toAct: -1, lastAggr: -1}
+	h := &Hand{cfg: cfg, rules: rulesFor(cfg.Game), deck: append([]Card(nil), cfg.Deck...), street: StreetPreflop, toAct: -1, lastAggr: -1}
 	seats := append([]SeatSetup(nil), cfg.Seats...)
 	sort.Slice(seats, func(i, j int) bool { return seats[i].Seat < seats[j].Seat })
 	for i, s := range seats {
@@ -86,7 +89,7 @@ func NewHand(cfg HandConfig) (*Hand, []Event, error) {
 		starts[i] = PlayerStart{Seat: p.seat, Player: p.player, Stack: p.stack}
 	}
 	events := []Event{HandStarted{
-		HandNo: cfg.HandNo, ButtonSeat: cfg.ButtonSeat,
+		Game: h.Game(), HandNo: cfg.HandNo, ButtonSeat: cfg.ButtonSeat,
 		SmallBlindSeat: h.players[h.sb].seat, BigBlindSeat: h.players[h.bb].seat,
 		SmallBlind: cfg.SmallBlind, BigBlind: cfg.BigBlind, Players: starts,
 	}}
@@ -96,18 +99,20 @@ func NewHand(cfg HandConfig) (*Hand, []Event, error) {
 	h.currentBet = cfg.BigBlind
 	h.minRaise = cfg.BigBlind
 
-	// Deal two rounds of one card, starting left of the button (the small
-	// blind in ring games; the big blind heads-up).
+	// Deal one card per round (two rounds in Hold'em, four in Omaha),
+	// starting left of the button (the small blind in ring games; the big
+	// blind heads-up).
 	first := (h.button + 1) % n
-	for round := 0; round < 2; round++ {
+	holes := h.rules.holeCards()
+	for round := 0; round < holes; round++ {
 		for k := 0; k < n; k++ {
 			p := h.players[(first+k)%n]
-			p.hole[round] = h.draw()
+			p.hole = append(p.hole, h.draw())
 		}
 	}
 	for k := 0; k < n; k++ {
 		p := h.players[(first+k)%n]
-		events = append(events, HoleCardsDealt{Seat: p.seat, Player: p.player, Cards: p.hole})
+		events = append(events, HoleCardsDealt{Seat: p.seat, Player: p.player, Cards: append([]Card(nil), p.hole...)})
 	}
 
 	// Preflop the first actor is left of the big blind (the button heads-up).
@@ -120,10 +125,14 @@ func validateConfig(cfg HandConfig) error {
 	if cfg.SmallBlind <= 0 || cfg.BigBlind <= 0 || cfg.SmallBlind > cfg.BigBlind {
 		return errorf(CodeInvalidConfig, "blinds must be positive with small <= big")
 	}
+	if !cfg.Game.Valid() {
+		return errorf(CodeInvalidConfig, "unsupported game %q", cfg.Game)
+	}
 	if len(cfg.Seats) < 2 {
 		return errorf(CodeInvalidConfig, "at least two players are required")
 	}
-	if len(cfg.Seats)*2+8 > DeckSize {
+	// Hole cards + 5 board cards + 3 burns must fit in the deck.
+	if len(cfg.Seats)*rulesFor(cfg.Game).holeCards()+8 > DeckSize {
 		return errorf(CodeInvalidConfig, "too many players")
 	}
 	seen := map[int]bool{}
@@ -178,6 +187,14 @@ func (h *Hand) commit(p *handPlayer, amount int64) {
 // Queries
 // ---------------------------------------------------------------------------
 
+// Game returns the hand's game type.
+func (h *Hand) Game() GameType {
+	if h.cfg.Game == "" {
+		return GameNLHE
+	}
+	return h.cfg.Game
+}
+
 // HandNo returns the configured hand number.
 func (h *Hand) HandNo() int64 { return h.cfg.HandNo }
 
@@ -231,7 +248,7 @@ type PlayerView struct {
 	Contributed int64
 	Folded      bool
 	AllIn       bool
-	HoleCards   [2]Card
+	HoleCards   []Card
 	Won         int64
 }
 
@@ -242,7 +259,7 @@ func (h *Hand) Players() []PlayerView {
 	for i, p := range h.players {
 		out[i] = PlayerView{
 			Seat: p.seat, Player: p.player, Stack: p.stack, StreetBet: p.streetBet,
-			Contributed: p.contributed, Folded: p.folded, AllIn: p.allIn, HoleCards: p.hole, Won: p.won,
+			Contributed: p.contributed, Folded: p.folded, AllIn: p.allIn, HoleCards: append([]Card(nil), p.hole...), Won: p.won,
 		}
 	}
 	return out
@@ -345,7 +362,9 @@ func (h *Hand) LegalActions() []LegalAction {
 	} else {
 		out = append(out, LegalAction{Kind: ActionCall, Amount: min(toCall, p.stack)})
 	}
-	maxTo := p.streetBet + p.stack
+	allInTo := p.streetBet + p.stack
+	// The betting limit (pot limit in PLO, none in NLHE) caps bets and raises.
+	maxTo := min(allInTo, h.rules.capTo(h, i))
 	canAggress := p.stack > toCall && h.opponentCanRespond(i)
 	if canAggress && h.currentBet == 0 {
 		out = append(out, LegalAction{Kind: ActionBet, MinTo: min(h.cfg.BigBlind, maxTo), MaxTo: maxTo})
@@ -354,8 +373,9 @@ func (h *Hand) LegalActions() []LegalAction {
 	} else {
 		canAggress = false
 	}
-	if p.stack > 0 && (p.stack <= toCall || canAggress) {
-		out = append(out, LegalAction{Kind: ActionAllIn, Amount: maxTo})
+	// All-in: calling with everything, or a bet/raise within the limit.
+	if p.stack > 0 && (p.stack <= toCall || (canAggress && allInTo <= maxTo)) {
+		out = append(out, LegalAction{Kind: ActionAllIn, Amount: allInTo})
 	}
 	return out
 }
@@ -394,7 +414,8 @@ func (h *Hand) Act(a Action) ([]Event, error) {
 	}
 	p := h.players[i]
 	toCall := max(0, h.currentBet-p.streetBet)
-	maxTo := p.streetBet + p.stack
+	allInTo := p.streetBet + p.stack
+	capTo := h.rules.capTo(h, i)
 
 	kind, to := a.Kind, a.Amount
 	if kind == ActionAllIn {
@@ -403,10 +424,12 @@ func (h *Hand) Act(a Action) ([]Event, error) {
 			return nil, errorf(CodeIllegalAction, "no chips behind")
 		case p.stack <= toCall:
 			kind = ActionCall
+		case allInTo > capTo:
+			return nil, errorf(CodeInvalidRaise, "all-in of %d exceeds the pot limit of %d", allInTo, capTo)
 		case h.currentBet == 0:
-			kind, to = ActionBet, maxTo
+			kind, to = ActionBet, allInTo
 		default:
-			kind, to = ActionRaise, maxTo
+			kind, to = ActionRaise, allInTo
 		}
 	}
 	if !h.isLegal(i, kind) {
@@ -422,14 +445,19 @@ func (h *Hand) Act(a Action) ([]Event, error) {
 		added = min(toCall, p.stack)
 		h.commit(p, added)
 	case ActionBet, ActionRaise:
-		if to > maxTo {
-			return nil, errorf(CodeInvalidRaise, "cannot commit %d with %d available", to, maxTo)
+		if to > allInTo {
+			return nil, errorf(CodeInvalidRaise, "cannot commit %d with %d available", to, allInTo)
+		}
+		if to > capTo {
+			return nil, errorf(CodeInvalidRaise, "the pot limit allows at most %d", capTo)
 		}
 		minTo := h.currentBet + h.minRaise
 		if kind == ActionBet {
 			minTo = h.cfg.BigBlind
 		}
-		if to < minTo && to != maxTo {
+		// A limit below the minimum (a tiny pot) caps the minimum too.
+		minTo = min(minTo, capTo)
+		if to < minTo && to != allInTo {
 			return nil, errorf(CodeInvalidRaise, "minimum is %d unless all-in", minTo)
 		}
 		if to <= h.currentBet {
@@ -601,12 +629,11 @@ func (h *Hand) finishShowdown() []Event {
 		if p.folded {
 			continue
 		}
-		cards := append([]Card{p.hole[0], p.hole[1]}, h.board...)
-		v, best := EvaluateBest(cards)
+		v, best := h.rules.best(p.hole, h.board)
 		values[p.seat] = v
 		p.showedDown = true
 		events = append(events, CardsRevealed{
-			Seat: p.seat, Cards: p.hole, HandValue: uint32(v), Description: v.Describe(), BestFive: best,
+			Seat: p.seat, Cards: append([]Card(nil), p.hole...), HandValue: uint32(v), Description: v.Describe(), BestFive: best,
 		})
 	}
 
@@ -655,6 +682,7 @@ func (h *Hand) Clone() *Hand {
 	c.players = make([]*handPlayer, len(h.players))
 	for i, p := range h.players {
 		cp := *p
+		cp.hole = append([]Card(nil), p.hole...)
 		c.players[i] = &cp
 	}
 	return &c

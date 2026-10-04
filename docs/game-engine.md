@@ -30,6 +30,33 @@ hand. The only randomness is the deck order passed in `HandConfig.Deck`:
   (`POKER_EXHAUSTIVE=1 go test -run SevenCard ./go/poker`, ~25 s) matching
   the known seven-card category frequencies.
 
+## Games (rule modules)
+
+`HandConfig.Game` / `TableConfig.Game` select a rule module (ADR-015). All
+other logic — blinds, turn order, streets, side pots, settlement events and
+recovery — is shared.
+
+| Game   | Hole cards | Hand evaluation                                          | Betting limit |
+| ------ | ---------- | -------------------------------------------------------- | ------------- |
+| `NLHE` | 2          | best five of the seven cards (`EvaluateBest`)            | no limit      |
+| `PLO`  | 4          | exactly 2 hole + exactly 3 board cards (`EvaluateOmaha`) | pot limit     |
+
+`EvaluateOmaha` checks all 6 × 10 combinations; it is cross-checked against
+the reference five-card evaluator on random deals and by hand-picked cases
+(a board royal flush or four-flush plays for nobody without two matching
+hole cards; board quads; three of a kind in the hand).
+
+**Pot limit.** A bet or raise may reach at most
+`currentBet + pot + amountToCall`, i.e. the player first calls and then
+raises by the size of the pot (pot = all chips committed in the hand,
+including the current street). Heads-up 5/10 the small blind may raise to
+30 and the big blind may re-raise to 90; with no bet on a street the
+maximum bet is the pot. `LegalActions` reports that limit as `maxTo`;
+`ALL_IN` is offered only when the whole stack fits under the limit (a short
+stack may always move in for less); bets above the limit are rejected with
+`INVALID_RAISE`. Minimum bets/raises and the incomplete-raise rules are the
+same as in no-limit.
+
 ## Hand lifecycle
 
 ```
@@ -58,7 +85,7 @@ NewHand: HAND_STARTED -> BLIND_POSTED x2 -> HOLE_CARDS_DEALT (private, per seat)
 | New players               | Dealt into the next hand without posting a missed blind (simplified)                                                         |
 | Sitting out / empty seats | Not dealt in                                                                                                                 |
 
-## Betting rules (no-limit)
+## Betting rules
 
 - Actions: `FOLD`, `CHECK`, `CALL`, `BET`, `RAISE`, and the convenience
   intent `ALL_IN` (resolved to CALL/BET/RAISE for the whole stack).
@@ -103,9 +130,9 @@ the server re-validates every action.
 
 ## Invariants (tested)
 
-`go/poker/property_test.go` plays 12,000 random hands (2–9 players, mixed
-short/deep stacks, varied sizing; `-short` runs 2,000) and checks after every
-action:
+`go/poker/property_test.go` plays 12,000 random Hold'em hands and 8,000
+random Pot-Limit Omaha hands (2–9 players, mixed short/deep stacks, varied
+sizing; `-short` runs 2,000/1,500) and checks after every action:
 
 - no card appears twice; board size matches the street;
 - per player `stack + contributed == starting stack` during the hand (chips
@@ -119,10 +146,12 @@ action:
   showdown is revealed exactly once;
 - no player wins more than `Σ_j min(contribution_j, own contribution)`
   (side-pot eligibility bound);
+- every player holds the game's number of hole cards; an `ALL_IN` that is
+  not offered is rejected;
 - replaying the same deck and actions yields identical events.
 
-`TestTableSessionConservesChips` plays consecutive hands at one table and
-checks table-wide conservation and button movement.
+`TestTableSessionConservesChips` plays consecutive hands at one table (both
+games) and checks table-wide conservation and button movement.
 
 ## Recovery semantics
 
@@ -140,5 +169,4 @@ voided hand id is never reused.
 ## Not yet implemented
 
 Antes, straddles, dead-button/missed-blind rules, run-it-twice, mucking at
-showdown, Pot-Limit Omaha (M9 — separate rule module sharing the table
-infrastructure), tournaments (M10).
+showdown, hi/lo split games, tournaments (M10).

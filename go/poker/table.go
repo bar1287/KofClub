@@ -4,6 +4,8 @@ import "sort"
 
 // TableConfig holds the fixed parameters of a cash table.
 type TableConfig struct {
+	// Game selects the rule module ("" = NLHE).
+	Game       GameType
 	MaxSeats   int
 	SmallBlind int64
 	BigBlind   int64
@@ -49,6 +51,9 @@ func NewTable(cfg TableConfig) (*Table, error) {
 	}
 	if cfg.SmallBlind <= 0 || cfg.BigBlind <= 0 || cfg.SmallBlind > cfg.BigBlind {
 		return nil, errorf(CodeInvalidConfig, "blinds must be positive with small <= big")
+	}
+	if !cfg.Game.Valid() {
+		return nil, errorf(CodeInvalidConfig, "unsupported game %q", cfg.Game)
 	}
 	return &Table{cfg: cfg, seats: map[int]*SeatState{}, phase: PhaseWaitingForPlayers}, nil
 }
@@ -223,7 +228,7 @@ func (t *Table) StartHand(deck []Card) (*Hand, []Event, error) {
 		setup[i] = SeatSetup{Seat: seat, Player: s.Player, Stack: s.Stack}
 	}
 	hand, events, err := NewHand(HandConfig{
-		HandNo: t.handNo + 1, SmallBlind: t.cfg.SmallBlind, BigBlind: t.cfg.BigBlind,
+		Game: t.cfg.Game, HandNo: t.handNo + 1, SmallBlind: t.cfg.SmallBlind, BigBlind: t.cfg.BigBlind,
 		ButtonSeat: button, Seats: setup, Deck: deck,
 	})
 	if err != nil {

@@ -20,6 +20,7 @@ to the same thing.
 | [012](ADR-012-browser-session-realtime-client.md)       | Browser session handling and the reference realtime client             | Accepted |
 | [013](ADR-013-history-admin-policies.md)                | Hand history, table closure and administrative enforcement             | Accepted |
 | [014](ADR-014-opentelemetry-tracing.md)                 | Distributed tracing with OpenTelemetry                                 | Accepted |
+| [015](ADR-015-game-variant-rule-modules.md)             | Game variants (Hold'em, Pot-Limit Omaha) as rule modules in the engine | Accepted |
 
 ## Template
 
