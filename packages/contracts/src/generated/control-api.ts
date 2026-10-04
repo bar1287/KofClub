@@ -1027,6 +1027,12 @@ export type components = {
       bigBlind: components['schemas']['ChipAmount'];
       buyInMax: components['schemas']['ChipAmount'];
       buyInMin: components['schemas']['ChipAmount'];
+      /**
+       * @description See GameType. Fixed for the table's lifetime.
+       * @default NLHE
+       * @enum {string}
+       */
+      gameType: 'NLHE' | 'PLO';
       /** @default 6 */
       maxSeats: number;
       name: string;
@@ -1092,6 +1098,13 @@ export type components = {
     ErrorEnvelope: {
       error: components['schemas']['ErrorBody'];
     };
+    /**
+     * @description NLHE = No-Limit Texas Hold'em (2 hole cards). PLO = Pot-Limit Omaha
+     *     (4 hole cards; a hand uses exactly two of them and three board cards;
+     *     bets and raises are capped at the pot).
+     * @enum {string}
+     */
+    GameType: 'NLHE' | 'PLO';
     HandCompletedEvent: {
       board: components['schemas']['Card'][];
       /** Format: uuid */
@@ -1169,6 +1182,7 @@ export type components = {
       bigBlindSeat: number;
       buttonSeat: number;
       deckCommitment: string;
+      gameType: components['schemas']['GameType'];
       /** Format: uuid */
       handId: string;
       /** Format: int64 */
@@ -1190,6 +1204,7 @@ export type components = {
       clubId: components['schemas']['Uuid'];
       clubName: string;
       endedAt: components['schemas']['Timestamp'];
+      gameType: components['schemas']['GameType'];
       /** Format: int64 */
       handNo: number;
       id: components['schemas']['Uuid'];
@@ -1362,7 +1377,7 @@ export type components = {
       kind: 'FOLD' | 'CHECK' | 'CALL' | 'BET' | 'RAISE' | 'ALL_IN';
       /**
        * Format: int64
-       * @description BET/RAISE maximum "to" amount (all-in).
+       * @description BET/RAISE maximum "to" amount (all-in, or the pot limit in PLO).
        */
       maxTo?: number;
       /**
@@ -1615,8 +1630,7 @@ export type components = {
       clubId: components['schemas']['Uuid'];
       createdAt: components['schemas']['Timestamp'];
       createdBy: components['schemas']['Uuid'];
-      /** @enum {string} */
-      gameType: 'NLHE';
+      gameType: components['schemas']['GameType'];
       id: components['schemas']['Uuid'];
       maxSeats: number;
       name: string;
@@ -1668,6 +1682,7 @@ export type components = {
       buyInMin: number;
       /** Format: uuid */
       clubId: string;
+      gameType: components['schemas']['GameType'];
       maxSeats: number;
       name: string;
       /** Format: int64 */

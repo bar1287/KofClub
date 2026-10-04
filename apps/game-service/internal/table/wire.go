@@ -64,6 +64,7 @@ type handPlayer struct {
 type handStartedPayload struct {
 	Kind           string       `json:"kind"`
 	HandID         string       `json:"handId"`
+	GameType       string       `json:"gameType"`
 	HandNo         int64        `json:"handNo"`
 	ButtonSeat     int          `json:"buttonSeat"`
 	SmallBlindSeat int          `json:"smallBlindSeat"`
@@ -236,7 +237,7 @@ func translate(handID, deckCommitment string, events []poker.Event, timeout bool
 				players[i] = handPlayer{Seat: p.Seat, UserID: string(p.Player), Stack: p.Stack}
 			}
 			out = append(out, draft{kind: KindHandStarted, handID: handID, public: handStartedPayload{
-				Kind: KindHandStarted, HandID: handID, HandNo: ev.HandNo, ButtonSeat: ev.ButtonSeat,
+				Kind: KindHandStarted, HandID: handID, GameType: string(ev.Game), HandNo: ev.HandNo, ButtonSeat: ev.ButtonSeat,
 				SmallBlindSeat: ev.SmallBlindSeat, BigBlindSeat: ev.BigBlindSeat, SmallBlind: ev.SmallBlind,
 				BigBlind: ev.BigBlind, DeckCommitment: deckCommitment, Players: players,
 			}})
@@ -249,7 +250,7 @@ func translate(handID, deckCommitment string, events []poker.Event, timeout bool
 				hole = &draft{kind: KindHoleCards, handID: handID, private: map[string]any{}}
 			}
 			holeSeats = append(holeSeats, ev.Seat)
-			holePrivate[string(ev.Player)] = []poker.Card{ev.Cards[0], ev.Cards[1]}
+			holePrivate[string(ev.Player)] = append([]poker.Card(nil), ev.Cards...)
 		case poker.PlayerActed:
 			out = append(out, draft{kind: KindPlayerActed, handID: handID, public: playerActedPayload{
 				Kind: KindPlayerActed, Seat: ev.Seat, Action: string(ev.Kind), Added: ev.Added, StreetBet: ev.StreetBet,
@@ -265,7 +266,7 @@ func translate(handID, deckCommitment string, events []poker.Event, timeout bool
 			}})
 		case poker.CardsRevealed:
 			out = append(out, draft{kind: KindCardsRevealed, handID: handID, public: cardsRevealedPayload{
-				Kind: KindCardsRevealed, Seat: ev.Seat, Cards: []poker.Card{ev.Cards[0], ev.Cards[1]},
+				Kind: KindCardsRevealed, Seat: ev.Seat, Cards: ev.Cards,
 				Description: ev.Description, BestFive: ev.BestFive,
 			}})
 		case poker.PotAwarded:

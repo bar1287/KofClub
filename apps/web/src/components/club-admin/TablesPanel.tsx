@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { chips } from '@/lib/format';
+import { gameLabel } from '@/lib/games';
 import { useSession } from '@/lib/session';
 import type { Club, Table } from '@/lib/types';
 import { Feedback } from './Feedback';
@@ -25,6 +26,7 @@ export function TablesPanel({ club }: { club: Club }) {
         <thead>
           <tr>
             <th>Table</th>
+            <th>Game</th>
             <th>Blinds</th>
             <th className="num">Players</th>
             <th>Status</th>
@@ -37,6 +39,7 @@ export function TablesPanel({ club }: { club: Club }) {
               <td>
                 <Link href={`/tables/${t.id}`}>{t.name}</Link>
               </td>
+              <td>{gameLabel(t.gameType)}</td>
               <td>
                 {chips(t.smallBlind)}/{chips(t.bigBlind)}
               </td>

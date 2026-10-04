@@ -118,6 +118,24 @@ func (e CreateInviteRequestRole) Valid() bool {
 	}
 }
 
+// Defines values for CreateTableRequestGameType.
+const (
+	CreateTableRequestGameTypeNLHE CreateTableRequestGameType = "NLHE"
+	CreateTableRequestGameTypePLO  CreateTableRequestGameType = "PLO"
+)
+
+// Valid indicates whether the value is a known member of the CreateTableRequestGameType enum.
+func (e CreateTableRequestGameType) Valid() bool {
+	switch e {
+	case CreateTableRequestGameTypeNLHE:
+		return true
+	case CreateTableRequestGameTypePLO:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ErrorCode.
 const (
 	ErrorCodeACCOUNTSUSPENDED         ErrorCode = "ACCOUNT_SUSPENDED"
@@ -577,21 +595,6 @@ func (e RiskEventSeverity) Valid() bool {
 	}
 }
 
-// Defines values for TableGameType.
-const (
-	TableGameTypeNLHE TableGameType = "NLHE"
-)
-
-// Valid indicates whether the value is a known member of the TableGameType enum.
-func (e TableGameType) Valid() bool {
-	switch e {
-	case TableGameTypeNLHE:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for TableStatus.
 const (
 	TableStatusCLOSED TableStatus = "CLOSED"
@@ -604,21 +607,6 @@ func (e TableStatus) Valid() bool {
 	case TableStatusCLOSED:
 		return true
 	case TableStatusOPEN:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for TableDetailGameType.
-const (
-	TableDetailGameTypeNLHE TableDetailGameType = "NLHE"
-)
-
-// Valid indicates whether the value is a known member of the TableDetailGameType enum.
-func (e TableDetailGameType) Valid() bool {
-	switch e {
-	case TableDetailGameTypeNLHE:
 		return true
 	default:
 		return false
@@ -973,12 +961,18 @@ type CreateTableRequest struct {
 
 	// BuyInMin Integer amount of virtual chips (no monetary value).
 	BuyInMin ChipAmount `json:"buyInMin"`
-	MaxSeats *int       `json:"maxSeats,omitempty"`
-	Name     string     `json:"name"`
+
+	// GameType See GameType. Fixed for the table's lifetime.
+	GameType *CreateTableRequestGameType `json:"gameType,omitempty"`
+	MaxSeats *int                        `json:"maxSeats,omitempty"`
+	Name     string                      `json:"name"`
 
 	// SmallBlind Integer amount of virtual chips (no monetary value).
 	SmallBlind ChipAmount `json:"smallBlind"`
 }
+
+// CreateTableRequestGameType See GameType. Fixed for the table's lifetime.
+type CreateTableRequestGameType string
 
 // ErrorBody defines model for ErrorBody.
 type ErrorBody struct {
@@ -1018,8 +1012,13 @@ type HandDetail struct {
 
 	// Events Public action log of the hand (never contains unrevealed cards).
 	Events []HandEventRecord `json:"events"`
-	HandNo int64             `json:"handNo"`
-	Id     Uuid              `json:"id"`
+
+	// GameType NLHE = No-Limit Texas Hold'em (2 hole cards). PLO = Pot-Limit Omaha
+	// (4 hole cards; a hand uses exactly two of them and three board cards;
+	// bets and raises are capped at the pot).
+	GameType externalRef0.GameType `json:"gameType"`
+	HandNo   int64                 `json:"handNo"`
+	Id       Uuid                  `json:"id"`
 
 	// MyHoleCards The viewer's own hole cards; null for non-participants.
 	MyHoleCards *[]externalRef0.Card `json:"myHoleCards"`
@@ -1088,8 +1087,13 @@ type HandSummary struct {
 
 	// EndedAt UTC RFC 3339 timestamp
 	EndedAt Timestamp `json:"endedAt"`
-	HandNo  int64     `json:"handNo"`
-	Id      Uuid      `json:"id"`
+
+	// GameType NLHE = No-Limit Texas Hold'em (2 hole cards). PLO = Pot-Limit Omaha
+	// (4 hole cards; a hand uses exactly two of them and three board cards;
+	// bets and raises are capped at the pot).
+	GameType externalRef0.GameType `json:"gameType"`
+	HandNo   int64                 `json:"handNo"`
+	Id       Uuid                  `json:"id"`
 
 	// MyNet The viewer's result; null when the viewer did not play or the hand was voided.
 	MyNet       *int64 `json:"myNet"`
@@ -1440,21 +1444,22 @@ type Table struct {
 	ClubId   Uuid       `json:"clubId"`
 
 	// CreatedAt UTC RFC 3339 timestamp
-	CreatedAt   Timestamp     `json:"createdAt"`
-	CreatedBy   Uuid          `json:"createdBy"`
-	GameType    TableGameType `json:"gameType"`
-	Id          Uuid          `json:"id"`
-	MaxSeats    int           `json:"maxSeats"`
-	Name        string        `json:"name"`
-	SeatedCount int           `json:"seatedCount"`
+	CreatedAt Timestamp `json:"createdAt"`
+	CreatedBy Uuid      `json:"createdBy"`
+
+	// GameType NLHE = No-Limit Texas Hold'em (2 hole cards). PLO = Pot-Limit Omaha
+	// (4 hole cards; a hand uses exactly two of them and three board cards;
+	// bets and raises are capped at the pot).
+	GameType    externalRef0.GameType `json:"gameType"`
+	Id          Uuid                  `json:"id"`
+	MaxSeats    int                   `json:"maxSeats"`
+	Name        string                `json:"name"`
+	SeatedCount int                   `json:"seatedCount"`
 
 	// SmallBlind Integer amount of virtual chips (no monetary value).
 	SmallBlind ChipAmount  `json:"smallBlind"`
 	Status     TableStatus `json:"status"`
 }
-
-// TableGameType defines model for Table.GameType.
-type TableGameType string
 
 // TableStatus defines model for Table.Status.
 type TableStatus string
@@ -1474,22 +1479,23 @@ type TableDetail struct {
 	ClubId   Uuid       `json:"clubId"`
 
 	// CreatedAt UTC RFC 3339 timestamp
-	CreatedAt   Timestamp           `json:"createdAt"`
-	CreatedBy   Uuid                `json:"createdBy"`
-	GameType    TableDetailGameType `json:"gameType"`
-	Id          Uuid                `json:"id"`
-	MaxSeats    int                 `json:"maxSeats"`
-	Name        string              `json:"name"`
-	SeatedCount int                 `json:"seatedCount"`
-	Seats       []TableSeat         `json:"seats"`
+	CreatedAt Timestamp `json:"createdAt"`
+	CreatedBy Uuid      `json:"createdBy"`
+
+	// GameType NLHE = No-Limit Texas Hold'em (2 hole cards). PLO = Pot-Limit Omaha
+	// (4 hole cards; a hand uses exactly two of them and three board cards;
+	// bets and raises are capped at the pot).
+	GameType    externalRef0.GameType `json:"gameType"`
+	Id          Uuid                  `json:"id"`
+	MaxSeats    int                   `json:"maxSeats"`
+	Name        string                `json:"name"`
+	SeatedCount int                   `json:"seatedCount"`
+	Seats       []TableSeat           `json:"seats"`
 
 	// SmallBlind Integer amount of virtual chips (no monetary value).
 	SmallBlind ChipAmount        `json:"smallBlind"`
 	Status     TableDetailStatus `json:"status"`
 }
-
-// TableDetailGameType defines model for TableDetail.GameType.
-type TableDetailGameType string
 
 // TableDetailStatus defines model for TableDetail.Status.
 type TableDetailStatus string

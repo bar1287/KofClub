@@ -11,6 +11,7 @@ import (
 type TableInfo struct {
 	ClubID          string `json:"clubId"`
 	Name            string `json:"name"`
+	GameType        string `json:"gameType"`
 	MaxSeats        int    `json:"maxSeats"`
 	SmallBlind      int64  `json:"smallBlind"`
 	BigBlind        int64  `json:"bigBlind"`
@@ -84,7 +85,7 @@ func (a *Actor) snapshot(viewer string) Snapshot {
 	s := Snapshot{
 		TableID: a.cfg.ID, Seq: a.seq, ServerTime: time.Now().UTC(), Phase: string(a.table.Phase()),
 		Table: TableInfo{
-			ClubID: a.cfg.ClubID, Name: a.cfg.Name, MaxSeats: a.cfg.MaxSeats, SmallBlind: a.cfg.SmallBlind,
+			ClubID: a.cfg.ClubID, Name: a.cfg.Name, GameType: string(a.table.Config().Game), MaxSeats: a.cfg.MaxSeats, SmallBlind: a.cfg.SmallBlind,
 			BigBlind: a.cfg.BigBlind, BuyInMin: a.cfg.BuyInMin, BuyInMax: a.cfg.BuyInMax,
 			ActionTimeoutMs: a.cfg.ActionTimeout.Milliseconds(), Status: a.cfg.Status,
 		},
@@ -105,7 +106,7 @@ func (a *Actor) snapshot(viewer string) Snapshot {
 		if p, ok := inHand[st.Seat]; ok && p.Player == st.Player {
 			v.InHand, v.Folded, v.AllIn, v.StreetBet = true, p.Folded, p.AllIn, p.StreetBet
 			if revealed && !p.Folded {
-				v.ShownCards = []poker.Card{p.HoleCards[0], p.HoleCards[1]}
+				v.ShownCards = p.HoleCards
 			}
 		}
 		s.Seats = append(s.Seats, v)
@@ -132,7 +133,7 @@ func (a *Actor) snapshot(viewer string) Snapshot {
 		if seat := a.table.SeatOf(poker.PlayerID(viewer)); seat != 0 {
 			you.Seat = seat
 			if p, ok := inHand[seat]; ok && p.Player == poker.PlayerID(viewer) {
-				you.HoleCards = []poker.Card{p.HoleCards[0], p.HoleCards[1]}
+				you.HoleCards = p.HoleCards
 				if actor, ok := hand.CurrentActor(); ok && actor == seat {
 					you.LegalActions = hand.LegalActions()
 				}

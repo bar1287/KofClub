@@ -17,6 +17,7 @@ function snapshot(overrides: Partial<TableSnapshot> = {}): TableSnapshot {
     table: {
       clubId: '0191a000-0000-7000-8000-0000000000c1',
       name: 'Main',
+      gameType: 'NLHE',
       maxSeats: 6,
       smallBlind: 5,
       bigBlind: 10,
@@ -76,6 +77,7 @@ function ready(snap = snapshot()): TableState {
 const handStarted: TableEventPayload = {
   kind: 'HAND_STARTED',
   handId: HAND,
+  gameType: 'NLHE',
   handNo: 1,
   buttonSeat: 1,
   smallBlindSeat: 1,
@@ -366,6 +368,38 @@ describe('action helpers', () => {
       { label: 'Pot', to: 30 },
       { label: 'All-in', to: 1000 },
     ]);
+  });
+
+  it('caps presets at the pot limit and never sends a capped raise as all-in', () => {
+    // PLO heads-up 5/10, small blind to act with 1000: raise 20..30, no all-in.
+    const plo = handStart.map((e) =>
+      e.kind === 'TURN_STARTED'
+        ? {
+            ...e,
+            legalActions: [
+              { kind: 'FOLD' as const },
+              { kind: 'CALL' as const, amount: 5 },
+              { kind: 'RAISE' as const, minTo: 20, maxTo: 30 },
+            ],
+          }
+        : e,
+    );
+    const s = play(ready(), plo);
+    expect(sizingPresets(s)).toEqual([
+      { label: 'Min', to: 20 },
+      { label: 'Pot', to: 30 },
+    ]);
+    const opts = actionOptions(s.legalActions);
+    expect(aggressiveCommand(opts, 30)).toEqual({ kind: 'RAISE', amount: 30 });
+    expect(aggressiveCommand(opts, 31)).toBeNull();
+    // A short stack inside the limit still moves in with ALL_IN.
+    const short = actionOptions([
+      { kind: 'FOLD' },
+      { kind: 'CALL', amount: 20 },
+      { kind: 'RAISE', minTo: 40, maxTo: 40 },
+      { kind: 'ALL_IN', amount: 40 },
+    ]);
+    expect(aggressiveCommand(short, 40)).toEqual({ kind: 'ALL_IN' });
   });
 
   it('builds BET/RAISE/ALL_IN commands and rejects out-of-range sizes', () => {

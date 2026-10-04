@@ -32,26 +32,27 @@ func NewReader(s *store.Store, seal *sealer.Sealer) *Reader {
 // that userID is the authenticated requester: this never returns anyone
 // else's cards because the row is selected by (hand, user).
 func (r *Reader) OwnHoleCards(ctx context.Context, handID, userID string) ([]poker.Card, error) {
-	enc, status, err := r.store.SealedHoleCards(ctx, handID, userID)
+	h, err := r.store.SealedHoleCards(ctx, handID, userID)
 	if errors.Is(err, store.ErrNotFound) {
 		return nil, ErrNotAvailable
 	}
 	if err != nil {
 		return nil, err
 	}
-	if status != "COMPLETED" && status != "VOIDED" {
+	if h.Status != "COMPLETED" && h.Status != "VOIDED" {
 		return nil, ErrNotAvailable
 	}
-	plain, err := r.sealer.Open(enc, "hole:"+handID+":"+userID)
+	plain, err := r.sealer.Open(h.HoleCardsEnc, "hole:"+handID+":"+userID)
 	if err != nil {
 		return nil, err
 	}
-	if len(plain) != 2 {
+	// Two cards in Hold'em, four in Omaha.
+	if game := poker.GameType(h.GameType); !game.Valid() || len(plain) != game.HoleCardCount() {
 		return nil, errors.New("history: corrupt hole cards")
 	}
-	cards := []poker.Card{poker.Card(plain[0]), poker.Card(plain[1])}
-	for _, c := range cards {
-		if !c.Valid() {
+	cards := make([]poker.Card, len(plain))
+	for i, b := range plain {
+		if cards[i] = poker.Card(b); !cards[i].Valid() {
 			return nil, errors.New("history: corrupt hole cards")
 		}
 	}

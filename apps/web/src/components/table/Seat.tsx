@@ -10,6 +10,8 @@ interface Props {
   hand: HandState | null;
   isMe: boolean;
   myCards: Card[];
+  /** Hole cards per player in this game (card backs for opponents). */
+  holeCards: number;
   position: { left: number; top: number };
 }
 
@@ -22,7 +24,7 @@ function statusLine(seat: SeatState, hand: HandState | null): string {
   return '';
 }
 
-export function SeatView({ seat, hand, isMe, myCards, position }: Props) {
+export function SeatView({ seat, hand, isMe, myCards, holeCards, position }: Props) {
   const acting = hand?.toActSeat === seat.seat;
   const handLive = hand !== null && hand.street !== 'COMPLETE';
   const won = hand?.awards
@@ -36,12 +38,7 @@ export function SeatView({ seat, hand, isMe, myCards, position }: Props) {
   } else if (isMe && myCards.length > 0 && seat.inHand) {
     cards = myCards.map((c) => <PlayingCard key={c} card={c} small />);
   } else if (seat.inHand && !seat.folded && handLive) {
-    cards = (
-      <>
-        <PlayingCard back small />
-        <PlayingCard back small />
-      </>
-    );
+    cards = Array.from({ length: holeCards }, (_, i) => <PlayingCard key={i} back small />);
   }
 
   const classes = ['seat'];

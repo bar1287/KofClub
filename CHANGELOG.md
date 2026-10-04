@@ -5,6 +5,30 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added — M9 Pot-Limit Omaha
+
+- Engine rule modules (ADR-015): `GameType` (`NLHE`, `PLO`) selects hole-card
+  count, hand evaluation and betting limit; blinds, turn order, side pots,
+  settlement and recovery are shared.
+- `EvaluateOmaha` (exactly two hole cards + three board cards), cross-checked
+  against the reference evaluator; pot-limit caps (`currentBet + pot +
+toCall`) in legal actions and validation; all-in only within the limit.
+- Property tests run 8,000 random PLO hands with the NLHE invariants; table
+  session tests for both games.
+- Migration 000008: `tables.game_type` accepts `PLO`; `hands.game_type`.
+- Contracts: `GameType` on `TableInfo`, `HAND_STARTED`, `Table`,
+  `CreateTableRequest` (default `NLHE`) and `HandSummary`; card arrays of 2
+  or 4.
+- Game service: PLO tables deal/seal 4 cards, replay after failover as PLO,
+  history decrypts 4 cards; control-api creates PLO tables and lists the game
+  in history.
+- Web: game selector when creating tables, game labels (lobby, admin,
+  table header, history), 4 card backs for opponents, pot-limit sizing
+  ("Pot" is the maximum; a capped raise is never sent as all-in).
+- Tests: game-service PLO integration (4 private cards, pot limit, failover,
+  history, contract), control-api PLO integration, Playwright PLO hand;
+  `make load-smoke ARGS="-game MIXED"` (CI runs mixed tables).
+
 ### Added — M8 Hardening
 
 - Chaos drill (`tests/chaos`, in `make integration`): SIGKILL a game node

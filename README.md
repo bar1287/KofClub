@@ -1,8 +1,8 @@
 # KofClub
 
 An original private-club **social poker platform** with **virtual chips only**:
-users create or join clubs, sit at private tables and play realtime Texas
-Hold'em against each other. Chips have **no monetary value** — there are no
+users create or join clubs, sit at private tables and play realtime No-Limit
+Texas Hold'em or Pot-Limit Omaha against each other. Chips have **no monetary value** — there are no
 deposits, withdrawals, cash-outs or payment rails (see
 [ADR-006](docs/adr/ADR-006-virtual-chip-scope.md)).
 
@@ -34,7 +34,7 @@ Details: [docs/architecture.md](docs/architecture.md).
 | `apps/realtime-gateway` | Go WebSocket gateway (auth, subscriptions, ordering, resync)                  |
 | `apps/web`              | Next.js client (lobby, table UI, admin)                                       |
 | `apps/worker`           | Background jobs                                                               |
-| `go/poker`              | Pure Hold'em engine — no network/DB dependencies                              |
+| `go/poker`              | Pure poker engine (NLHE, PLO rule modules) — no network/DB dependencies       |
 | `go/ledger-client`      | Go client for the ledger posting function                                     |
 | `go/observability`      | Logging, metrics, health checks                                               |
 | `packages/contracts`    | OpenAPI/realtime schemas + generated TS/Go types                              |

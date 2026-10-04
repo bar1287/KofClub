@@ -182,7 +182,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: ./scripts/init-env.sh
       - name: Load smoke (fails on latency, errors or ledger mismatch)
-        run: make load-smoke ARGS="-tables 10 -players 4 -duration 20s"
+        run: make load-smoke ARGS="-game MIXED -tables 10 -players 4 -duration 20s"
       - name: Backup and restore drill
         run: make backup-restore-check
       - name: End-to-end tracing check (Jaeger)

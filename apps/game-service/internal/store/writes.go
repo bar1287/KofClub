@@ -96,6 +96,7 @@ func UpdateSeatStacks(ctx context.Context, tx pgx.Tx, tableID string, stacks map
 // NewHand is the metadata persisted when a hand starts.
 type NewHand struct {
 	ID             string
+	GameType       string
 	TableID        string
 	ClubID         string
 	HandNo         int64
@@ -112,9 +113,9 @@ type NewHand struct {
 func InsertHand(ctx context.Context, tx pgx.Tx, h NewHand) error {
 	_, err := tx.Exec(ctx, `
 		INSERT INTO hands (id, table_id, club_id, hand_no, status, button_seat, small_blind, big_blind,
-		                   deck_commitment, deck_enc, lease_epoch)
-		VALUES ($1, $2, $3, $4, 'IN_PROGRESS', $5, $6, $7, $8, $9, $10)`,
-		h.ID, h.TableID, h.ClubID, h.HandNo, h.ButtonSeat, h.SmallBlind, h.BigBlind, h.DeckCommitment, h.DeckEnc, h.LeaseEpoch)
+		                   deck_commitment, deck_enc, lease_epoch, game_type)
+		VALUES ($1, $2, $3, $4, 'IN_PROGRESS', $5, $6, $7, $8, $9, $10, $11)`,
+		h.ID, h.TableID, h.ClubID, h.HandNo, h.ButtonSeat, h.SmallBlind, h.BigBlind, h.DeckCommitment, h.DeckEnc, h.LeaseEpoch, h.GameType)
 	if err != nil {
 		return err
 	}

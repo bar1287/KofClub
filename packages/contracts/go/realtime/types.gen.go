@@ -174,6 +174,24 @@ func (e CommandResultType) Valid() bool {
 	}
 }
 
+// Defines values for GameType.
+const (
+	GameTypeNLHE GameType = "NLHE"
+	GameTypePLO  GameType = "PLO"
+)
+
+// Valid indicates whether the value is a known member of the GameType enum.
+func (e GameType) Valid() bool {
+	switch e {
+	case GameTypeNLHE:
+		return true
+	case GameTypePLO:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for HandCompletedEventKind.
 const (
 	HandCompletedEventKindHANDCOMPLETED HandCompletedEventKind = "HAND_COMPLETED"
@@ -918,6 +936,11 @@ type CommandResult struct {
 // CommandResultType defines model for CommandResult.Type.
 type CommandResultType string
 
+// GameType NLHE = No-Limit Texas Hold'em (2 hole cards). PLO = Pot-Limit Omaha
+// (4 hole cards; a hand uses exactly two of them and three board cards;
+// bets and raises are capped at the pot).
+type GameType string
+
 // HandCompletedEvent defines model for HandCompletedEvent.
 type HandCompletedEvent struct {
 	Board    []Card                 `json:"board"`
@@ -951,10 +974,15 @@ type HandResult struct {
 
 // HandStartedEvent defines model for HandStartedEvent.
 type HandStartedEvent struct {
-	BigBlind       int64                `json:"bigBlind"`
-	BigBlindSeat   int                  `json:"bigBlindSeat"`
-	ButtonSeat     int                  `json:"buttonSeat"`
-	DeckCommitment string               `json:"deckCommitment"`
+	BigBlind       int64  `json:"bigBlind"`
+	BigBlindSeat   int    `json:"bigBlindSeat"`
+	ButtonSeat     int    `json:"buttonSeat"`
+	DeckCommitment string `json:"deckCommitment"`
+
+	// GameType NLHE = No-Limit Texas Hold'em (2 hole cards). PLO = Pot-Limit Omaha
+	// (4 hole cards; a hand uses exactly two of them and three board cards;
+	// bets and raises are capped at the pot).
+	GameType       GameType             `json:"gameType"`
 	HandId         openapi_types.UUID   `json:"handId"`
 	HandNo         int64                `json:"handNo"`
 	Kind           HandStartedEventKind `json:"kind"`
@@ -1031,7 +1059,7 @@ type LegalAction struct {
 	Amount *int64          `json:"amount,omitempty"`
 	Kind   LegalActionKind `json:"kind"`
 
-	// MaxTo BET/RAISE maximum "to" amount (all-in).
+	// MaxTo BET/RAISE maximum "to" amount (all-in, or the pot limit in PLO).
 	MaxTo *int64 `json:"maxTo,omitempty"`
 
 	// MinTo BET/RAISE minimum "to" amount.
@@ -1259,10 +1287,15 @@ type TableInfo struct {
 	BuyInMax        int64              `json:"buyInMax"`
 	BuyInMin        int64              `json:"buyInMin"`
 	ClubId          openapi_types.UUID `json:"clubId"`
-	MaxSeats        int                `json:"maxSeats"`
-	Name            string             `json:"name"`
-	SmallBlind      int64              `json:"smallBlind"`
-	Status          TableInfoStatus    `json:"status"`
+
+	// GameType NLHE = No-Limit Texas Hold'em (2 hole cards). PLO = Pot-Limit Omaha
+	// (4 hole cards; a hand uses exactly two of them and three board cards;
+	// bets and raises are capped at the pot).
+	GameType   GameType        `json:"gameType"`
+	MaxSeats   int             `json:"maxSeats"`
+	Name       string          `json:"name"`
+	SmallBlind int64           `json:"smallBlind"`
+	Status     TableInfoStatus `json:"status"`
 }
 
 // TableInfoStatus defines model for TableInfo.Status.

@@ -1,5 +1,6 @@
 import { PlayingCard } from '@/components/PlayingCard';
 import { chips } from '@/lib/format';
+import { holeCardCount } from '@/lib/games';
 import { seatPosition } from '@/lib/table/layout';
 import type { TableState } from '@/lib/table/state';
 import { SeatView } from './Seat';
@@ -60,6 +61,7 @@ export function PokerTable({ state, onSit }: Props) {
               hand={hand}
               isMe={n === state.mySeat}
               myCards={state.holeCards}
+              holeCards={holeCardCount(state.table?.gameType)}
               position={pos}
             />
           );

@@ -1881,8 +1881,7 @@ components:
         name:
           type: string
         gameType:
-          type: string
-          enum: [NLHE]
+          $ref: './realtime.yaml#/components/schemas/GameType'
         maxSeats:
           type: integer
         smallBlind:
@@ -1947,6 +1946,11 @@ components:
           type: string
           minLength: 3
           maxLength: 64
+        gameType:
+          type: string
+          enum: [NLHE, PLO]
+          default: NLHE
+          description: See GameType. Fixed for the table's lifetime.
         maxSeats:
           type: integer
           minimum: 2
@@ -2028,6 +2032,7 @@ components:
           clubId,
           clubName,
           handNo,
+          gameType,
           status,
           smallBlind,
           bigBlind,
@@ -2052,6 +2057,8 @@ components:
         handNo:
           type: integer
           format: int64
+        gameType:
+          $ref: './realtime.yaml#/components/schemas/GameType'
         status:
           type: string
           enum: [COMPLETED, VOIDED]

@@ -48,8 +48,10 @@ export interface SizingPreset {
 
 /**
  * Bet-size presets ("to" amounts) clamped to the legal range: minimum,
- * half pot, pot and all-in. A pot-sized raise is the current bet plus the
- * pot after calling.
+ * half pot, pot and the maximum. A pot-sized raise is the current bet plus
+ * the pot after calling. The maximum is the stack (all-in) in no-limit and
+ * the pot in pot-limit games when the stack is deeper (then it equals the
+ * pot preset and is dropped as a duplicate).
  */
 export function sizingPresets(state: TableState): SizingPreset[] {
   const opts = actionOptions(state.legalActions);
@@ -64,7 +66,7 @@ export function sizingPresets(state: TableState): SizingPreset[] {
     { label: 'Min', to: agg.minTo },
     { label: '½ Pot', to: clamp(hand.currentBet + potAfterCall / 2) },
     { label: 'Pot', to: clamp(hand.currentBet + potAfterCall) },
-    { label: 'All-in', to: agg.maxTo },
+    { label: opts.allInTo === agg.maxTo ? 'All-in' : 'Max', to: agg.maxTo },
   ];
   const seen = new Set<number>();
   return candidates.filter((p) => {
@@ -76,12 +78,13 @@ export function sizingPresets(state: TableState): SizingPreset[] {
 
 /**
  * The command for a chosen bet size: moving all chips in is sent as
- * ALL_IN when that is legal, otherwise BET/RAISE with the "to" amount.
+ * ALL_IN when that is legal, otherwise BET/RAISE with the "to" amount
+ * (in pot-limit games the maximum is usually a pot-sized raise, not all-in).
  */
 export function aggressiveCommand(opts: ActionOptions, to: number): CommandPayload | null {
   const agg = opts.aggressive;
   if (!agg || !Number.isSafeInteger(to)) return null;
-  if (to >= agg.maxTo && opts.allInTo !== undefined) return { kind: 'ALL_IN' };
+  if (to >= agg.maxTo && opts.allInTo === agg.maxTo) return { kind: 'ALL_IN' };
   if (to < agg.minTo || to > agg.maxTo) return null;
   return { kind: agg.kind, amount: to };
 }

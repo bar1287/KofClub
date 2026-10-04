@@ -94,6 +94,13 @@ export type components = {
       /** @enum {string} */
       type: 'COMMAND_RESULT';
     };
+    /**
+     * @description NLHE = No-Limit Texas Hold'em (2 hole cards). PLO = Pot-Limit Omaha
+     *     (4 hole cards; a hand uses exactly two of them and three board cards;
+     *     bets and raises are capped at the pot).
+     * @enum {string}
+     */
+    GameType: 'NLHE' | 'PLO';
     HandCompletedEvent: {
       board: components['schemas']['Card'][];
       /** Format: uuid */
@@ -135,6 +142,7 @@ export type components = {
       bigBlindSeat: number;
       buttonSeat: number;
       deckCommitment: string;
+      gameType: components['schemas']['GameType'];
       /** Format: uuid */
       handId: string;
       /** Format: int64 */
@@ -217,7 +225,7 @@ export type components = {
       kind: 'FOLD' | 'CHECK' | 'CALL' | 'BET' | 'RAISE' | 'ALL_IN';
       /**
        * Format: int64
-       * @description BET/RAISE maximum "to" amount (all-in).
+       * @description BET/RAISE maximum "to" amount (all-in, or the pot limit in PLO).
        */
       maxTo?: number;
       /**
@@ -450,6 +458,7 @@ export type components = {
       buyInMin: number;
       /** Format: uuid */
       clubId: string;
+      gameType: components['schemas']['GameType'];
       maxSeats: number;
       name: string;
       /** Format: int64 */

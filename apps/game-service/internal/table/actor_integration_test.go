@@ -75,6 +75,11 @@ func newEnv(t *testing.T, names ...string) *env {
 	return e
 }
 
+// setGame changes the table's game (before an actor loads it).
+func (e *env) setGame(game poker.GameType) {
+	e.exec(`UPDATE tables SET game_type = $2 WHERE id = $1`, e.tableID, string(game))
+}
+
 func (e *env) exec(sql string, args ...any) {
 	e.t.Helper()
 	if _, err := e.pool.Exec(e.ctx, sql, args...); err != nil {
@@ -652,7 +657,14 @@ func TestEventsSinceAndSubscriptionsAreOrdered(t *testing.T) {
 // Many hands with random (legal) play at a 3-player table: after every
 // hand the ledger, seats and granted chips stay consistent.
 func TestManyRandomHandsConserveChips(t *testing.T) {
+	for _, game := range []poker.GameType{poker.GameNLHE, poker.GamePLO} {
+		t.Run(string(game), func(t *testing.T) { playRandomHands(t, game) })
+	}
+}
+
+func playRandomHands(t *testing.T, game poker.GameType) {
 	e := newEnv(t, "alice", "bob", "carol")
+	e.setGame(game)
 	a := e.start("node-1", fast)
 	for i, n := range []string{"alice", "bob", "carol"} {
 		e.sit(a, n, i+1, 1000+int64(i)*300)

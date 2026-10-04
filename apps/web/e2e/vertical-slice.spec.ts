@@ -1,10 +1,11 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import {
   chipsOnTable,
   myCards,
   parseChips,
   playPassively,
   register,
+  sitDown,
   snap,
   uniqueName,
   watchCsp,
@@ -140,18 +141,6 @@ test('two players play a complete hand of Hold’em', async ({ browser }) => {
   await aliceCtx.close();
   await bobCtx.close();
 });
-
-async function sitDown(page: Page, seat: number, buyIn: number): Promise<void> {
-  await expect(page.getByTestId('connection-status')).toHaveAttribute('data-status', 'open');
-  await page.getByTestId(`sit-${seat}`).click();
-  const input = page.getByLabel('Buy-in amount');
-  await expect(input).not.toHaveValue('');
-  await input.fill(String(buyIn));
-  await page.getByRole('button', { name: 'Buy in' }).click();
-  await expect(page.getByTestId(`seat-${seat}`).getByTestId('seat-stack')).toHaveText(
-    buyIn.toLocaleString('en-US'),
-  );
-}
 
 /** Leaves the table, finishing any hand in progress first. */
 async function leave(player: Player, atTable: Player[]): Promise<void> {

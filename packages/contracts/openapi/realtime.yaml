@@ -416,6 +416,7 @@ components:
         [
           kind,
           handId,
+          gameType,
           handNo,
           buttonSeat,
           smallBlindSeat,
@@ -432,6 +433,8 @@ components:
         handId:
           type: string
           format: uuid
+        gameType:
+          $ref: '#/components/schemas/GameType'
         handNo:
           type: integer
           format: int64
@@ -727,6 +730,13 @@ components:
       type: string
       pattern: '^[2-9TJQKA][cdhs]$'
       description: Rank + suit, e.g. "As", "Td", "2c".
+    GameType:
+      type: string
+      enum: [NLHE, PLO]
+      description: |
+        NLHE = No-Limit Texas Hold'em (2 hole cards). PLO = Pot-Limit Omaha
+        (4 hole cards; a hand uses exactly two of them and three board cards;
+        bets and raises are capped at the pot).
     LegalAction:
       type: object
       additionalProperties: false
@@ -746,18 +756,31 @@ components:
         maxTo:
           type: integer
           format: int64
-          description: BET/RAISE maximum "to" amount (all-in).
+          description: BET/RAISE maximum "to" amount (all-in, or the pot limit in PLO).
     TableInfo:
       type: object
       additionalProperties: false
       required:
-        [clubId, name, maxSeats, smallBlind, bigBlind, buyInMin, buyInMax, actionTimeoutMs, status]
+        [
+          clubId,
+          name,
+          gameType,
+          maxSeats,
+          smallBlind,
+          bigBlind,
+          buyInMin,
+          buyInMax,
+          actionTimeoutMs,
+          status,
+        ]
       properties:
         clubId:
           type: string
           format: uuid
         name:
           type: string
+        gameType:
+          $ref: '#/components/schemas/GameType'
         maxSeats:
           type: integer
         smallBlind:

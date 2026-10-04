@@ -42,6 +42,7 @@ ephemeral data.
 | 000005_ledger                 | `ledger_accounts`, `ledger_transactions`, `ledger_entries`, `ledger_post()`, invariant view                        |
 | 000006_tables                 | `tables`, `table_leases`, `table_runtime`, `table_seats`, `hands`, `hand_players`, `game_events`, `table_commands` |
 | 000007_history_admin          | club hand-history index, `risk_events.review_note`, admin prefix-search indexes                                    |
+| 000008_omaha                  | `tables.game_type` allows `PLO`; `hands.game_type` records each hand's game (down refuses while PLO tables exist)  |
 
 (The table is extended by each milestone; see the migration files for
 authoritative definitions.)

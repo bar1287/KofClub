@@ -1,17 +1,17 @@
 # Project status
 
-_Last updated: 2026-10-03_
+_Last updated: 2026-10-04_
 
 This file is the hand-off record for humans and AI agents. Keep it in sync
 with the repository at the end of every task.
 
 ## Current milestone
 
-**M9 — Omaha** (next). M0–M8 are complete: the two-player vertical slice
-is playable end to end in the browser (native and Docker Compose stacks),
-with hand history, club and platform administration, dashboards, alerts,
-runbooks, distributed tracing, failover/load/restore drills and a security
-review.
+**M10 — Tournaments** (next). M0–M9 are complete: No-Limit Hold'em and
+Pot-Limit Omaha cash tables are playable end to end in the browser (native
+and Docker Compose stacks), with hand history, club and platform
+administration, dashboards, alerts, runbooks, distributed tracing,
+failover/load/restore drills and a security review.
 
 ## Milestones (spec §16)
 
@@ -26,7 +26,7 @@ review.
 | M6 — Web poker table     | ✅ Done | Next.js client: auth, clubs/lobby, chip grants, table UI, realtime client + reducer, Playwright two-browser E2E                                      |
 | M7 — History + Admin     | ✅ Done | Hand history (ADR-008 visibility), club console, table closure with cash-out, ownership transfer, platform admin, Grafana/alerts, runbooks           |
 | M8 — Hardening           | ✅ Done | Chaos (SIGKILL) failover drill, load smoke (230 cmd/s, p95 10 ms), restore drill, nonce CSP, TRUST_PROXY, audits + secret scan, OpenTelemetry traces |
-| M9 — Omaha               | Pending |                                                                                                                                                      |
+| M9 — Omaha               | ✅ Done | Pot-Limit Omaha rule module (ADR-015): 4 hole cards, 2+3 evaluation, pot-limit caps; `gameType` on tables/hands/contracts; UI, history, PLO E2E      |
 | M10 — Tournaments        | Pending |                                                                                                                                                      |
 
 ## Current architecture
@@ -49,7 +49,7 @@ only, 007 no event bus yet, 008 card privacy, 009 camelCase wire + `/v1`,
 010 web client first (Unity later), 011 toolchain pins (NestJS 11, TS 5.9, Go 1.26),
 012 browser session handling + reference realtime client, 013 history
 visibility, table closure and administrative enforcement, 014 OpenTelemetry
-tracing.
+tracing, 015 game variants as rule modules in the engine.
 
 ## How to verify the current state
 
@@ -78,12 +78,13 @@ make dev   # full stack in Docker; open http://localhost:3000 (make seed for dem
 - Players who leave mid-hand are auto-checked/folded and removed after the hand; there is no "stand up after folding" yet.
 - Busted players (stack 0) are unseated automatically after the hand (no re-buy flow yet).
 - Tables cannot be reopened or edited after creation (close and create a new one).
-- Engine simplifications (documented in docs/game-engine.md): no antes/straddles, no dead button or missed-blind tracking, no mucking at showdown.
+- Engine simplifications (documented in docs/game-engine.md): no antes/straddles, no dead button or missed-blind tracking, no mucking at showdown, no hi/lo split games.
+- A table's game type is fixed at creation (by design; hands record their own game).
 - Web: a page reload that aborts an in-flight token refresh can lose the rotated cookie; the next refresh counts as reuse and the user must log in again (ADR-012).
 - Web: other players only see "leaving after hand" after a resync (no event is emitted for a deferred leave).
 - Admin console uses browser `prompt`/`confirm` dialogs for reasons and confirmations (functional, not polished).
 - History queries run on the primary database (read replica / projection later, ADR-013).
-- Web: no Content-Security-Policy header yet (M8 hardening); styling is plain CSS without a design system.
+- Web: styling is plain CSS without a design system.
 
 ## Implemented API (control-api, `/v1`)
 
@@ -106,11 +107,12 @@ Canonical contract: `packages/contracts/openapi/control-api.yaml`
 
 ## Next tasks
 
-1. M9 (Omaha, spec §16): extend the pure engine with Pot-Limit Omaha —
-   4 hole cards, exactly-two-plus-three evaluation, pot-limit betting caps —
-   behind a `gameType` on tables (contracts: `NLHE | PLO`), with exhaustive
-   evaluator tests and property tests like NLHE.
-2. M9: game-service/actor and UI support for 4 hole cards; migration for the
-   `tables.game_type` constraint; E2E for a PLO hand.
-3. M10 (Tournaments, spec §16): registration, blind levels, table balancing,
-   virtual-chip payouts (only after M9).
+1. M10 (Tournaments, spec §16): ADR for the tournament model (registration
+   with a virtual-chip buy-in into a prize pool held by the ledger,
+   tournament chips separate from cash-table stacks, blind-level schedule,
+   table balancing/breaking, elimination order, payouts in virtual chips).
+2. M10: schema + ledger accounts (tournament prize pool), pure tournament
+   director logic in Go (levels, seating, balancing, payouts) with property
+   tests, game-service orchestration over the existing table actors.
+3. M10: contracts, control-api endpoints (create/register/unregister/list),
+   web lobby + tournament view, E2E for a small sit-and-go.

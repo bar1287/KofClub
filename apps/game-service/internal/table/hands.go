@@ -58,11 +58,11 @@ func (a *Actor) startHand() {
 		return
 	}
 	newHand := store.NewHand{
-		ID: handID, TableID: a.cfg.ID, ClubID: a.cfg.ClubID, HandNo: hand.HandNo(), ButtonSeat: hand.ButtonSeat(),
+		ID: handID, GameType: string(hand.Game()), TableID: a.cfg.ID, ClubID: a.cfg.ClubID, HandNo: hand.HandNo(), ButtonSeat: hand.ButtonSeat(),
 		SmallBlind: a.cfg.SmallBlind, BigBlind: a.cfg.BigBlind, DeckCommitment: commitHex, DeckEnc: deckEnc, LeaseEpoch: a.fence.Epoch,
 	}
 	for _, p := range hand.Players() {
-		enc, err := a.deps.Sealer.Seal(cardBytes(p.HoleCards[:]), "hole:"+handID+":"+string(p.Player))
+		enc, err := a.deps.Sealer.Seal(cardBytes(p.HoleCards), "hole:"+handID+":"+string(p.Player))
 		if err != nil {
 			a.log.Error("seal_failed", slog.String("error", err.Error()))
 			return
@@ -122,13 +122,13 @@ func (a *Actor) prepareHandEnd(next *poker.Table, evs []poker.Event) ([]draft, f
 	shown := map[int][]string{}
 	for _, e := range evs {
 		if cr, ok := e.(poker.CardsRevealed); ok {
-			shown[cr.Seat] = []string{cr.Cards[0].String(), cr.Cards[1].String()}
+			shown[cr.Seat] = cardStrings(cr.Cards)
 		}
 	}
 	if hand.ShowdownReached() {
 		for _, p := range hand.Players() {
 			if !p.Folded {
-				shown[p.Seat] = []string{p.HoleCards[0].String(), p.HoleCards[1].String()}
+				shown[p.Seat] = cardStrings(p.HoleCards)
 			}
 		}
 	}
@@ -255,6 +255,14 @@ func cardBytes(cards []poker.Card) []byte {
 	return out
 }
 
+func cardStrings(cards []poker.Card) []string {
+	out := make([]string, len(cards))
+	for i, c := range cards {
+		out[i] = c.String()
+	}
+	return out
+}
+
 // ---------------------------------------------------------------------------
 // Recovery
 // ---------------------------------------------------------------------------
@@ -277,7 +285,7 @@ func (a *Actor) recover(ctx context.Context) error {
 		states[i] = poker.SeatState{Seat: s.SeatNo, Player: poker.PlayerID(s.UserID), Stack: s.Stack, SittingOut: s.SittingOut}
 		a.usernames[s.UserID] = s.Username
 	}
-	table, err := poker.RestoreTable(poker.TableConfig{MaxSeats: a.cfg.MaxSeats, SmallBlind: a.cfg.SmallBlind, BigBlind: a.cfg.BigBlind},
+	table, err := poker.RestoreTable(poker.TableConfig{Game: poker.GameType(a.cfg.GameType), MaxSeats: a.cfg.MaxSeats, SmallBlind: a.cfg.SmallBlind, BigBlind: a.cfg.BigBlind},
 		states, rt.ButtonSeat, rt.LastHandNo)
 	if err != nil {
 		return fmt.Errorf("restore table: %w", err)
@@ -339,7 +347,7 @@ func (a *Actor) rebuildHand(hr *store.HandRecord) (*poker.Hand, string, error) {
 		seats[i] = poker.SeatSetup{Seat: p.SeatNo, Player: poker.PlayerID(p.UserID), Stack: p.StartingStack}
 	}
 	hand, _, err := poker.NewHand(poker.HandConfig{
-		HandNo: hr.HandNo, SmallBlind: hr.SmallBlind, BigBlind: hr.BigBlind, ButtonSeat: hr.ButtonSeat, Seats: seats, Deck: deck,
+		Game: poker.GameType(hr.GameType), HandNo: hr.HandNo, SmallBlind: hr.SmallBlind, BigBlind: hr.BigBlind, ButtonSeat: hr.ButtonSeat, Seats: seats, Deck: deck,
 	})
 	if err != nil {
 		return nil, "", err

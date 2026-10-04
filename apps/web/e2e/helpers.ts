@@ -92,3 +92,41 @@ export function watchCsp(page: Page): string[] {
   });
   return violations;
 }
+
+/** Takes a seat with the given buy-in through the buy-in dialog. */
+export async function sitDown(page: Page, seat: number, buyIn: number): Promise<void> {
+  await expect(page.getByTestId('connection-status')).toHaveAttribute('data-status', 'open');
+  await page.getByTestId(`sit-${seat}`).click();
+  const input = page.getByLabel('Buy-in amount');
+  await expect(input).not.toHaveValue('');
+  await input.fill(String(buyIn));
+  await page.getByRole('button', { name: 'Buy in' }).click();
+  await expect(page.getByTestId(`seat-${seat}`).getByTestId('seat-stack')).toHaveText(
+    buyIn.toLocaleString('en-US'),
+  );
+}
+
+/**
+ * The owner creates a club, the other player joins with the join code and
+ * the owner grants both of them chips. Returns the club URL.
+ */
+export async function clubWithChips(owner: Player, member: Player, grant: number): Promise<string> {
+  await owner.page.getByLabel('Club name').fill(`E2E Club ${owner.username}`);
+  await owner.page.getByRole('button', { name: 'Create club' }).click();
+  await expect(owner.page.getByTestId('club-name')).toContainText('E2E Club');
+  const clubUrl = owner.page.url();
+  const joinCode = (await owner.page.getByTestId('join-code').textContent())?.trim() ?? '';
+  await member.page.getByLabel('Join or invite code').fill(joinCode);
+  await member.page.getByRole('button', { name: 'Join' }).click();
+  await expect(member.page).toHaveURL(clubUrl);
+  await owner.page.reload();
+  for (const p of [owner, member]) {
+    const row = owner.page.locator(`tr[data-member="${p.username}"]`);
+    await row.getByRole('textbox').fill(String(grant));
+    await row.getByRole('button', { name: 'Grant' }).click();
+    await expect(
+      owner.page.getByText(`Granted ${grant.toLocaleString('en-US')} chips to ${p.username}.`),
+    ).toBeVisible();
+  }
+  return clubUrl;
+}

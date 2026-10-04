@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { Database, Queryable } from '../../infra/database/database';
 import { toChips } from '../ledger/ledger.repository';
+import type { GameType } from './tables.schemas';
 
 export interface TableRow {
   id: string;
   clubId: string;
   name: string;
-  gameType: 'NLHE';
+  gameType: GameType;
   maxSeats: number;
   smallBlind: number;
   bigBlind: number;
@@ -68,6 +69,7 @@ export class TablesRepository {
       id: string;
       clubId: string;
       name: string;
+      gameType: GameType;
       maxSeats: number;
       smallBlind: number;
       bigBlind: number;
@@ -78,12 +80,14 @@ export class TablesRepository {
     },
   ): Promise<void> {
     await q.query(
-      `INSERT INTO tables (id, club_id, name, max_seats, small_blind, big_blind, buyin_min, buyin_max, action_timeout_ms, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      `INSERT INTO tables (id, club_id, name, game_type, max_seats, small_blind, big_blind, buyin_min, buyin_max,
+                           action_timeout_ms, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
       [
         t.id,
         t.clubId,
         t.name,
+        t.gameType,
         t.maxSeats,
         t.smallBlind,
         t.bigBlind,

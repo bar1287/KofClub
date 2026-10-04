@@ -30,7 +30,7 @@ control API enforces every permission.
 | `src/lib/api/endpoints.ts`   | Typed endpoint wrappers (types generated from `control-api.yaml`); idempotency keys per user intent         |
 | `src/lib/realtime/client.ts` | Gateway protocol client (HELLO/AUTH, backoff, resume, command re-send, heartbeats)                          |
 | `src/lib/table/state.ts`     | Pure table reducer (snapshot replace, strict seq order, gap → stale)                                        |
-| `src/lib/table/actions.ts`   | Legal-action presentation: call amounts, bet presets (min, ½ pot, pot, all-in), command building            |
+| `src/lib/table/actions.ts`   | Legal-action presentation: call amounts, bet presets (min, ½ pot, pot, all-in or pot-limit max), commands   |
 | `src/lib/table/useTable.ts`  | React hook: subscription lifecycle, resync policy, command sending with `expectedSeq`                       |
 | `src/lib/session.tsx`        | Session provider; one API + realtime client per tab                                                         |
 | `src/components/table/*`     | Felt, seats, cards, timer, action bar, buy-in dialog, log                                                   |

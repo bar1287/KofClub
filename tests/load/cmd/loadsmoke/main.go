@@ -33,6 +33,7 @@ import (
 
 type config struct {
 	api, ws        string
+	game           string
 	tables, seats  int
 	duration       time.Duration
 	maxP95         time.Duration
@@ -48,6 +49,7 @@ func main() {
 	flag.StringVar(&c.api, "api", env("LOAD_API_URL", "http://localhost:4000"), "control API base URL")
 	flag.StringVar(&c.ws, "ws", env("LOAD_WS_URL", "ws://localhost:4100/ws"), "realtime gateway URL")
 	flag.IntVar(&c.tables, "tables", 4, "number of tables")
+	flag.StringVar(&c.game, "game", "NLHE", "table game: NLHE, PLO or MIXED (alternating)")
 	flag.IntVar(&c.seats, "players", 3, "bot players per table (2-6)")
 	flag.DurationVar(&c.duration, "duration", 30*time.Second, "how long bots play before leaving")
 	flag.DurationVar(&c.maxP95, "max-p95", 250*time.Millisecond, "fail if command round-trip p95 exceeds this")
@@ -56,6 +58,10 @@ func main() {
 	flag.DurationVar(&c.thinkMax, "think-max", 300*time.Millisecond, "maximum bot think time")
 	flag.DurationVar(&c.leaveTimeout, "leave-timeout", 90*time.Second, "time allowed for bots to finish hands and leave")
 	flag.Parse()
+	if c.game != "NLHE" && c.game != "PLO" && c.game != "MIXED" {
+		fmt.Fprintln(os.Stderr, "-game must be NLHE, PLO or MIXED")
+		os.Exit(2)
+	}
 	c.requestTimeout = 10 * time.Second
 	if c.seats < 2 || c.seats > 6 || c.tables < 1 {
 		fail("players must be 2-6 and tables >= 1")
@@ -402,8 +408,12 @@ func run(c config) error {
 		var t struct {
 			ID string `json:"id"`
 		}
+		game := c.game
+		if game == "MIXED" {
+			game = []string{"NLHE", "PLO"}[i%2]
+		}
 		if err := c.call(owner.Token, http.MethodPost, "/v1/clubs/"+club.ID+"/tables", map[string]any{
-			"name": fmt.Sprintf("Load %d", i+1), "maxSeats": 6, "smallBlind": 5, "bigBlind": 10,
+			"name": fmt.Sprintf("Load %d", i+1), "gameType": game, "maxSeats": 6, "smallBlind": 5, "bigBlind": 10,
 			"buyInMin": 200, "buyInMax": 2000, "actionTimeoutSec": 20,
 		}, &t); err != nil {
 			return fmt.Errorf("create table: %w", err)

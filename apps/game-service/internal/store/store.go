@@ -36,6 +36,7 @@ type TableConfig struct {
 	ID            string
 	ClubID        string
 	Name          string
+	GameType      string
 	MaxSeats      int
 	SmallBlind    int64
 	BigBlind      int64
@@ -50,9 +51,9 @@ func (s *Store) LoadTable(ctx context.Context, tableID string) (TableConfig, err
 	var c TableConfig
 	var timeoutMs int
 	err := s.Pool.QueryRow(ctx, `
-		SELECT id::text, club_id::text, name, max_seats, small_blind, big_blind, buyin_min, buyin_max, action_timeout_ms, status
+		SELECT id::text, club_id::text, name, game_type, max_seats, small_blind, big_blind, buyin_min, buyin_max, action_timeout_ms, status
 		  FROM tables WHERE id = $1`, tableID).
-		Scan(&c.ID, &c.ClubID, &c.Name, &c.MaxSeats, &c.SmallBlind, &c.BigBlind, &c.BuyInMin, &c.BuyInMax, &timeoutMs, &c.Status)
+		Scan(&c.ID, &c.ClubID, &c.Name, &c.GameType, &c.MaxSeats, &c.SmallBlind, &c.BigBlind, &c.BuyInMin, &c.BuyInMax, &timeoutMs, &c.Status)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return c, ErrNotFound
 	}
@@ -114,6 +115,7 @@ type HandPlayerRecord struct {
 // HandRecord is a persisted in-progress hand with its accepted actions.
 type HandRecord struct {
 	ID         string
+	GameType   string
 	HandNo     int64
 	ButtonSeat int
 	SmallBlind int64
@@ -128,9 +130,9 @@ type HandRecord struct {
 func (s *Store) LoadInProgressHand(ctx context.Context, tableID string) (*HandRecord, error) {
 	var h HandRecord
 	err := s.Pool.QueryRow(ctx, `
-		SELECT id::text, hand_no, button_seat, small_blind, big_blind, deck_enc
+		SELECT id::text, game_type, hand_no, button_seat, small_blind, big_blind, deck_enc
 		  FROM hands WHERE table_id = $1 AND status = 'IN_PROGRESS'`, tableID).
-		Scan(&h.ID, &h.HandNo, &h.ButtonSeat, &h.SmallBlind, &h.BigBlind, &h.DeckEnc)
+		Scan(&h.ID, &h.GameType, &h.HandNo, &h.ButtonSeat, &h.SmallBlind, &h.BigBlind, &h.DeckEnc)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -249,19 +251,26 @@ func (s *Store) InFencedTx(ctx context.Context, f Fence, fn func(tx pgx.Tx) erro
 	})
 }
 
-// SealedHoleCards returns a participant's encrypted hole cards and the
-// hand's status (ErrNotFound when the user was not dealt into the hand).
-func (s *Store) SealedHoleCards(ctx context.Context, handID, userID string) ([]byte, string, error) {
-	var enc []byte
-	var status string
+// SealedHand is a participant's encrypted hole cards with the hand's
+// status and game type.
+type SealedHand struct {
+	HoleCardsEnc []byte
+	Status       string
+	GameType     string
+}
+
+// SealedHoleCards returns a participant's encrypted hole cards (ErrNotFound
+// when the user was not dealt into the hand).
+func (s *Store) SealedHoleCards(ctx context.Context, handID, userID string) (SealedHand, error) {
+	var h SealedHand
 	err := s.Pool.QueryRow(ctx, `
-		SELECT hp.hole_cards_enc, h.status
+		SELECT hp.hole_cards_enc, h.status, h.game_type
 		  FROM hand_players hp JOIN hands h ON h.id = hp.hand_id
-		 WHERE hp.hand_id = $1 AND hp.user_id = $2`, handID, userID).Scan(&enc, &status)
+		 WHERE hp.hand_id = $1 AND hp.user_id = $2`, handID, userID).Scan(&h.HoleCardsEnc, &h.Status, &h.GameType)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, "", ErrNotFound
+		return h, ErrNotFound
 	}
-	return enc, status, err
+	return h, err
 }
 
 // TableStatus reads the table's directory status (OPEN | CLOSED).

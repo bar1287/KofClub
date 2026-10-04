@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { PlayingCard } from '@/components/PlayingCard';
 import { chips } from '@/lib/format';
+import { gameLabel } from '@/lib/games';
 import type { HandSummaryRecord } from '@/lib/types';
 
 interface Props {
@@ -32,7 +33,7 @@ export function HandList({ hands, showResult }: Props) {
             <td>
               {h.tableName}
               <div className="muted small">
-                {h.clubName} · {chips(h.smallBlind)}/{chips(h.bigBlind)}
+                {h.clubName} · {gameLabel(h.gameType)} {chips(h.smallBlind)}/{chips(h.bigBlind)}
               </div>
             </td>
             <td>

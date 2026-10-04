@@ -10,6 +10,7 @@ import { ActionBar } from '@/components/table/ActionBar';
 import { ActionLog } from '@/components/table/ActionLog';
 import { BuyInDialog } from '@/components/table/BuyInDialog';
 import { ConnectionBadge } from '@/components/table/ConnectionBadge';
+import { gameLabel } from '@/lib/games';
 import { PokerTable } from '@/components/table/PokerTable';
 import { errorMessage, newIdempotencyKey } from '@/lib/api/client';
 import { chips } from '@/lib/format';
@@ -63,8 +64,8 @@ function TableRoom({ tableId }: { tableId: string }) {
           {table?.name}
         </h1>
         {table && (
-          <span className="muted small">
-            NLHE · Blinds {chips(table.smallBlind)}/{chips(table.bigBlind)}
+          <span className="muted small" data-testid="table-game">
+            {gameLabel(table.gameType)} · Blinds {chips(table.smallBlind)}/{chips(table.bigBlind)}
           </span>
         )}
         <ConnectionBadge status={connection} syncing={state.stale} />

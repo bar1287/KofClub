@@ -2,9 +2,14 @@ import { z } from 'zod';
 
 const chips = z.number().int().positive().max(1_000_000_000_000);
 
+/** Supported games (realtime.yaml GameType); fixed for a table's lifetime. */
+export const GAME_TYPES = ['NLHE', 'PLO'] as const;
+export type GameType = (typeof GAME_TYPES)[number];
+
 export const createTableSchema = z
   .object({
     name: z.string().trim().min(3).max(64),
+    gameType: z.enum(GAME_TYPES).default('NLHE'),
     maxSeats: z.number().int().min(2).max(10).default(6),
     smallBlind: chips,
     bigBlind: chips,

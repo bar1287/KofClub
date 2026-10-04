@@ -7,12 +7,13 @@ import { gameCommand, waitFor } from './support/game';
 interface Snapshot {
   seq: number;
   phase: string;
+  table: { gameType: string };
   seats: Array<{ seat: number; userId: string; stack: number }>;
   hand: null | { handId: string; handNo: number; street: string; toActSeat: number; pot: number };
   you: {
     seat: number;
     holeCards: string[];
-    legalActions: Array<{ kind: string; amount?: number; minTo?: number }>;
+    legalActions: Array<{ kind: string; amount?: number; minTo?: number; maxTo?: number }>;
   } | null;
 }
 
@@ -27,9 +28,8 @@ describe('tables (integration with game-service)', () => {
 
   const wallet = async (u: TestUser) =>
     (await as(ctx.app, u).get(`/v1/clubs/${clubId}/wallet`).expect(200)).body.balance as number;
-  const state = async (u: TestUser) => {
-    const body = (await as(ctx.app, u).get(`/v1/tables/${tableId}/state`).expect(200))
-      .body as Snapshot;
+  const state = async (u: TestUser, id = tableId) => {
+    const body = (await as(ctx.app, u).get(`/v1/tables/${id}/state`).expect(200)).body as Snapshot;
     expectSchema('TableSnapshot', body);
     return body;
   };
@@ -86,6 +86,7 @@ describe('tables (integration with game-service)', () => {
     expectSchema('TableDetail', res.body);
     expect(res.body).toMatchObject({
       name: 'Main Table',
+      gameType: 'NLHE',
       status: 'OPEN',
       seatedCount: 0,
       seats: [],
@@ -189,6 +190,100 @@ describe('tables (integration with game-service)', () => {
     expect(violations.rows).toEqual([]);
     const summary = await as(ctx.app, owner).get(`/v1/clubs/${clubId}/ledger/summary`).expect(200);
     expect(summary.body).toMatchObject({ issued: 10000, atTables: 2000, inWallets: 8000 });
+  });
+
+  it('runs Pot-Limit Omaha tables: four private cards, pot-limit sizing, history', async () => {
+    const stud = await as(ctx.app, owner)
+      .post(`/v1/clubs/${clubId}/tables`)
+      .send({
+        name: 'Stud',
+        gameType: 'STUD',
+        smallBlind: 5,
+        bigBlind: 10,
+        buyInMin: 200,
+        buyInMax: 2000,
+      })
+      .expect(400);
+    expect(stud.body.error.code).toBe('VALIDATION_FAILED');
+    const created = await as(ctx.app, owner)
+      .post(`/v1/clubs/${clubId}/tables`)
+      .send({
+        name: 'Omaha',
+        gameType: 'PLO',
+        smallBlind: 5,
+        bigBlind: 10,
+        buyInMin: 200,
+        buyInMax: 2000,
+      })
+      .expect(201);
+    expectSchema('TableDetail', created.body);
+    expect(created.body.gameType).toBe('PLO');
+    const plo = created.body.id as string;
+
+    for (const [u, seatNo] of [
+      [alice, 1],
+      [bob, 2],
+    ] as const) {
+      await as(ctx.app, u)
+        .post(`/v1/tables/${plo}/seat`)
+        .set('Idempotency-Key', `seat-${randomUUID()}`)
+        .send({ seatNo, buyIn: 500 })
+        .expect(200);
+    }
+    const first = await waitFor('PLO hand start', async () => {
+      const s = await state(alice, plo);
+      return s.hand && s.hand.toActSeat ? s : undefined;
+    });
+    expect(first.table.gameType).toBe('PLO');
+    expect(first.you!.holeCards).toHaveLength(4);
+    const bobView = await state(bob, plo);
+    expect(bobView.you!.holeCards).toHaveLength(4);
+    for (const c of first.you!.holeCards) expect(bobView.you!.holeCards).not.toContain(c);
+
+    // Heads-up 5/10: the small blind may raise to at most the pot (30).
+    const players: Record<number, TestUser> = { 1: alice, 2: bob };
+    const opener = await state(players[first.hand!.toActSeat]!, plo);
+    const raise = opener.you!.legalActions.find((a) => a.kind === 'RAISE');
+    expect(raise).toMatchObject({ minTo: 20, maxTo: 30 });
+    expect(opener.you!.legalActions.map((a) => a.kind)).not.toContain('ALL_IN');
+    const over = await gameCommand(plo, players[first.hand!.toActSeat]!.id, 'RAISE', 31);
+    expect(over.status).toBe(400);
+    expect(over.body).toMatchObject({ error: { code: 'INVALID_RAISE' } });
+
+    const { handId, handNo } = first.hand!;
+    for (let i = 0; i < 20; i++) {
+      const s = await state(alice, plo);
+      if (!s.hand || s.hand.handNo !== handNo || !s.hand.toActSeat) break;
+      const actor = players[s.hand.toActSeat]!;
+      const kinds = (await state(actor, plo)).you!.legalActions.map((a) => a.kind);
+      expect(
+        (await gameCommand(plo, actor.id, kinds.includes('CHECK') ? 'CHECK' : 'CALL')).status,
+      ).toBe(200);
+    }
+    await waitFor('PLO settlement', async () => {
+      const r = await ctx.db.query(`SELECT status, game_type FROM hands WHERE id = $1`, [handId]);
+      return r.rows[0]?.status === 'COMPLETED' ? r.rows[0] : undefined;
+    });
+    const hand = await as(ctx.app, alice).get(`/v1/hands/${handId}`).expect(200);
+    expectSchema('HandDetail', hand.body);
+    expect(hand.body.gameType).toBe('PLO');
+    expect(hand.body.myHoleCards).toEqual(first.you!.holeCards);
+    const mine = await as(ctx.app, alice).get('/v1/me/hands').expect(200);
+    expect(mine.body.items.find((h: { id: string }) => h.id === handId)?.gameType).toBe('PLO');
+
+    // Both leave so later tests see only the main table's stacks.
+    for (const u of [alice, bob]) {
+      await as(ctx.app, u).post(`/v1/tables/${plo}/leave`).expect(200);
+    }
+    await waitFor('PLO table empty', async () => {
+      const r = await ctx.db.query(
+        `SELECT count(*)::int AS n FROM table_seats WHERE table_id = $1`,
+        [plo],
+      );
+      return r.rows[0].n === 0 ? true : undefined;
+    });
+    const violations = await ctx.db.query('SELECT * FROM ledger_invariant_violations');
+    expect(violations.rows).toEqual([]);
   });
 
   it('banned members can still leave and recover their chips', async () => {

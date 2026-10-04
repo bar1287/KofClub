@@ -60,6 +60,7 @@ export class TablesService {
         id,
         clubId,
         name: input.name,
+        gameType: input.gameType,
         maxSeats: input.maxSeats,
         smallBlind: input.smallBlind,
         bigBlind: input.bigBlind,

@@ -7,6 +7,7 @@ import { ErrorAlert } from '@/components/ErrorAlert';
 import { RequireAuth } from '@/components/RequireAuth';
 import { errorMessage, newIdempotencyKey } from '@/lib/api/client';
 import { chips } from '@/lib/format';
+import { GAME_TYPES, gameLabel, gameName, type GameType } from '@/lib/games';
 import { atLeast } from '@/lib/roles';
 import { useSession } from '@/lib/session';
 import type { Club, Member, Table, Wallet } from '@/lib/types';
@@ -107,6 +108,7 @@ function ClubLobby({ clubId }: { clubId: string }) {
             <thead>
               <tr>
                 <th>Table</th>
+                <th>Game</th>
                 <th>Blinds</th>
                 <th>Buy-in</th>
                 <th className="num">Players</th>
@@ -117,6 +119,7 @@ function ClubLobby({ clubId }: { clubId: string }) {
               {tables.map((t) => (
                 <tr key={t.id}>
                   <td>{t.name}</td>
+                  <td>{gameLabel(t.gameType)}</td>
                   <td>
                     {chips(t.smallBlind)}/{chips(t.bigBlind)}
                   </td>
@@ -188,6 +191,7 @@ function CreateTable({ clubId, onCreated }: { clubId: string; onCreated: (t: Tab
   const { ep } = useSession();
   const [form, setForm] = useState({
     name: '',
+    gameType: 'NLHE' as GameType,
     maxSeats: 6,
     smallBlind: 5,
     bigBlind: 10,
@@ -199,8 +203,9 @@ function CreateTable({ clubId, onCreated }: { clubId: string; onCreated: (t: Tab
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const num = (k: keyof typeof form) => (e: ChangeEvent<HTMLInputElement>) =>
-    setForm({ ...form, [k]: Math.trunc(Number(e.target.value)) });
+  const num =
+    (k: Exclude<keyof typeof form, 'name' | 'gameType'>) => (e: ChangeEvent<HTMLInputElement>) =>
+      setForm({ ...form, [k]: Math.trunc(Number(e.target.value)) });
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -233,6 +238,20 @@ function CreateTable({ clubId, onCreated }: { clubId: string; onCreated: (t: Tab
         />
       </label>
       <div className="row">
+        <label className="field">
+          Game
+          <select
+            name="gameType"
+            value={form.gameType}
+            onChange={(e) => setForm({ ...form, gameType: e.target.value as GameType })}
+          >
+            {GAME_TYPES.map((g) => (
+              <option key={g} value={g}>
+                {gameName(g)}
+              </option>
+            ))}
+          </select>
+        </label>
         <label className="field">
           Seats
           <input

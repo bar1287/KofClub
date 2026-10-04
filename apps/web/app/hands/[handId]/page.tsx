@@ -8,6 +8,7 @@ import { PlayingCard } from '@/components/PlayingCard';
 import { RequireAuth } from '@/components/RequireAuth';
 import { errorMessage } from '@/lib/api/client';
 import { chips } from '@/lib/format';
+import { gameLabel } from '@/lib/games';
 import { useSession } from '@/lib/session';
 import { describeEvent } from '@/lib/table/describe';
 import type { HandDetail } from '@/lib/types';
@@ -46,8 +47,8 @@ function HandView({ handId }: { handId: string }) {
         </h1>
         {hand.status === 'VOIDED' && <span className="badge yellow">VOIDED</span>}
         <span className="muted">
-          {hand.tableName} · {hand.clubName} · Blinds {chips(hand.smallBlind)}/
-          {chips(hand.bigBlind)}
+          {hand.tableName} · {hand.clubName} · {gameLabel(hand.gameType)} · Blinds{' '}
+          {chips(hand.smallBlind)}/{chips(hand.bigBlind)}
         </span>
         <span className="spacer" />
         <Link href="/hands" className="small">
