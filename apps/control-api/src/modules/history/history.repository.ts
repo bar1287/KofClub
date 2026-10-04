@@ -11,6 +11,7 @@ export interface HandSummaryRow {
   clubName: string;
   handNo: number;
   gameType: GameType;
+  tournamentId: string | null;
   status: 'COMPLETED' | 'VOIDED';
   smallBlind: number;
   bigBlind: number;
@@ -52,7 +53,7 @@ const optChips = (v: string | null): number | null => (v === null ? null : toChi
 // $1 = viewer id (for myNet). Finished hands only: an in-progress hand is
 // never exposed through history.
 const SUMMARY_SELECT = `
-  SELECT h.id, h.table_id, t.name AS table_name, h.club_id, c.name AS club_name, h.hand_no, h.game_type, h.status,
+  SELECT h.id, h.table_id, t.name AS table_name, h.club_id, c.name AS club_name, h.hand_no, h.game_type, t.tournament_id, h.status,
          h.small_blind, h.big_blind, h.board, h.started_at, h.ended_at, h.button_seat,
          h.deck_commitment, h.void_reason,
          (SELECT COALESCE(sum(x.contributed), 0) FROM hand_players x WHERE x.hand_id = h.id) AS pot,
@@ -72,6 +73,7 @@ function mapHand(r: any): HandRow {
     clubName: r.club_name,
     handNo: Number(r.hand_no),
     gameType: r.game_type,
+    tournamentId: r.tournament_id,
     status: r.status,
     smallBlind: toChips(r.small_blind),
     bigBlind: toChips(r.big_blind),

@@ -36,6 +36,8 @@ tags:
     description: Table directory, seating (buy-in) and leaving (cash-out)
   - name: history
     description: Hand history with the ADR-008 visibility policy
+  - name: tournaments
+    description: Virtual-chip tournaments (registration, blind levels, balancing, prize payouts)
   - name: admin
     description: Platform administration (PLATFORM_ADMIN only)
 paths:
@@ -963,6 +965,156 @@ paths:
                 $ref: '#/components/schemas/HandSummaryPage'
         '403':
           $ref: '#/components/responses/Error'
+  /v1/clubs/{clubId}/tournaments:
+    parameters:
+      - $ref: '#/components/parameters/ClubId'
+    post:
+      tags: [tournaments]
+      operationId: createTournament
+      summary: Create a tournament and its tables (ADMIN+)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTournamentRequest'
+      responses:
+        '201':
+          description: Tournament created (registration open)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TournamentDetail'
+        '400':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+    get:
+      tags: [tournaments]
+      operationId: listClubTournaments
+      summary: Tournaments of a club, newest first
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Tournaments
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TournamentList'
+        '403':
+          $ref: '#/components/responses/Error'
+  /v1/tournaments/{tournamentId}:
+    parameters:
+      - $ref: '#/components/parameters/TournamentId'
+    get:
+      tags: [tournaments]
+      operationId: getTournament
+      summary: Structure, prize pool, payouts and entrants (live places and tables)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Tournament
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TournamentDetail'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+  /v1/tournaments/{tournamentId}/register:
+    parameters:
+      - $ref: '#/components/parameters/TournamentId'
+    post:
+      tags: [tournaments]
+      operationId: registerForTournament
+      summary: Register, paying the buy-in from the club wallet into the prize pool
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TournamentDetail'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+  /v1/tournaments/{tournamentId}/unregister:
+    parameters:
+      - $ref: '#/components/parameters/TournamentId'
+    post:
+      tags: [tournaments]
+      operationId: unregisterFromTournament
+      summary: Unregister before the start; the buy-in is refunded
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Unregistered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TournamentDetail'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+  /v1/tournaments/{tournamentId}/start:
+    parameters:
+      - $ref: '#/components/parameters/TournamentId'
+    post:
+      tags: [tournaments]
+      operationId: startTournament
+      summary: Start now with the registered players (ADMIN+; at least minPlayers)
+      description: The game service seats the players within about a second.
+      security:
+        - bearerAuth: []
+      responses:
+        '202':
+          description: Start requested
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TournamentDetail'
+        '403':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+  /v1/tournaments/{tournamentId}/cancel:
+    parameters:
+      - $ref: '#/components/parameters/TournamentId'
+    post:
+      tags: [tournaments]
+      operationId: cancelTournament
+      summary: Cancel before the start (ADMIN+); every buy-in is refunded
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TournamentDetail'
+        '403':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
   /v1/admin/overview:
     get:
       tags: [admin]
@@ -1203,6 +1355,12 @@ components:
   parameters:
     TableId:
       name: tableId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    TournamentId:
+      name: tournamentId
       in: path
       required: true
       schema:
@@ -1655,10 +1813,13 @@ components:
           TABLE_CASH_OUT,
           HAND_SETTLEMENT,
           REVERSAL,
+          TOURNAMENT_BUY_IN,
+          TOURNAMENT_REFUND,
+          TOURNAMENT_PAYOUT,
         ]
     LedgerAccountKind:
       type: string
-      enum: [CLUB_TREASURY, MEMBER_WALLET, TABLE_STACK]
+      enum: [CLUB_TREASURY, MEMBER_WALLET, TABLE_STACK, TOURNAMENT_POOL]
     Wallet:
       type: object
       additionalProperties: false
@@ -1817,7 +1978,7 @@ components:
     LedgerSummary:
       type: object
       additionalProperties: false
-      required: [clubId, issued, inWallets, atTables, holders]
+      required: [clubId, issued, inWallets, atTables, inTournaments, holders]
       properties:
         clubId:
           $ref: '#/components/schemas/Uuid'
@@ -1826,6 +1987,8 @@ components:
         inWallets:
           $ref: '#/components/schemas/ChipAmount'
         atTables:
+          $ref: '#/components/schemas/ChipAmount'
+        inTournaments:
           $ref: '#/components/schemas/ChipAmount'
         holders:
           type: integer
@@ -1872,6 +2035,7 @@ components:
           createdBy,
           createdAt,
           seatedCount,
+          tournamentId,
         ]
       properties:
         id:
@@ -1882,6 +2046,11 @@ components:
           type: string
         gameType:
           $ref: './realtime.yaml#/components/schemas/GameType'
+        tournamentId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Set for a tournament's tables (seats are assigned by the tournament).
         maxSeats:
           type: integer
         smallBlind:
@@ -1969,6 +2138,251 @@ components:
           minimum: 5
           maximum: 120
           default: 20
+    TournamentStatus:
+      type: string
+      enum: [REGISTERING, RUNNING, FINISHED, CANCELLED]
+    TournamentStartMode:
+      type: string
+      enum: [SIT_AND_GO, SCHEDULED]
+      description: SIT_AND_GO starts when maxPlayers registered; SCHEDULED at startsAt (cancelled and refunded if fewer than minPlayers).
+    BlindLevel:
+      type: object
+      additionalProperties: false
+      required: [level, smallBlind, bigBlind]
+      properties:
+        level:
+          type: integer
+        smallBlind:
+          $ref: '#/components/schemas/ChipAmount'
+        bigBlind:
+          $ref: '#/components/schemas/ChipAmount'
+    Tournament:
+      type: object
+      description: No additionalProperties restriction because TournamentDetail extends it (allOf).
+      required:
+        [
+          id,
+          clubId,
+          name,
+          gameType,
+          status,
+          startMode,
+          startsAt,
+          buyIn,
+          startingStack,
+          seatsPerTable,
+          minPlayers,
+          maxPlayers,
+          levelDurationSec,
+          actionTimeoutSec,
+          registeredCount,
+          prizePool,
+          registered,
+          createdAt,
+          startedAt,
+          finishedAt,
+        ]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        clubId:
+          $ref: '#/components/schemas/Uuid'
+        name:
+          type: string
+        gameType:
+          $ref: './realtime.yaml#/components/schemas/GameType'
+        status:
+          $ref: '#/components/schemas/TournamentStatus'
+        startMode:
+          $ref: '#/components/schemas/TournamentStartMode'
+        startsAt:
+          type: string
+          format: date-time
+          nullable: true
+        buyIn:
+          $ref: '#/components/schemas/ChipAmount'
+        startingStack:
+          type: integer
+          format: int64
+          description: Tournament chips each player starts with (not club chips).
+        seatsPerTable:
+          type: integer
+        minPlayers:
+          type: integer
+        maxPlayers:
+          type: integer
+        levelDurationSec:
+          type: integer
+        actionTimeoutSec:
+          type: integer
+        registeredCount:
+          type: integer
+          description: Active registrations (entrants once started).
+        prizePool:
+          $ref: '#/components/schemas/ChipAmount'
+        registered:
+          type: boolean
+          description: Whether the viewer holds an active registration / entry.
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        finishedAt:
+          type: string
+          format: date-time
+          nullable: true
+    TournamentEntrant:
+      type: object
+      additionalProperties: false
+      required: [userId, username, place, prize, tableId, stack]
+      properties:
+        userId:
+          $ref: '#/components/schemas/Uuid'
+        username:
+          type: string
+        place:
+          type: integer
+          nullable: true
+          description: Finishing place (null while still playing); tied players share a place.
+        prize:
+          $ref: '#/components/schemas/ChipAmount'
+        tableId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Current (or destination, while moving) table.
+        stack:
+          type: integer
+          format: int64
+          nullable: true
+          description: Tournament chips at the last completed hand (null when out or moving).
+    TournamentPayout:
+      type: object
+      additionalProperties: false
+      required: [place, amount]
+      properties:
+        place:
+          type: integer
+        amount:
+          $ref: '#/components/schemas/ChipAmount'
+    TournamentDetail:
+      allOf:
+        - $ref: '#/components/schemas/Tournament'
+        - type: object
+          required: [levels, currentLevel, levelEndsAt, payouts, entrants, playersLeft, myTableId]
+          properties:
+            levels:
+              type: array
+              description: The first levels of the blind schedule (later levels keep doubling).
+              items:
+                $ref: '#/components/schemas/BlindLevel'
+            currentLevel:
+              type: object
+              nullable: true
+              description: The level in effect for new hands (null before the start and after the end).
+              additionalProperties: false
+              required: [level, smallBlind, bigBlind]
+              properties:
+                level:
+                  type: integer
+                smallBlind:
+                  $ref: '#/components/schemas/ChipAmount'
+                bigBlind:
+                  $ref: '#/components/schemas/ChipAmount'
+            levelEndsAt:
+              type: string
+              format: date-time
+              nullable: true
+            payouts:
+              type: array
+              description: Prizes by place (projected from current registrations before the start).
+              items:
+                $ref: '#/components/schemas/TournamentPayout'
+            entrants:
+              type: array
+              items:
+                $ref: '#/components/schemas/TournamentEntrant'
+            playersLeft:
+              type: integer
+            myTableId:
+              type: string
+              format: uuid
+              nullable: true
+    TournamentList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tournament'
+    CreateTournamentRequest:
+      type: object
+      additionalProperties: false
+      required:
+        [name, buyIn, startingStack, smallBlind, bigBlind, levelDurationSec, maxPlayers, startMode]
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 56
+        gameType:
+          type: string
+          enum: [NLHE, PLO]
+          default: NLHE
+        buyIn:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 1000000000000
+          description: Club chips paid into the prize pool (0 = freeroll).
+        startingStack:
+          type: integer
+          format: int64
+          minimum: 100
+          maximum: 1000000000
+        smallBlind:
+          type: integer
+          format: int64
+          minimum: 1
+          description: Level 1 small blind; later levels follow a standard progression.
+        bigBlind:
+          type: integer
+          format: int64
+          minimum: 2
+          description: Level 1 big blind (at most a tenth of the starting stack).
+        levelDurationSec:
+          type: integer
+          minimum: 10
+          maximum: 3600
+        seatsPerTable:
+          type: integer
+          minimum: 2
+          maximum: 10
+          default: 6
+        minPlayers:
+          type: integer
+          minimum: 2
+          maximum: 100
+          default: 2
+        maxPlayers:
+          type: integer
+          minimum: 2
+          maximum: 100
+        startMode:
+          $ref: '#/components/schemas/TournamentStartMode'
+        startsAt:
+          type: string
+          format: date-time
+          description: Required for SCHEDULED (in the future); not allowed for SIT_AND_GO.
+        actionTimeoutSec:
+          type: integer
+          minimum: 5
+          maximum: 120
+          default: 20
     SeatRequest:
       type: object
       additionalProperties: false
@@ -2033,6 +2447,7 @@ components:
           clubName,
           handNo,
           gameType,
+          tournamentId,
           status,
           smallBlind,
           bigBlind,
@@ -2059,6 +2474,10 @@ components:
           format: int64
         gameType:
           $ref: './realtime.yaml#/components/schemas/GameType'
+        tournamentId:
+          type: string
+          format: uuid
+          nullable: true
         status:
           type: string
           enum: [COMPLETED, VOIDED]
@@ -2486,8 +2905,13 @@ components:
         - TABLE_UNAVAILABLE
         # history
         - HAND_NOT_FOUND
-        # tournaments (phase 3)
+        # tournaments
+        - TOURNAMENT_NOT_FOUND
         - TOURNAMENT_NOT_OPEN
+        - TOURNAMENT_FULL
+        - ALREADY_REGISTERED
+        - NOT_REGISTERED
+        - NOT_ENOUGH_PLAYERS
     ErrorBody:
       type: object
       required: [code, message, requestId]

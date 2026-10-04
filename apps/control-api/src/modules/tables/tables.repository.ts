@@ -8,6 +8,7 @@ export interface TableRow {
   clubId: string;
   name: string;
   gameType: GameType;
+  tournamentId: string | null;
   maxSeats: number;
   smallBlind: number;
   bigBlind: number;
@@ -29,7 +30,7 @@ export interface SeatRow {
 }
 
 const SELECT = `
-  SELECT t.id, t.club_id, t.name, t.game_type, t.max_seats, t.small_blind, t.big_blind, t.buyin_min, t.buyin_max,
+  SELECT t.id, t.club_id, t.name, t.game_type, t.tournament_id, t.max_seats, t.small_blind, t.big_blind, t.buyin_min, t.buyin_max,
          t.action_timeout_ms, t.status, t.created_by, t.created_at,
          (SELECT count(*)::int FROM table_seats s WHERE s.table_id = t.id) AS seated_count
     FROM tables t`;
@@ -41,6 +42,7 @@ function map(r: any): TableRow {
     clubId: r.club_id,
     name: r.name,
     gameType: r.game_type,
+    tournamentId: r.tournament_id,
     maxSeats: r.max_seats,
     smallBlind: toChips(r.small_blind),
     bigBlind: toChips(r.big_blind),
@@ -115,7 +117,8 @@ export class TablesRepository {
 
   async listForClub(clubId: string): Promise<TableRow[]> {
     const res = await this.db.query(
-      `${SELECT} WHERE t.club_id = $1 ORDER BY t.status, t.created_at`,
+      // Tournament tables are reached through their tournament, not the lobby.
+      `${SELECT} WHERE t.club_id = $1 AND t.tournament_id IS NULL ORDER BY t.status, t.created_at`,
       [clubId],
     );
     return res.rows.map(map);

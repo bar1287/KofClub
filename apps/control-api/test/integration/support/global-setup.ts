@@ -62,6 +62,8 @@ async function startGameService(databaseUrl: string, port: number, token: string
       DECK_ENCRYPTION_KEY_B64: randomBytes(32).toString('base64'),
       HAND_START_DELAY: '100ms',
       HAND_INTERVAL: '200ms',
+      TOURNAMENT_SCAN_INTERVAL: '200ms',
+      TOURNAMENT_POLL_INTERVAL: '200ms',
       DRAIN_DELAY: '10ms',
       DRAIN_TIMEOUT: '2s',
     },

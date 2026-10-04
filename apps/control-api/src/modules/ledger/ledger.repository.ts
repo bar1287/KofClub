@@ -3,7 +3,7 @@ import { AppError } from '../../common/errors/app-error';
 import { uuidv7 } from '../../common/ids';
 import { Database, Queryable } from '../../infra/database/database';
 
-export type AccountKind = 'CLUB_TREASURY' | 'MEMBER_WALLET' | 'TABLE_STACK';
+export type AccountKind = 'CLUB_TREASURY' | 'MEMBER_WALLET' | 'TABLE_STACK' | 'TOURNAMENT_POOL';
 export type LedgerKind =
   | 'CLUB_GRANT'
   | 'CLUB_DEDUCTION'
@@ -12,7 +12,10 @@ export type LedgerKind =
   | 'TABLE_BUY_IN'
   | 'TABLE_CASH_OUT'
   | 'HAND_SETTLEMENT'
-  | 'REVERSAL';
+  | 'REVERSAL'
+  | 'TOURNAMENT_BUY_IN'
+  | 'TOURNAMENT_REFUND'
+  | 'TOURNAMENT_PAYOUT';
 
 export interface LedgerEntryInput {
   accountId: string;

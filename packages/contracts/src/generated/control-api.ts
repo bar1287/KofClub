@@ -597,6 +597,26 @@ export type paths = {
     patch?: never;
     trace?: never;
   };
+  '/v1/clubs/{clubId}/tournaments': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        clubId: components['parameters']['ClubId'];
+      };
+      cookie?: never;
+    };
+    /** Tournaments of a club, newest first */
+    get: operations['listClubTournaments'];
+    put?: never;
+    /** Create a tournament and its tables (ADMIN+) */
+    post: operations['createTournament'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/clubs/{clubId}/transfer-ownership': {
     parameters: {
       query?: never;
@@ -867,6 +887,104 @@ export type paths = {
     patch?: never;
     trace?: never;
   };
+  '/v1/tournaments/{tournamentId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tournamentId: components['parameters']['TournamentId'];
+      };
+      cookie?: never;
+    };
+    /** Structure, prize pool, payouts and entrants (live places and tables) */
+    get: operations['getTournament'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/tournaments/{tournamentId}/cancel': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tournamentId: components['parameters']['TournamentId'];
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Cancel before the start (ADMIN+); every buy-in is refunded */
+    post: operations['cancelTournament'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/tournaments/{tournamentId}/register': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tournamentId: components['parameters']['TournamentId'];
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Register, paying the buy-in from the club wallet into the prize pool */
+    post: operations['registerForTournament'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/tournaments/{tournamentId}/start': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tournamentId: components['parameters']['TournamentId'];
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Start now with the registered players (ADMIN+; at least minPlayers)
+     * @description The game service seats the players within about a second.
+     */
+    post: operations['startTournament'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/tournaments/{tournamentId}/unregister': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tournamentId: components['parameters']['TournamentId'];
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Unregister before the start; the buy-in is refunded */
+    post: operations['unregisterFromTournament'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 };
 export type webhooks = Record<string, never>;
 export type components = {
@@ -931,6 +1049,11 @@ export type components = {
       refreshTokenExpiresAt: components['schemas']['Timestamp'];
       sessionId: components['schemas']['Uuid'];
       user: components['schemas']['User'];
+    };
+    BlindLevel: {
+      bigBlind: components['schemas']['ChipAmount'];
+      level: number;
+      smallBlind: components['schemas']['ChipAmount'];
     };
     BlindPostedEvent: {
       allIn: boolean;
@@ -1038,6 +1161,45 @@ export type components = {
       name: string;
       smallBlind: components['schemas']['ChipAmount'];
     };
+    CreateTournamentRequest: {
+      /** @default 20 */
+      actionTimeoutSec: number;
+      /**
+       * Format: int64
+       * @description Level 1 big blind (at most a tenth of the starting stack).
+       */
+      bigBlind: number;
+      /**
+       * Format: int64
+       * @description Club chips paid into the prize pool (0 = freeroll).
+       */
+      buyIn: number;
+      /**
+       * @default NLHE
+       * @enum {string}
+       */
+      gameType: 'NLHE' | 'PLO';
+      levelDurationSec: number;
+      maxPlayers: number;
+      /** @default 2 */
+      minPlayers: number;
+      name: string;
+      /** @default 6 */
+      seatsPerTable: number;
+      /**
+       * Format: int64
+       * @description Level 1 small blind; later levels follow a standard progression.
+       */
+      smallBlind: number;
+      /** Format: int64 */
+      startingStack: number;
+      startMode: components['schemas']['TournamentStartMode'];
+      /**
+       * Format: date-time
+       * @description Required for SCHEDULED (in the future); not allowed for SIT_AND_GO.
+       */
+      startsAt?: string;
+    };
     ErrorBody: {
       code: components['schemas']['ErrorCode'];
       details?: {
@@ -1094,7 +1256,12 @@ export type components = {
       | 'ACTION_ALREADY_PROCESSED'
       | 'TABLE_UNAVAILABLE'
       | 'HAND_NOT_FOUND'
-      | 'TOURNAMENT_NOT_OPEN';
+      | 'TOURNAMENT_NOT_FOUND'
+      | 'TOURNAMENT_NOT_OPEN'
+      | 'TOURNAMENT_FULL'
+      | 'ALREADY_REGISTERED'
+      | 'NOT_REGISTERED'
+      | 'NOT_ENOUGH_PLAYERS';
     ErrorEnvelope: {
       error: components['schemas']['ErrorBody'];
     };
@@ -1196,6 +1363,7 @@ export type components = {
       /** Format: int64 */
       smallBlind: number;
       smallBlindSeat: number;
+      tournament?: components['schemas']['TournamentTableInfo'];
     };
     /** @description No additionalProperties restriction because HandDetail extends it (allOf). */
     HandSummary: {
@@ -1221,6 +1389,8 @@ export type components = {
       status: 'COMPLETED' | 'VOIDED';
       tableId: components['schemas']['Uuid'];
       tableName: string;
+      /** Format: uuid */
+      tournamentId: string | null;
     };
     HandSummaryPage: {
       items: components['schemas']['HandSummary'][];
@@ -1317,7 +1487,7 @@ export type components = {
       tableId: components['schemas']['Uuid'];
     };
     /** @enum {string} */
-    LedgerAccountKind: 'CLUB_TREASURY' | 'MEMBER_WALLET' | 'TABLE_STACK';
+    LedgerAccountKind: 'CLUB_TREASURY' | 'MEMBER_WALLET' | 'TABLE_STACK' | 'TOURNAMENT_POOL';
     LedgerEntry: {
       accountId: components['schemas']['Uuid'];
       accountKind: components['schemas']['LedgerAccountKind'];
@@ -1337,11 +1507,15 @@ export type components = {
       | 'TABLE_BUY_IN'
       | 'TABLE_CASH_OUT'
       | 'HAND_SETTLEMENT'
-      | 'REVERSAL';
+      | 'REVERSAL'
+      | 'TOURNAMENT_BUY_IN'
+      | 'TOURNAMENT_REFUND'
+      | 'TOURNAMENT_PAYOUT';
     LedgerSummary: {
       atTables: components['schemas']['ChipAmount'];
       clubId: components['schemas']['Uuid'];
       holders: number;
+      inTournaments: components['schemas']['ChipAmount'];
       inWallets: components['schemas']['ChipAmount'];
       issued: components['schemas']['ChipAmount'];
     };
@@ -1478,9 +1652,17 @@ export type components = {
        * @enum {string}
        */
       kind: 'PLAYER_LEFT';
-      /** @enum {string} */
-      reason: 'LEFT' | 'BUSTED' | 'TABLE_CLOSED';
+      place?: number;
+      /**
+       * @description Tournaments: MOVED (balancing; see toTableId), ELIMINATED (with the
+       *     finishing place) and FINISHED (the tournament ended; the winner's
+       *     place is 1).
+       * @enum {string}
+       */
+      reason: 'LEFT' | 'BUSTED' | 'TABLE_CLOSED' | 'MOVED' | 'ELIMINATED' | 'FINISHED';
       seat: number;
+      /** Format: uuid */
+      toTableId?: string;
       /** Format: uuid */
       userId: string;
     };
@@ -1638,6 +1820,11 @@ export type components = {
       smallBlind: components['schemas']['ChipAmount'];
       /** @enum {string} */
       status: 'OPEN' | 'CLOSED';
+      /**
+       * Format: uuid
+       * @description Set for a tournament's tables (seats are assigned by the tournament).
+       */
+      tournamentId: string | null;
     };
     /**
      * @description The table accepts no new hands or players. Seated players are cashed
@@ -1689,6 +1876,7 @@ export type components = {
       smallBlind: number;
       /** @enum {string} */
       status: 'OPEN' | 'CLOSED';
+      tournament?: components['schemas']['TournamentTableInfo'];
     };
     TableList: {
       items: components['schemas']['Table'][];
@@ -1722,6 +1910,107 @@ export type components = {
      * @description UTC RFC 3339 timestamp
      */
     Timestamp: string;
+    /** @description No additionalProperties restriction because TournamentDetail extends it (allOf). */
+    Tournament: {
+      actionTimeoutSec: number;
+      buyIn: components['schemas']['ChipAmount'];
+      clubId: components['schemas']['Uuid'];
+      createdAt: components['schemas']['Timestamp'];
+      /** Format: date-time */
+      finishedAt: string | null;
+      gameType: components['schemas']['GameType'];
+      id: components['schemas']['Uuid'];
+      levelDurationSec: number;
+      maxPlayers: number;
+      minPlayers: number;
+      name: string;
+      prizePool: components['schemas']['ChipAmount'];
+      /** @description Whether the viewer holds an active registration / entry. */
+      registered: boolean;
+      /** @description Active registrations (entrants once started). */
+      registeredCount: number;
+      seatsPerTable: number;
+      /** Format: date-time */
+      startedAt: string | null;
+      /**
+       * Format: int64
+       * @description Tournament chips each player starts with (not club chips).
+       */
+      startingStack: number;
+      startMode: components['schemas']['TournamentStartMode'];
+      /** Format: date-time */
+      startsAt: string | null;
+      status: components['schemas']['TournamentStatus'];
+    };
+    TournamentDetail: components['schemas']['Tournament'] & {
+      /** @description The level in effect for new hands (null before the start and after the end). */
+      currentLevel: {
+        bigBlind: components['schemas']['ChipAmount'];
+        level: number;
+        smallBlind: components['schemas']['ChipAmount'];
+      } | null;
+      entrants: components['schemas']['TournamentEntrant'][];
+      /** Format: date-time */
+      levelEndsAt: string | null;
+      /** @description The first levels of the blind schedule (later levels keep doubling). */
+      levels: components['schemas']['BlindLevel'][];
+      /** Format: uuid */
+      myTableId: string | null;
+      /** @description Prizes by place (projected from current registrations before the start). */
+      payouts: components['schemas']['TournamentPayout'][];
+      playersLeft: number;
+    };
+    TournamentEntrant: {
+      /** @description Finishing place (null while still playing); tied players share a place. */
+      place: number | null;
+      prize: components['schemas']['ChipAmount'];
+      /**
+       * Format: int64
+       * @description Tournament chips at the last completed hand (null when out or moving).
+       */
+      stack: number | null;
+      /**
+       * Format: uuid
+       * @description Current (or destination, while moving) table.
+       */
+      tableId: string | null;
+      userId: components['schemas']['Uuid'];
+      username: string;
+    };
+    TournamentList: {
+      items: components['schemas']['Tournament'][];
+    };
+    TournamentPayout: {
+      amount: components['schemas']['ChipAmount'];
+      place: number;
+    };
+    /**
+     * @description SIT_AND_GO starts when maxPlayers registered; SCHEDULED at startsAt (cancelled and refunded if fewer than minPlayers).
+     * @enum {string}
+     */
+    TournamentStartMode: 'SIT_AND_GO' | 'SCHEDULED';
+    /** @enum {string} */
+    TournamentStatus: 'REGISTERING' | 'RUNNING' | 'FINISHED' | 'CANCELLED';
+    /** @description Tournament context of a tournament table (level and blinds in effect for new hands). */
+    TournamentTableInfo: {
+      /** Format: int64 */
+      bigBlind: number;
+      level: number;
+      /** Format: date-time */
+      levelEndsAt: string;
+      name: string;
+      /** Format: int64 */
+      nextBigBlind: number;
+      /** Format: int64 */
+      nextSmallBlind: number;
+      /** Format: int64 */
+      smallBlind: number;
+      /** @enum {string} */
+      status: 'RUNNING' | 'FINISHED';
+      tableNo: number;
+      /** Format: uuid */
+      tournamentId: string;
+    };
     TransferOwnershipRequest: {
       userId: components['schemas']['Uuid'];
     };
@@ -1850,6 +2139,7 @@ export type components = {
     /** @description Client-supplied correlation id (echoed back). */
     RequestId: string;
     TableId: components['schemas']['Uuid'];
+    TournamentId: components['schemas']['Uuid'];
   };
   requestBodies: never;
   headers: never;
@@ -2824,6 +3114,60 @@ export interface operations {
       403: components['responses']['Error'];
     };
   };
+  listClubTournaments: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        clubId: components['parameters']['ClubId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Tournaments */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TournamentList'];
+        };
+      };
+      403: components['responses']['Error'];
+    };
+  };
+  createTournament: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Unique key making a retried state-changing request a no-op. */
+        'Idempotency-Key'?: components['parameters']['IdempotencyKey'];
+      };
+      path: {
+        clubId: components['parameters']['ClubId'];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CreateTournamentRequest'];
+      };
+    };
+    responses: {
+      /** @description Tournament created (registration open) */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TournamentDetail'];
+        };
+      };
+      400: components['responses']['Error'];
+      403: components['responses']['Error'];
+    };
+  };
   transferClubOwnership: {
     parameters: {
       query?: never;
@@ -3167,6 +3511,131 @@ export interface operations {
         };
       };
       403: components['responses']['Error'];
+    };
+  };
+  getTournament: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tournamentId: components['parameters']['TournamentId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Tournament */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TournamentDetail'];
+        };
+      };
+      403: components['responses']['Error'];
+      404: components['responses']['Error'];
+    };
+  };
+  cancelTournament: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tournamentId: components['parameters']['TournamentId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Cancelled */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TournamentDetail'];
+        };
+      };
+      403: components['responses']['Error'];
+      409: components['responses']['Error'];
+    };
+  };
+  registerForTournament: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Unique key making a retried state-changing request a no-op. */
+        'Idempotency-Key'?: components['parameters']['IdempotencyKey'];
+      };
+      path: {
+        tournamentId: components['parameters']['TournamentId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Registered */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TournamentDetail'];
+        };
+      };
+      403: components['responses']['Error'];
+      404: components['responses']['Error'];
+      409: components['responses']['Error'];
+      422: components['responses']['Error'];
+    };
+  };
+  startTournament: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tournamentId: components['parameters']['TournamentId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Start requested */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TournamentDetail'];
+        };
+      };
+      403: components['responses']['Error'];
+      409: components['responses']['Error'];
+    };
+  };
+  unregisterFromTournament: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tournamentId: components['parameters']['TournamentId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Unregistered */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TournamentDetail'];
+        };
+      };
+      404: components['responses']['Error'];
+      409: components['responses']['Error'];
     };
   };
 }

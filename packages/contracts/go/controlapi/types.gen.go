@@ -136,11 +136,30 @@ func (e CreateTableRequestGameType) Valid() bool {
 	}
 }
 
+// Defines values for CreateTournamentRequestGameType.
+const (
+	CreateTournamentRequestGameTypeNLHE CreateTournamentRequestGameType = "NLHE"
+	CreateTournamentRequestGameTypePLO  CreateTournamentRequestGameType = "PLO"
+)
+
+// Valid indicates whether the value is a known member of the CreateTournamentRequestGameType enum.
+func (e CreateTournamentRequestGameType) Valid() bool {
+	switch e {
+	case CreateTournamentRequestGameTypeNLHE:
+		return true
+	case CreateTournamentRequestGameTypePLO:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ErrorCode.
 const (
 	ErrorCodeACCOUNTSUSPENDED         ErrorCode = "ACCOUNT_SUSPENDED"
 	ErrorCodeACTIONALREADYPROCESSED   ErrorCode = "ACTION_ALREADY_PROCESSED"
 	ErrorCodeALREADYCLUBMEMBER        ErrorCode = "ALREADY_CLUB_MEMBER"
+	ErrorCodeALREADYREGISTERED        ErrorCode = "ALREADY_REGISTERED"
 	ErrorCodeALREADYSEATED            ErrorCode = "ALREADY_SEATED"
 	ErrorCodeAUTHINVALIDCREDENTIALS   ErrorCode = "AUTH_INVALID_CREDENTIALS"
 	ErrorCodeAUTHREFRESHINVALID       ErrorCode = "AUTH_REFRESH_INVALID"
@@ -165,7 +184,9 @@ const (
 	ErrorCodeINVITEINVALID            ErrorCode = "INVITE_INVALID"
 	ErrorCodeLEDGERINVARIANTVIOLATION ErrorCode = "LEDGER_INVARIANT_VIOLATION"
 	ErrorCodeNOTCLUBMEMBER            ErrorCode = "NOT_CLUB_MEMBER"
+	ErrorCodeNOTENOUGHPLAYERS         ErrorCode = "NOT_ENOUGH_PLAYERS"
 	ErrorCodeNOTFOUND                 ErrorCode = "NOT_FOUND"
+	ErrorCodeNOTREGISTERED            ErrorCode = "NOT_REGISTERED"
 	ErrorCodeNOTYOURTURN              ErrorCode = "NOT_YOUR_TURN"
 	ErrorCodePLAYERNOTSEATED          ErrorCode = "PLAYER_NOT_SEATED"
 	ErrorCodeRATELIMITED              ErrorCode = "RATE_LIMITED"
@@ -177,6 +198,8 @@ const (
 	ErrorCodeTABLEFULL                ErrorCode = "TABLE_FULL"
 	ErrorCodeTABLENOTFOUND            ErrorCode = "TABLE_NOT_FOUND"
 	ErrorCodeTABLEUNAVAILABLE         ErrorCode = "TABLE_UNAVAILABLE"
+	ErrorCodeTOURNAMENTFULL           ErrorCode = "TOURNAMENT_FULL"
+	ErrorCodeTOURNAMENTNOTFOUND       ErrorCode = "TOURNAMENT_NOT_FOUND"
 	ErrorCodeTOURNAMENTNOTOPEN        ErrorCode = "TOURNAMENT_NOT_OPEN"
 	ErrorCodeUSERNAMETAKEN            ErrorCode = "USERNAME_TAKEN"
 	ErrorCodeVALIDATIONFAILED         ErrorCode = "VALIDATION_FAILED"
@@ -190,6 +213,8 @@ func (e ErrorCode) Valid() bool {
 	case ErrorCodeACTIONALREADYPROCESSED:
 		return true
 	case ErrorCodeALREADYCLUBMEMBER:
+		return true
+	case ErrorCodeALREADYREGISTERED:
 		return true
 	case ErrorCodeALREADYSEATED:
 		return true
@@ -239,7 +264,11 @@ func (e ErrorCode) Valid() bool {
 		return true
 	case ErrorCodeNOTCLUBMEMBER:
 		return true
+	case ErrorCodeNOTENOUGHPLAYERS:
+		return true
 	case ErrorCodeNOTFOUND:
+		return true
+	case ErrorCodeNOTREGISTERED:
 		return true
 	case ErrorCodeNOTYOURTURN:
 		return true
@@ -262,6 +291,10 @@ func (e ErrorCode) Valid() bool {
 	case ErrorCodeTABLENOTFOUND:
 		return true
 	case ErrorCodeTABLEUNAVAILABLE:
+		return true
+	case ErrorCodeTOURNAMENTFULL:
+		return true
+	case ErrorCodeTOURNAMENTNOTFOUND:
 		return true
 	case ErrorCodeTOURNAMENTNOTOPEN:
 		return true
@@ -414,9 +447,10 @@ func (e LeaveResultStatus) Valid() bool {
 
 // Defines values for LedgerAccountKind.
 const (
-	LedgerAccountKindCLUBTREASURY LedgerAccountKind = "CLUB_TREASURY"
-	LedgerAccountKindMEMBERWALLET LedgerAccountKind = "MEMBER_WALLET"
-	LedgerAccountKindTABLESTACK   LedgerAccountKind = "TABLE_STACK"
+	LedgerAccountKindCLUBTREASURY   LedgerAccountKind = "CLUB_TREASURY"
+	LedgerAccountKindMEMBERWALLET   LedgerAccountKind = "MEMBER_WALLET"
+	LedgerAccountKindTABLESTACK     LedgerAccountKind = "TABLE_STACK"
+	LedgerAccountKindTOURNAMENTPOOL LedgerAccountKind = "TOURNAMENT_POOL"
 )
 
 // Valid indicates whether the value is a known member of the LedgerAccountKind enum.
@@ -427,6 +461,8 @@ func (e LedgerAccountKind) Valid() bool {
 	case LedgerAccountKindMEMBERWALLET:
 		return true
 	case LedgerAccountKindTABLESTACK:
+		return true
+	case LedgerAccountKindTOURNAMENTPOOL:
 		return true
 	default:
 		return false
@@ -443,6 +479,9 @@ const (
 	LedgerKindREVERSAL          LedgerKind = "REVERSAL"
 	LedgerKindTABLEBUYIN        LedgerKind = "TABLE_BUY_IN"
 	LedgerKindTABLECASHOUT      LedgerKind = "TABLE_CASH_OUT"
+	LedgerKindTOURNAMENTBUYIN   LedgerKind = "TOURNAMENT_BUY_IN"
+	LedgerKindTOURNAMENTPAYOUT  LedgerKind = "TOURNAMENT_PAYOUT"
+	LedgerKindTOURNAMENTREFUND  LedgerKind = "TOURNAMENT_REFUND"
 )
 
 // Valid indicates whether the value is a known member of the LedgerKind enum.
@@ -463,6 +502,12 @@ func (e LedgerKind) Valid() bool {
 	case LedgerKindTABLEBUYIN:
 		return true
 	case LedgerKindTABLECASHOUT:
+		return true
+	case LedgerKindTOURNAMENTBUYIN:
+		return true
+	case LedgerKindTOURNAMENTPAYOUT:
+		return true
+	case LedgerKindTOURNAMENTREFUND:
 		return true
 	default:
 		return false
@@ -625,6 +670,48 @@ func (e TableDetailStatus) Valid() bool {
 	case TableDetailStatusCLOSED:
 		return true
 	case TableDetailStatusOPEN:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TournamentStartMode.
+const (
+	TournamentStartModeSCHEDULED TournamentStartMode = "SCHEDULED"
+	TournamentStartModeSITANDGO  TournamentStartMode = "SIT_AND_GO"
+)
+
+// Valid indicates whether the value is a known member of the TournamentStartMode enum.
+func (e TournamentStartMode) Valid() bool {
+	switch e {
+	case TournamentStartModeSCHEDULED:
+		return true
+	case TournamentStartModeSITANDGO:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TournamentStatus.
+const (
+	TournamentStatusCANCELLED   TournamentStatus = "CANCELLED"
+	TournamentStatusFINISHED    TournamentStatus = "FINISHED"
+	TournamentStatusREGISTERING TournamentStatus = "REGISTERING"
+	TournamentStatusRUNNING     TournamentStatus = "RUNNING"
+)
+
+// Valid indicates whether the value is a known member of the TournamentStatus enum.
+func (e TournamentStatus) Valid() bool {
+	switch e {
+	case TournamentStatusCANCELLED:
+		return true
+	case TournamentStatusFINISHED:
+		return true
+	case TournamentStatusREGISTERING:
+		return true
+	case TournamentStatusRUNNING:
 		return true
 	default:
 		return false
@@ -878,6 +965,16 @@ type AuthResult struct {
 	User                  User      `json:"user"`
 }
 
+// BlindLevel defines model for BlindLevel.
+type BlindLevel struct {
+	// BigBlind Integer amount of virtual chips (no monetary value).
+	BigBlind ChipAmount `json:"bigBlind"`
+	Level    int        `json:"level"`
+
+	// SmallBlind Integer amount of virtual chips (no monetary value).
+	SmallBlind ChipAmount `json:"smallBlind"`
+}
+
 // ChipAmount Integer amount of virtual chips (no monetary value).
 type ChipAmount = int64
 
@@ -974,6 +1071,36 @@ type CreateTableRequest struct {
 // CreateTableRequestGameType See GameType. Fixed for the table's lifetime.
 type CreateTableRequestGameType string
 
+// CreateTournamentRequest defines model for CreateTournamentRequest.
+type CreateTournamentRequest struct {
+	ActionTimeoutSec *int `json:"actionTimeoutSec,omitempty"`
+
+	// BigBlind Level 1 big blind (at most a tenth of the starting stack).
+	BigBlind int64 `json:"bigBlind"`
+
+	// BuyIn Club chips paid into the prize pool (0 = freeroll).
+	BuyIn            int64                            `json:"buyIn"`
+	GameType         *CreateTournamentRequestGameType `json:"gameType,omitempty"`
+	LevelDurationSec int                              `json:"levelDurationSec"`
+	MaxPlayers       int                              `json:"maxPlayers"`
+	MinPlayers       *int                             `json:"minPlayers,omitempty"`
+	Name             string                           `json:"name"`
+	SeatsPerTable    *int                             `json:"seatsPerTable,omitempty"`
+
+	// SmallBlind Level 1 small blind; later levels follow a standard progression.
+	SmallBlind int64 `json:"smallBlind"`
+
+	// StartMode SIT_AND_GO starts when maxPlayers registered; SCHEDULED at startsAt (cancelled and refunded if fewer than minPlayers).
+	StartMode     TournamentStartMode `json:"startMode"`
+	StartingStack int64               `json:"startingStack"`
+
+	// StartsAt Required for SCHEDULED (in the future); not allowed for SIT_AND_GO.
+	StartsAt *time.Time `json:"startsAt,omitempty"`
+}
+
+// CreateTournamentRequestGameType defines model for CreateTournamentRequest.GameType.
+type CreateTournamentRequestGameType string
+
 // ErrorBody defines model for ErrorBody.
 type ErrorBody struct {
 	// Code Stable machine-readable error codes shared by HTTP and realtime APIs.
@@ -1035,12 +1162,13 @@ type HandDetail struct {
 	SmallBlind ChipAmount `json:"smallBlind"`
 
 	// StartedAt UTC RFC 3339 timestamp
-	StartedAt  Timestamp            `json:"startedAt"`
-	Status     HandDetailStatus     `json:"status"`
-	TableId    Uuid                 `json:"tableId"`
-	TableName  string               `json:"tableName"`
-	ViewerRole HandDetailViewerRole `json:"viewerRole"`
-	VoidReason *string              `json:"voidReason"`
+	StartedAt    Timestamp            `json:"startedAt"`
+	Status       HandDetailStatus     `json:"status"`
+	TableId      Uuid                 `json:"tableId"`
+	TableName    string               `json:"tableName"`
+	TournamentId *openapi_types.UUID  `json:"tournamentId"`
+	ViewerRole   HandDetailViewerRole `json:"viewerRole"`
+	VoidReason   *string              `json:"voidReason"`
 }
 
 // HandDetailStatus defines model for HandDetail.Status.
@@ -1106,10 +1234,11 @@ type HandSummary struct {
 	SmallBlind ChipAmount `json:"smallBlind"`
 
 	// StartedAt UTC RFC 3339 timestamp
-	StartedAt Timestamp         `json:"startedAt"`
-	Status    HandSummaryStatus `json:"status"`
-	TableId   Uuid              `json:"tableId"`
-	TableName string            `json:"tableName"`
+	StartedAt    Timestamp           `json:"startedAt"`
+	Status       HandSummaryStatus   `json:"status"`
+	TableId      Uuid                `json:"tableId"`
+	TableName    string              `json:"tableName"`
+	TournamentId *openapi_types.UUID `json:"tournamentId"`
 }
 
 // HandSummaryStatus defines model for HandSummary.Status.
@@ -1210,6 +1339,9 @@ type LedgerSummary struct {
 	AtTables ChipAmount `json:"atTables"`
 	ClubId   Uuid       `json:"clubId"`
 	Holders  int        `json:"holders"`
+
+	// InTournaments Integer amount of virtual chips (no monetary value).
+	InTournaments ChipAmount `json:"inTournaments"`
 
 	// InWallets Integer amount of virtual chips (no monetary value).
 	InWallets ChipAmount `json:"inWallets"`
@@ -1459,6 +1591,9 @@ type Table struct {
 	// SmallBlind Integer amount of virtual chips (no monetary value).
 	SmallBlind ChipAmount  `json:"smallBlind"`
 	Status     TableStatus `json:"status"`
+
+	// TournamentId Set for a tournament's tables (seats are assigned by the tournament).
+	TournamentId *openapi_types.UUID `json:"tournamentId"`
 }
 
 // TableStatus defines model for Table.Status.
@@ -1495,6 +1630,9 @@ type TableDetail struct {
 	// SmallBlind Integer amount of virtual chips (no monetary value).
 	SmallBlind ChipAmount        `json:"smallBlind"`
 	Status     TableDetailStatus `json:"status"`
+
+	// TournamentId Set for a tournament's tables (seats are assigned by the tournament).
+	TournamentId *openapi_types.UUID `json:"tournamentId"`
 }
 
 // TableDetailStatus defines model for TableDetail.Status.
@@ -1518,6 +1656,145 @@ type TableSeat struct {
 
 // Timestamp UTC RFC 3339 timestamp
 type Timestamp = time.Time
+
+// Tournament No additionalProperties restriction because TournamentDetail extends it (allOf).
+type Tournament struct {
+	ActionTimeoutSec int `json:"actionTimeoutSec"`
+
+	// BuyIn Integer amount of virtual chips (no monetary value).
+	BuyIn  ChipAmount `json:"buyIn"`
+	ClubId Uuid       `json:"clubId"`
+
+	// CreatedAt UTC RFC 3339 timestamp
+	CreatedAt  Timestamp  `json:"createdAt"`
+	FinishedAt *time.Time `json:"finishedAt"`
+
+	// GameType NLHE = No-Limit Texas Hold'em (2 hole cards). PLO = Pot-Limit Omaha
+	// (4 hole cards; a hand uses exactly two of them and three board cards;
+	// bets and raises are capped at the pot).
+	GameType         externalRef0.GameType `json:"gameType"`
+	Id               Uuid                  `json:"id"`
+	LevelDurationSec int                   `json:"levelDurationSec"`
+	MaxPlayers       int                   `json:"maxPlayers"`
+	MinPlayers       int                   `json:"minPlayers"`
+	Name             string                `json:"name"`
+
+	// PrizePool Integer amount of virtual chips (no monetary value).
+	PrizePool ChipAmount `json:"prizePool"`
+
+	// Registered Whether the viewer holds an active registration / entry.
+	Registered bool `json:"registered"`
+
+	// RegisteredCount Active registrations (entrants once started).
+	RegisteredCount int `json:"registeredCount"`
+	SeatsPerTable   int `json:"seatsPerTable"`
+
+	// StartMode SIT_AND_GO starts when maxPlayers registered; SCHEDULED at startsAt (cancelled and refunded if fewer than minPlayers).
+	StartMode TournamentStartMode `json:"startMode"`
+	StartedAt *time.Time          `json:"startedAt"`
+
+	// StartingStack Tournament chips each player starts with (not club chips).
+	StartingStack int64            `json:"startingStack"`
+	StartsAt      *time.Time       `json:"startsAt"`
+	Status        TournamentStatus `json:"status"`
+}
+
+// TournamentDetail defines model for TournamentDetail.
+type TournamentDetail struct {
+	ActionTimeoutSec int `json:"actionTimeoutSec"`
+
+	// BuyIn Integer amount of virtual chips (no monetary value).
+	BuyIn  ChipAmount `json:"buyIn"`
+	ClubId Uuid       `json:"clubId"`
+
+	// CreatedAt UTC RFC 3339 timestamp
+	CreatedAt Timestamp `json:"createdAt"`
+
+	// CurrentLevel The level in effect for new hands (null before the start and after the end).
+	CurrentLevel *struct {
+		// BigBlind Integer amount of virtual chips (no monetary value).
+		BigBlind ChipAmount `json:"bigBlind"`
+		Level    int        `json:"level"`
+
+		// SmallBlind Integer amount of virtual chips (no monetary value).
+		SmallBlind ChipAmount `json:"smallBlind"`
+	} `json:"currentLevel"`
+	Entrants   []TournamentEntrant `json:"entrants"`
+	FinishedAt *time.Time          `json:"finishedAt"`
+
+	// GameType NLHE = No-Limit Texas Hold'em (2 hole cards). PLO = Pot-Limit Omaha
+	// (4 hole cards; a hand uses exactly two of them and three board cards;
+	// bets and raises are capped at the pot).
+	GameType         externalRef0.GameType `json:"gameType"`
+	Id               Uuid                  `json:"id"`
+	LevelDurationSec int                   `json:"levelDurationSec"`
+	LevelEndsAt      *time.Time            `json:"levelEndsAt"`
+
+	// Levels The first levels of the blind schedule (later levels keep doubling).
+	Levels     []BlindLevel        `json:"levels"`
+	MaxPlayers int                 `json:"maxPlayers"`
+	MinPlayers int                 `json:"minPlayers"`
+	MyTableId  *openapi_types.UUID `json:"myTableId"`
+	Name       string              `json:"name"`
+
+	// Payouts Prizes by place (projected from current registrations before the start).
+	Payouts     []TournamentPayout `json:"payouts"`
+	PlayersLeft int                `json:"playersLeft"`
+
+	// PrizePool Integer amount of virtual chips (no monetary value).
+	PrizePool ChipAmount `json:"prizePool"`
+
+	// Registered Whether the viewer holds an active registration / entry.
+	Registered bool `json:"registered"`
+
+	// RegisteredCount Active registrations (entrants once started).
+	RegisteredCount int `json:"registeredCount"`
+	SeatsPerTable   int `json:"seatsPerTable"`
+
+	// StartMode SIT_AND_GO starts when maxPlayers registered; SCHEDULED at startsAt (cancelled and refunded if fewer than minPlayers).
+	StartMode TournamentStartMode `json:"startMode"`
+	StartedAt *time.Time          `json:"startedAt"`
+
+	// StartingStack Tournament chips each player starts with (not club chips).
+	StartingStack int64            `json:"startingStack"`
+	StartsAt      *time.Time       `json:"startsAt"`
+	Status        TournamentStatus `json:"status"`
+}
+
+// TournamentEntrant defines model for TournamentEntrant.
+type TournamentEntrant struct {
+	// Place Finishing place (null while still playing); tied players share a place.
+	Place *int `json:"place"`
+
+	// Prize Integer amount of virtual chips (no monetary value).
+	Prize ChipAmount `json:"prize"`
+
+	// Stack Tournament chips at the last completed hand (null when out or moving).
+	Stack *int64 `json:"stack"`
+
+	// TableId Current (or destination, while moving) table.
+	TableId  *openapi_types.UUID `json:"tableId"`
+	UserId   Uuid                `json:"userId"`
+	Username string              `json:"username"`
+}
+
+// TournamentList defines model for TournamentList.
+type TournamentList struct {
+	Items []Tournament `json:"items"`
+}
+
+// TournamentPayout defines model for TournamentPayout.
+type TournamentPayout struct {
+	// Amount Integer amount of virtual chips (no monetary value).
+	Amount ChipAmount `json:"amount"`
+	Place  int        `json:"place"`
+}
+
+// TournamentStartMode SIT_AND_GO starts when maxPlayers registered; SCHEDULED at startsAt (cancelled and refunded if fewer than minPlayers).
+type TournamentStartMode string
+
+// TournamentStatus defines model for TournamentStatus.
+type TournamentStatus string
 
 // TransferOwnershipRequest defines model for TransferOwnershipRequest.
 type TransferOwnershipRequest struct {
@@ -1623,6 +1900,9 @@ type RequestId = string
 
 // TableId defines model for TableId.
 type TableId = Uuid
+
+// TournamentId defines model for TournamentId.
+type TournamentId = Uuid
 
 // Error defines model for Error.
 type Error = ErrorEnvelope
@@ -1780,6 +2060,12 @@ type CreateTableParams struct {
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
+// CreateTournamentParams defines parameters for CreateTournament.
+type CreateTournamentParams struct {
+	// IdempotencyKey Unique key making a retried state-changing request a no-op.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
 // ListMyWalletEntriesParams defines parameters for ListMyWalletEntries.
 type ListMyWalletEntriesParams struct {
 	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
@@ -1804,6 +2090,12 @@ type LeaveTableParams struct {
 
 // TakeSeatParams defines parameters for TakeSeat.
 type TakeSeatParams struct {
+	// IdempotencyKey Unique key making a retried state-changing request a no-op.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// RegisterForTournamentParams defines parameters for RegisterForTournament.
+type RegisterForTournamentParams struct {
 	// IdempotencyKey Unique key making a retried state-changing request a no-op.
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
@@ -1855,6 +2147,9 @@ type UpdateClubMemberJSONRequestBody = UpdateMemberRequest
 
 // CreateTableJSONRequestBody defines body for CreateTable for application/json ContentType.
 type CreateTableJSONRequestBody = CreateTableRequest
+
+// CreateTournamentJSONRequestBody defines body for CreateTournament for application/json ContentType.
+type CreateTournamentJSONRequestBody = CreateTournamentRequest
 
 // TransferClubOwnershipJSONRequestBody defines body for TransferClubOwnership for application/json ContentType.
 type TransferClubOwnershipJSONRequestBody = TransferOwnershipRequest

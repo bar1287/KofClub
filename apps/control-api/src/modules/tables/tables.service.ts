@@ -32,6 +32,11 @@ export interface LeaveResultDto {
   cashOut: number;
 }
 
+/** Tournament tables are seated, emptied and closed by their tournament. */
+function tournamentSeating(): AppError {
+  return new AppError('FORBIDDEN', 'Seats at tournament tables are managed by the tournament');
+}
+
 /**
  * Table directory and the HTTP entry points for seating. Authorization
  * (club membership, bans, roles) is enforced here; game rules, buy-in and
@@ -103,6 +108,7 @@ export class TablesService {
     // A suspended club is view-only: no new buy-ins (leaving stays possible).
     if (club.status !== 'ACTIVE') throw new AppError('FORBIDDEN', 'Club is suspended');
     if (table.status !== 'OPEN') throw new AppError('TABLE_CLOSED', 'Table is closed');
+    if (table.tournamentId) throw tournamentSeating();
     const res = await this.game.post<{ seatNo: number; stack: number; seq: number }>(
       tableId,
       'seat',
@@ -126,6 +132,7 @@ export class TablesService {
     // Leaving is always allowed (even after a ban) so chips return to the wallet.
     const table = await this.repo.find(tableId);
     if (!table) throw new AppError('TABLE_NOT_FOUND', 'Table not found');
+    if (table.tournamentId) throw tournamentSeating();
     const res = await this.game.post<{ status: 'LEFT' | 'LEAVING_AFTER_HAND'; cashOut: number }>(
       tableId,
       'leave',
@@ -144,6 +151,7 @@ export class TablesService {
   async close(auth: AuthContext, tableId: string, ctx: RequestContext): Promise<CloseResultDto> {
     const table = await this.repo.find(tableId);
     if (!table) throw new AppError('TABLE_NOT_FOUND', 'Table not found');
+    if (table.tournamentId) throw tournamentSeating();
     await this.db.tx(async (q) => {
       await this.access.require(table.clubId, auth, 'TABLES_MANAGE', q);
       if (await this.repo.markClosed(q, tableId)) {

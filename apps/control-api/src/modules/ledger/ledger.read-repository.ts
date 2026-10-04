@@ -92,19 +92,25 @@ export class LedgerReadRepository {
     }));
   }
 
-  async summary(
-    clubId: string,
-  ): Promise<{ issued: number; wallets: number; tables: number; holders: number }> {
+  async summary(clubId: string): Promise<{
+    issued: number;
+    wallets: number;
+    tables: number;
+    tournaments: number;
+    holders: number;
+  }> {
     const res = await this.db.query<{
       treasury: string;
       wallets: string;
       tables: string;
+      tournaments: string;
       holders: number;
     }>(
       `SELECT coalesce(sum(balance) FILTER (WHERE kind = 'CLUB_TREASURY'), 0) AS treasury,
               coalesce(sum(balance) FILTER (WHERE kind = 'MEMBER_WALLET'), 0) AS wallets,
               coalesce(sum(balance) FILTER (WHERE kind = 'TABLE_STACK'), 0) AS tables,
-              count(DISTINCT owner_id) FILTER (WHERE kind <> 'CLUB_TREASURY' AND balance <> 0)::int AS holders
+              coalesce(sum(balance) FILTER (WHERE kind = 'TOURNAMENT_POOL'), 0) AS tournaments,
+              count(DISTINCT owner_id) FILTER (WHERE owner_type = 'USER' AND balance <> 0)::int AS holders
          FROM ledger_accounts WHERE club_id = $1`,
       [clubId],
     );
@@ -113,6 +119,7 @@ export class LedgerReadRepository {
       issued: -toChips(r.treasury),
       wallets: toChips(r.wallets),
       tables: toChips(r.tables),
+      tournaments: toChips(r.tournaments),
       holders: r.holders,
     };
   }

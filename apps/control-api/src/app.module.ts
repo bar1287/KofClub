@@ -18,6 +18,7 @@ import { InternalModule } from './modules/internal/internal.module';
 import { LedgerModule } from './modules/ledger/ledger.module';
 import { RiskModule } from './modules/risk/risk.module';
 import { TablesModule } from './modules/tables/tables.module';
+import { TournamentsModule } from './modules/tournaments/tournaments.module';
 
 @Module({})
 export class AppModule {
@@ -38,6 +39,7 @@ export class AppModule {
         ClubsModule,
         LedgerModule,
         TablesModule,
+        TournamentsModule,
         HistoryModule,
         AdminModule,
         InternalModule,

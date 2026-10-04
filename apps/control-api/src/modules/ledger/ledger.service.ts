@@ -31,6 +31,8 @@ export interface LedgerSummaryDto {
   issued: number;
   inWallets: number;
   atTables: number;
+  /** Buy-ins held in tournament prize pools. */
+  inTournaments: number;
   holders: number;
 }
 
@@ -220,6 +222,7 @@ export class LedgerService {
       issued: s.issued,
       inWallets: s.wallets,
       atTables: s.tables,
+      inTournaments: s.tournaments,
       holders: s.holders,
     };
   }
