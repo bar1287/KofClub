@@ -198,6 +198,12 @@ func (h *Hand) Game() GameType {
 // HandNo returns the configured hand number.
 func (h *Hand) HandNo() int64 { return h.cfg.HandNo }
 
+// SmallBlind returns the hand's small blind.
+func (h *Hand) SmallBlind() int64 { return h.cfg.SmallBlind }
+
+// BigBlind returns the hand's big blind.
+func (h *Hand) BigBlind() int64 { return h.cfg.BigBlind }
+
 // Street returns the current street or terminal phase.
 func (h *Hand) Street() Street { return h.street }
 

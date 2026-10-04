@@ -9,6 +9,9 @@ type TableConfig struct {
 	MaxSeats   int
 	SmallBlind int64
 	BigBlind   int64
+	// DealSittingOut deals sitting-out players in anyway (tournaments: an
+	// absent player keeps posting blinds and is folded automatically).
+	DealSittingOut bool
 }
 
 // TablePhase is the table-level lifecycle state (spec §4.2).
@@ -185,11 +188,52 @@ func (t *Table) AddChips(seat int, amount int64) error {
 	return nil
 }
 
+// SetBlinds changes the blinds for the next hand (tournament levels). It
+// fails while a hand is in progress.
+func (t *Table) SetBlinds(smallBlind, bigBlind int64) error {
+	if t.hand != nil && !t.hand.IsComplete() {
+		return errorf(CodeIllegalAction, "blinds cannot change during a hand")
+	}
+	if smallBlind <= 0 || bigBlind <= 0 || smallBlind > bigBlind {
+		return errorf(CodeInvalidConfig, "blinds must be positive with small <= big")
+	}
+	t.cfg.SmallBlind, t.cfg.BigBlind = smallBlind, bigBlind
+	return nil
+}
+
+// BigBlindOrder lists the seats that will be dealt into the next hand in
+// the order they will post the big blind, starting with the next hand's big
+// blind (the button moves one eligible seat per hand). Tournaments move
+// players in this order when balancing tables.
+func (t *Table) BigBlindOrder() []int {
+	eligible := t.eligibleSeats()
+	n := len(eligible)
+	if n < 2 {
+		return eligible
+	}
+	button := t.nextButton(eligible)
+	bi := 0
+	for i, s := range eligible {
+		if s == button {
+			bi = i
+		}
+	}
+	first := (bi + 2) % n
+	if n == 2 {
+		first = (bi + 1) % n // heads-up: the button posts the small blind
+	}
+	out := make([]int, n)
+	for k := range out {
+		out[k] = eligible[(first+k)%n]
+	}
+	return out
+}
+
 // eligibleSeats returns seats that will be dealt in, ordered by seat.
 func (t *Table) eligibleSeats() []int {
 	var out []int
 	for _, s := range t.Seats() {
-		if !s.SittingOut && s.Stack > 0 {
+		if (!s.SittingOut || t.cfg.DealSittingOut) && s.Stack > 0 {
 			out = append(out, s.Seat)
 		}
 	}

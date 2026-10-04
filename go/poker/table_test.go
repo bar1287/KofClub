@@ -223,3 +223,55 @@ func TestResumeHandByReplay(t *testing.T) {
 		t.Fatal("late joiner must not be in the resumed hand")
 	}
 }
+
+func TestTournamentTableOptions(t *testing.T) {
+	table, _ := NewTable(TableConfig{MaxSeats: 6, SmallBlind: 5, BigBlind: 10, DealSittingOut: true})
+	for _, seat := range []int{1, 3, 5, 6} {
+		if err := table.SitDown(seat, PlayerID(string(rune('a'+seat))), 1000); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_ = table.SetSittingOut(3, true)
+	// First hand: button 1, SB 3, BB 5 -> big blinds in order 5, 6, 1, 3.
+	if got := table.BigBlindOrder(); !reflect.DeepEqual(got, []int{5, 6, 1, 3}) {
+		t.Fatalf("big blind order %v", got)
+	}
+	if err := table.SetBlinds(10, 20); err != nil {
+		t.Fatal(err)
+	}
+	h, _, err := table.StartHand(NewOrderedDeck())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h.BigBlind() != 20 || h.BigBlindSeat() != 5 {
+		t.Fatalf("hand blinds %d at seat %d", h.BigBlind(), h.BigBlindSeat())
+	}
+	if !table.InHand(3) {
+		t.Fatal("sitting-out players are dealt in at tournament tables")
+	}
+	if err := table.SetBlinds(20, 40); err == nil {
+		t.Fatal("blinds changed during a hand")
+	}
+	playOut(t, table)
+	// Next hand: button 3 -> SB 5, BB 6.
+	if got := table.BigBlindOrder(); !reflect.DeepEqual(got, []int{6, 1, 3, 5}) {
+		t.Fatalf("big blind order after one hand %v", got)
+	}
+	if err := table.SetBlinds(0, 10); err == nil {
+		t.Fatal("invalid blinds accepted")
+	}
+
+	// Heads-up the button posts the small blind, the other seat the big blind.
+	hu, _ := NewTable(TableConfig{MaxSeats: 6, SmallBlind: 5, BigBlind: 10})
+	_ = hu.SitDown(2, "x", 100)
+	_ = hu.SitDown(4, "y", 100)
+	if got := hu.BigBlindOrder(); !reflect.DeepEqual(got, []int{4, 2}) {
+		t.Fatalf("heads-up big blind order %v", got)
+	}
+	// Cash tables still skip sitting-out players.
+	_ = hu.SitDown(5, "z", 100)
+	_ = hu.SetSittingOut(5, true)
+	if got := hu.BigBlindOrder(); len(got) != 2 {
+		t.Fatalf("cash table must not deal sitting-out players: %v", got)
+	}
+}
