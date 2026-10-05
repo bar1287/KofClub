@@ -5,6 +5,21 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added — Demo and screenshots
+
+- `make demo`: the Docker stack plus demo accounts (alice, bob, carol) seeded
+  inside the control-api container; CI's Compose job runs it.
+- `make screenshots`: a Playwright tour of the real stack and demo data
+  (cash hand, phone layout, history, sit-and-go, club and platform admin,
+  two-factor setup) saved to docs/screenshots with a gallery page.
+
+### Fixed — Phone layout
+
+- The table page no longer overflows phone screens (grid column could not
+  shrink); on screens up to 640px the felt is a portrait oval with smaller
+  seats and cards, the top bar wraps, data tables scroll inside their panel,
+  and lobby table names link to the table.
+
 ### Security
 
 - Two-factor authentication (ADR-017): TOTP (RFC 6238 on node:crypto) with

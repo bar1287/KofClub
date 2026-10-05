@@ -119,7 +119,9 @@ function ClubLobby({ clubId }: { clubId: string }) {
             <tbody>
               {tables.map((t) => (
                 <tr key={t.id}>
-                  <td>{t.name}</td>
+                  <td>
+                    {t.status === 'OPEN' ? <Link href={`/tables/${t.id}`}>{t.name}</Link> : t.name}
+                  </td>
                   <td>{gameLabel(t.gameType)}</td>
                   <td>
                     {chips(t.smallBlind)}/{chips(t.bigBlind)}

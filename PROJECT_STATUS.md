@@ -64,6 +64,8 @@ make load-smoke && make backup-restore-check   # load baseline + restore drill
 make load-smoke ARGS="-tournaments 10 -tournament-players 30"   # tournament load drill
 make observability-check   # alert rules + dashboards (promtool)
 make dev   # full stack in Docker; open http://localhost:3000 (make seed for demo data)
+make demo  # Docker only: full stack plus demo accounts (alice/bob/carol, password <name>-demo-password)
+make screenshots   # screenshot tour of the real stack into docs/screenshots
 ```
 
 ## Known issues
