@@ -37,6 +37,8 @@ USER app
 
 FROM runtime AS control-api
 COPY --from=build /out/control-api /app
+# Demo data for `make demo` (the seed refuses APP_ENV=production).
+COPY --from=build /repo/db/seeds /app/seeds
 EXPOSE 4000
 CMD ["node", "dist/main.js"]
 

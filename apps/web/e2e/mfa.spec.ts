@@ -1,27 +1,5 @@
-import { createHmac } from 'node:crypto';
 import { expect, test } from '@playwright/test';
-import { register, uniqueName } from './helpers';
-
-/** RFC 6238 code of a base32 secret at a time step (test-side authenticator). */
-function totp(secretBase32: string, step: number): string {
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-  let bits = 0;
-  let value = 0;
-  const bytes: number[] = [];
-  for (const ch of secretBase32) {
-    value = (value << 5) | alphabet.indexOf(ch);
-    bits += 5;
-    if (bits >= 8) {
-      bytes.push((value >>> (bits - 8)) & 255);
-      bits -= 8;
-    }
-  }
-  const counter = Buffer.alloc(8);
-  counter.writeBigUInt64BE(BigInt(step));
-  const mac = createHmac('sha1', Buffer.from(bytes)).update(counter).digest();
-  const offset = mac[mac.length - 1]! & 0x0f;
-  return String((mac.readUInt32BE(offset) & 0x7fffffff) % 1_000_000).padStart(6, '0');
-}
+import { register, totp, uniqueName } from './helpers';
 
 const stepNow = () => Math.floor(Date.now() / 30_000);
 

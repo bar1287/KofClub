@@ -73,6 +73,14 @@ migrate-status: ## Print the current schema version
 seed: ## Load demo data (users, club, table, chip grants)
 	$(PNPM) --filter @kofclub/control-api seed
 
+.PHONY: demo
+demo: dev ## Full stack in Docker plus demo accounts (only Docker needed); open http://localhost:3000
+	$(COMPOSE) exec -T -e SEED_FILE=/app/seeds/demo.json control-api node dist/seed/run-seed.js
+	@echo ""
+	@echo "Open http://localhost:$${WEB_PORT:-3000} and log in as alice / alice-demo-password,"
+	@echo "bob / bob-demo-password or carol / carol-demo-password (use two browsers or a private"
+	@echo "window to play against yourself). alice owns 'Demo Club'; everyone has 10,000 virtual chips."
+
 .PHONY: observability
 observability: ## Start Prometheus (:9090), Jaeger (:16686) and Grafana (:3001); see docs/observability.md
 	docker compose --profile observability up -d prometheus jaeger grafana
@@ -148,6 +156,10 @@ integration: ## Integration tests against real PostgreSQL + Redis (run `make dep
 .PHONY: e2e
 e2e: ## Browser end-to-end tests: fresh DB, native services, Playwright (needs `make deps`)
 	./scripts/e2e.sh
+
+.PHONY: screenshots
+screenshots: ## Product screenshots from the real stack and demo data into docs/screenshots (needs `make deps`)
+	./scripts/screenshots.sh $(ARGS)
 
 .PHONY: load-smoke
 load-smoke: ## Synthetic load test: bots play on a fresh stack, report latency, verify the ledger (needs `make deps`)

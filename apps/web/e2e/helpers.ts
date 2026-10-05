@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto';
 import { expect, type Page } from '@playwright/test';
 
 export interface Player {
@@ -170,4 +171,25 @@ export async function playAllIn(players: Player[], done: () => Promise<boolean>)
     if (!acted) await players[0]!.page.waitForTimeout(150);
   }
   throw new Error('play did not finish in time');
+}
+
+/** RFC 6238 code of a base32 secret at a time step (test-side authenticator). */
+export function totp(secretBase32: string, step = Math.floor(Date.now() / 30_000)): string {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = 0;
+  let value = 0;
+  const bytes: number[] = [];
+  for (const ch of secretBase32) {
+    value = (value << 5) | alphabet.indexOf(ch);
+    bits += 5;
+    if (bits >= 8) {
+      bytes.push((value >>> (bits - 8)) & 255);
+      bits -= 8;
+    }
+  }
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(step));
+  const mac = createHmac('sha1', Buffer.from(bytes)).update(counter).digest();
+  const offset = mac[mac.length - 1]! & 0x0f;
+  return String((mac.readUInt32BE(offset) & 0x7fffffff) % 1_000_000).padStart(6, '0');
 }

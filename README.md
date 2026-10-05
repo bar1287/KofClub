@@ -47,12 +47,29 @@ Details: [docs/architecture.md](docs/architecture.md).
 - Docker with Compose v2 (for `make dev` / `make deps`)
 - For native development and tests: Node 22, pnpm 10, Go 1.26, GNU make, openssl
 
+## Try it (only Docker needed)
+
+```bash
+git clone <repo> && cd KofClub
+make demo       # builds and starts every service in Docker, then creates the demo accounts
+```
+
+Open http://localhost:3000 and log in as `alice` / `alice-demo-password`
+(owner of "Demo Club"), `bob` / `bob-demo-password` or `carol` /
+`carol-demo-password`; everyone starts with 10,000 virtual chips. Use a second
+browser or a private window to sit two players at the same table. To try the
+platform admin console: `make platform-admin ADMIN_USER=carol` (needs
+`make bootstrap`), then turn on two-factor authentication on carol's profile.
+
+Screenshots of every screen (generated from the real stack with
+`make screenshots`): [docs/screenshots](docs/screenshots/README.md).
+
 ## Quick start (everything in Docker)
 
 ```bash
 git clone <repo> && cd KofClub
 make dev        # creates .env with generated secrets, builds images, runs migrations, starts all services
-make seed       # optional: demo users/club/table (needs `make bootstrap` once)
+make seed       # optional: demo users/club/table (needs `make bootstrap` once; `make demo` does both in Docker)
 ```
 
 Then open http://localhost:3000. Services:
@@ -88,6 +105,8 @@ make dev-local  # run all services natively with live reload
 | `make e2e`                                         | Browser E2E (Playwright): fresh DB, services started natively       |
 | `make migrate` / `migrate-down` / `migrate-status` | Schema migrations                                                   |
 | `make seed`                                        | Demo data                                                           |
+| `make demo`                                        | `make dev` plus demo accounts, Docker only                          |
+| `make screenshots`                                 | Screenshot tour of the real stack into `docs/screenshots`           |
 | `make platform-admin ADMIN_USER=<name>`            | Grant the platform-admin role (operator CLI, audited)               |
 | `make observability`                               | Prometheus (:9090), Jaeger (:16686), Grafana (:3001)                |
 | `make contracts` / `contracts-check`               | Regenerate / verify generated contract types                        |
