@@ -5,6 +5,23 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed — Running the demo on a fresh machine
+
+- The web image failed to build from a fresh clone (`apps/web/public` was an
+  empty directory git does not keep); it now holds `robots.txt`.
+- Windows: `demo.cmd` (PowerShell or cmd, only Docker Desktop needed) starts
+  Docker Desktop if needed, creates `.env` in a container and runs the demo.
+- `.env` generation is one cross-platform Node script (`scripts/init-env.mjs`)
+  that runs with a local Node or in the node image, so macOS's LibreSSL
+  (no Ed25519) and CRLF checkouts no longer break it; `.gitattributes` keeps
+  LF line endings.
+- `make demo` publishes only ports 3000, 4000 and 4100 (no clash with a local
+  PostgreSQL or Redis).
+- CI runs on every branch; it showed the problems above, CI database
+  credentials that `.env` overrode, and 24 Go standard-library
+  vulnerabilities fixed by moving to Go 1.26.6. All jobs pass, including
+  Playwright against the `make demo` stack.
+
 ### Added — Demo and screenshots
 
 - `make demo`: the Docker stack plus demo accounts (alice, bob, carol) seeded
