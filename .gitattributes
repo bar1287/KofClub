@@ -1,0 +1,5 @@
+# The code is built and run in Linux containers: keep LF line endings in
+# every checkout, also on Windows (Git for Windows converts to CRLF by
+# default). Windows batch files are the exception.
+* text=auto eol=lf
+*.cmd text eol=crlf

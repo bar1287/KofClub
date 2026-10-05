@@ -49,8 +49,15 @@ Details: [docs/architecture.md](docs/architecture.md).
 
 ## Try it (only Docker needed)
 
-Needs Docker Desktop (or Docker Engine) with Compose 2.24+, `git`, `make` and
-`bash` (macOS and Linux have them; on Windows use WSL).
+**Windows (PowerShell):** install and start Docker Desktop, then
+
+```powershell
+git clone https://github.com/bar1287/KofClub.git
+cd KofClub
+.\demo.cmd
+```
+
+**macOS / Linux:** needs Docker (Compose 2.24+), `git` and `make`.
 
 ```bash
 git clone https://github.com/bar1287/KofClub.git && cd KofClub
