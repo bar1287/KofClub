@@ -205,8 +205,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @kofclub/web exec playwright install --with-deps chromium
-      - name: Build images and start the stack (make dev)
-        run: make dev
+      - name: Build images, start the stack and load the demo accounts (make demo)
+        run: make demo
       - name: Playwright against the containerized stack
         run: pnpm --filter @kofclub/web exec playwright test
         env:

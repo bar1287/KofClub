@@ -714,4 +714,10 @@ table.list th.num {
     min-width: 0;
     flex-basis: 100%;
   }
+  /* Wide data tables scroll inside their panel instead of widening the page. */
+  table.list {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
 }
