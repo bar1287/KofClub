@@ -17,27 +17,32 @@ if errorlevel 1 (
 
 docker info >nul 2>&1
 if not errorlevel 1 goto docker_ready
-if exist "%ProgramFiles%\Docker\Docker\Docker Desktop.exe" (
-  echo == Starting Docker Desktop
-  start "" "%ProgramFiles%\Docker\Docker\Docker Desktop.exe"
+set "DOCKER_DESKTOP=%ProgramFiles%\Docker\Docker\Docker Desktop.exe"
+if exist "%DOCKER_DESKTOP%" (
+  echo == Starting Docker Desktop - look for its window or its whale icon in the taskbar
+  start "" "%DOCKER_DESKTOP%"
+) else (
+  echo == Start Docker Desktop from the Start menu now
 )
-echo == Waiting for the Docker engine (up to 4 minutes; accept any Docker Desktop prompts)
+echo == Waiting for the Docker engine (up to 6 minutes; accept any Docker Desktop prompts)
 set /a tries=0
 :wait_docker
 docker info >nul 2>&1
 if not errorlevel 1 goto docker_ready
 set /a tries+=1
-if %tries% geq 80 goto docker_failed
+if %tries% geq 120 goto docker_failed
 ping -n 4 127.0.0.1 >nul
 goto wait_docker
 
 :docker_failed
 echo.
-echo Docker is still not running. Open Docker Desktop and wait until it shows
-echo "Engine running" (the first start can ask you to accept terms or to
-echo install/update WSL and restart Windows), then run .\demo.cmd again.
+echo Docker Desktop is installed but its engine is not running. Open Docker
+echo Desktop and read what it shows: it may ask you to accept its terms, to
+echo update WSL (run "wsl --update" in PowerShell, then restart Windows) or to
+echo enable virtualization. When it shows "Engine running", run .\demo.cmd again.
+echo.
 echo What Docker reports:
-docker info 2>&1 | findstr /i /c:"error" /c:"cannot" /c:"failed"
+docker version
 exit /b 1
 
 :docker_ready
