@@ -1,0 +1,13 @@
+# `make demo` override: only the ports the browser needs are published
+# (web 3000, control-api 4000, realtime-gateway 4100), so a PostgreSQL or
+# Redis already running on this machine does not clash. Needs Docker
+# Compose 2.24+ (`!reset`).
+services:
+  postgres:
+    ports: !reset []
+  redis:
+    ports: !reset []
+  game-service:
+    ports: !reset []
+  worker:
+    ports: !reset []

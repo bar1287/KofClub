@@ -73,9 +73,12 @@ migrate-status: ## Print the current schema version
 seed: ## Load demo data (users, club, table, chip grants)
 	$(PNPM) --filter @kofclub/control-api seed
 
+DEMO_COMPOSE = $(COMPOSE) -f docker-compose.yml -f docker-compose.demo.yml
+
 .PHONY: demo
-demo: dev ## Full stack in Docker plus demo accounts (only Docker needed); open http://localhost:3000
-	$(COMPOSE) exec -T -e SEED_FILE=/app/seeds/demo.json control-api node dist/seed/run-seed.js
+demo: env ## Full stack in Docker plus demo accounts (only Docker needed); open http://localhost:3000
+	$(DEMO_COMPOSE) up -d --build --wait
+	$(DEMO_COMPOSE) exec -T -e SEED_FILE=/app/seeds/demo.json control-api node dist/seed/run-seed.js
 	@echo ""
 	@echo "Open http://localhost:$${WEB_PORT:-3000} and log in as alice / alice-demo-password,"
 	@echo "bob / bob-demo-password or carol / carol-demo-password (use two browsers or a private"

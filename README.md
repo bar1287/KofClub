@@ -49,10 +49,31 @@ Details: [docs/architecture.md](docs/architecture.md).
 
 ## Try it (only Docker needed)
 
+Needs Docker Desktop (or Docker Engine) with Compose 2.24+, `git`, `make` and
+`bash` (macOS and Linux have them; on Windows use WSL).
+
 ```bash
-git clone <repo> && cd KofClub
+git clone https://github.com/bar1287/KofClub.git && cd KofClub
 make demo       # builds and starts every service in Docker, then creates the demo accounts
 ```
+
+The first run builds the images (about 5–10 minutes). Without `make`:
+
+```bash
+./scripts/init-env.sh
+docker compose -f docker-compose.yml -f docker-compose.demo.yml up -d --build --wait
+docker compose exec -T -e SEED_FILE=/app/seeds/demo.json control-api node dist/seed/run-seed.js
+```
+
+If it fails:
+
+- `port is already allocated`: ports 3000, 4000 and 4100 must be free (the
+  demo publishes nothing else).
+- `Cannot connect to the Docker daemon`: start Docker Desktop first.
+- A build that is killed or hangs: give Docker at least 4 GB of memory
+  (Docker Desktop → Settings → Resources).
+- `make down` stops everything; `docker compose down -v` also deletes the
+  demo data.
 
 Open http://localhost:3000 and log in as `alice` / `alice-demo-password`
 (owner of "Demo Club"), `bob` / `bob-demo-password` or `carol` /

@@ -1,8 +1,9 @@
 name: CI
 
 on:
+  # Every branch: work happens on feature branches, and the demo/Compose job
+  # is the only check of the Docker images.
   push:
-    branches: [main]
   pull_request:
 
 permissions:
