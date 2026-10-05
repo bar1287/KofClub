@@ -44,7 +44,7 @@ jobs:
         image: postgres:16-alpine
         env:
           POSTGRES_USER: kofclub
-          POSTGRES_PASSWORD: kofclub_ci
+          POSTGRES_PASSWORD: kofclub_local_only
           POSTGRES_DB: kofclub
         ports: ['5432:5432']
         options: >-
@@ -56,8 +56,8 @@ jobs:
           --health-cmd "redis-cli ping" --health-interval 2s --health-timeout 3s --health-retries 30
     env:
       APP_ENV: test
-      DATABASE_URL: postgres://kofclub:kofclub_ci@localhost:5432/kofclub?sslmode=disable
-      TEST_DATABASE_URL: postgres://kofclub:kofclub_ci@localhost:5432/kofclub?sslmode=disable
+      DATABASE_URL: postgres://kofclub:kofclub_local_only@localhost:5432/kofclub?sslmode=disable
+      TEST_DATABASE_URL: postgres://kofclub:kofclub_local_only@localhost:5432/kofclub?sslmode=disable
       REDIS_URL: redis://localhost:6379/0
       TEST_REDIS_URL: redis://localhost:6379/15
     steps:
@@ -88,7 +88,7 @@ jobs:
         image: postgres:16-alpine
         env:
           POSTGRES_USER: kofclub
-          POSTGRES_PASSWORD: kofclub_ci
+          POSTGRES_PASSWORD: kofclub_local_only
           POSTGRES_DB: kofclub
         ports: ['5432:5432']
         options: >-
@@ -99,7 +99,7 @@ jobs:
         options: >-
           --health-cmd "redis-cli ping" --health-interval 2s --health-timeout 3s --health-retries 30
     env:
-      DATABASE_URL: postgres://kofclub:kofclub_ci@localhost:5432/kofclub?sslmode=disable
+      DATABASE_URL: postgres://kofclub:kofclub_local_only@localhost:5432/kofclub?sslmode=disable
       REDIS_URL: redis://localhost:6379/0
       E2E_LOG_DIR: ${{ github.workspace }}/e2e-logs
     steps:
@@ -157,7 +157,7 @@ jobs:
         image: postgres:16-alpine
         env:
           POSTGRES_USER: kofclub
-          POSTGRES_PASSWORD: kofclub_ci
+          POSTGRES_PASSWORD: kofclub_local_only
           POSTGRES_DB: kofclub
         ports: ['5432:5432']
         options: >-
@@ -168,7 +168,7 @@ jobs:
         options: >-
           --health-cmd "redis-cli ping" --health-interval 2s --health-timeout 3s --health-retries 30
     env:
-      DATABASE_URL: postgres://kofclub:kofclub_ci@localhost:5432/kofclub?sslmode=disable
+      DATABASE_URL: postgres://kofclub:kofclub_local_only@localhost:5432/kofclub?sslmode=disable
       REDIS_URL: redis://localhost:6379/0
     steps:
       - uses: actions/checkout@v4

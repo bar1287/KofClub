@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 # Builds every Go deployable from the single root module. Select one with
 # --target (game-service | realtime-gateway | migrate).
-FROM golang:1.26-alpine AS build
+FROM golang:1.26.6-alpine AS build
 WORKDIR /src
 ENV CGO_ENABLED=0 GOTOOLCHAIN=local
 COPY go.mod go.sum ./
