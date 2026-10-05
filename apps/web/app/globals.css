@@ -331,7 +331,9 @@ table.list th.num {
 }
 @media (max-width: 960px) {
   .table-page {
-    grid-template-columns: 1fr;
+    /* minmax(0, …): the column shrinks to the screen instead of growing to
+       its widest child (the table would overflow on phones). */
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 .table-header {
@@ -631,4 +633,85 @@ table.list th.num {
 .conn-dot.unauthorized,
 .conn-dot.closed {
   background: var(--danger);
+}
+
+/* ---------- phones ---------- */
+
+@media (max-width: 640px) {
+  .topbar {
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    padding: 8px 12px;
+  }
+  .topbar nav {
+    gap: 12px;
+  }
+  .content {
+    padding: 16px 12px;
+  }
+  /* A portrait oval: seats go around the long side of the screen. */
+  .felt-wrap {
+    aspect-ratio: 4 / 5;
+    min-height: 0;
+    margin-bottom: 24px;
+  }
+  .felt {
+    inset: 8% 10%;
+    border-width: 10px;
+  }
+  .seat {
+    width: 92px;
+    gap: 2px;
+  }
+  .seat-box {
+    padding: 4px 5px;
+    border-radius: 10px;
+  }
+  .seat-name {
+    font-size: 0.78rem;
+  }
+  .seat-stack {
+    font-size: 0.85rem;
+  }
+  .seat-status {
+    font-size: 0.62rem;
+  }
+  .seat-cards {
+    min-height: 34px;
+  }
+  .seat-cards .playing-card {
+    width: 24px;
+    height: 34px;
+    border-radius: 4px;
+  }
+  .seat-cards .playing-card .rank,
+  .seat-cards .playing-card .suit {
+    font-size: 0.7rem;
+  }
+  .seat-empty {
+    width: 76px;
+    padding: 6px;
+    font-size: 0.75rem;
+  }
+  .board {
+    gap: 4px;
+    min-height: 46px;
+  }
+  .board .playing-card {
+    width: 32px;
+    height: 46px;
+  }
+  .board .playing-card .rank,
+  .board .playing-card .suit {
+    font-size: 0.85rem;
+  }
+  .action-bar .buttons .btn {
+    min-width: 0;
+    flex: 1;
+    padding: 12px 10px;
+  }
+  .sizing input[type='range'] {
+    min-width: 0;
+    flex-basis: 100%;
+  }
 }

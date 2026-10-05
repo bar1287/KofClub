@@ -129,6 +129,9 @@ test('product tour', async ({ browser }) => {
   await expect(bobPhone.getByTestId('poker-table')).toBeVisible();
   await expect.poll(() => myCards(bobPhone)).toHaveLength(2);
   await shot(bobPhone, '06-table-mobile');
+  await bobPhone.goto(clubUrl);
+  await expect(bobPhone.getByTestId('club-name')).toContainText('Demo Club');
+  await shot(bobPhone, '06-lobby-mobile', true);
   await phone.close();
 
   // Hand history with the public record and the viewer's own cards.
