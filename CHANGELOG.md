@@ -22,7 +22,10 @@ All notable changes to this project are documented here. The format follows
 - When a step fails, `demo.cmd` writes `demo-log.txt` (Windows and Docker
   versions, `docker info`, port use and Windows-reserved ports, the build
   output, container states and logs; never `.env`) and keeps the window open.
-  `.\demo.cmd diagnose` writes it at any time. On success it opens the site.
+  When the Docker engine does not start, the log has Docker Desktop's state
+  (`docker desktop status`, contexts, WSL distributions, its processes and
+  the end of its backend log). `.\demo.cmd diagnose` writes it at any time;
+  the script prints its version first. On success it opens the site.
 
 ### Fixed — Running the demo on a fresh machine
 

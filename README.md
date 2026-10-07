@@ -76,8 +76,9 @@ docker compose exec -T -e SEED_FILE=/app/seeds/demo.json control-api node dist/s
 If it fails:
 
 - Windows: `demo.cmd` saves everything needed to find the cause in
-  `demo-log.txt` (also `.\demo.cmd diagnose` at any time). It holds versions,
-  port use, the build output and the service logs, no secrets.
+  `demo-log.txt` (also `.\demo.cmd diagnose` at any time): versions, Docker
+  Desktop's engine state and the end of its log, WSL, port use, the build
+  output and the service logs (never `.env`).
 - `port is already allocated`: ports 3000, 4000 and 4100 must be free (the
   demo publishes nothing else).
 - `Cannot connect to the Docker daemon`: start Docker Desktop first.
