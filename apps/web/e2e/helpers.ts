@@ -94,13 +94,37 @@ export function watchCsp(page: Page): string[] {
   return violations;
 }
 
-/** Takes a seat with the given buy-in through the buy-in dialog. */
-export async function sitDown(page: Page, seat: number, buyIn: number): Promise<void> {
+/**
+ * Takes a seat with the given buy-in through the buy-in dialog. With
+ * `slowWallet` the wallet response is held until the amount is typed: the
+ * typed amount must survive the default that arrives with the balance.
+ */
+export async function sitDown(
+  page: Page,
+  seat: number,
+  buyIn: number,
+  { slowWallet = false } = {},
+): Promise<void> {
   await expect(page.getByTestId('connection-status')).toHaveAttribute('data-status', 'open');
+  const walletUrl = '**/v1/clubs/*/wallet';
+  let releaseWallet = () => {};
+  if (slowWallet) {
+    const held = new Promise<void>((resolve) => (releaseWallet = resolve));
+    await page.route(walletUrl, async (route) => {
+      await held;
+      await route.continue();
+    });
+  }
   await page.getByTestId(`sit-${seat}`).click();
   const input = page.getByLabel('Buy-in amount');
   await expect(input).not.toHaveValue('');
   await input.fill(String(buyIn));
+  if (slowWallet) {
+    releaseWallet();
+    await expect(page.getByRole('dialog')).toContainText(/Wallet: [\d,]+/);
+    await expect(input).toHaveValue(String(buyIn));
+    await page.unroute(walletUrl);
+  }
   await page.getByRole('button', { name: 'Buy in' }).click();
   await expect(page.getByTestId(`seat-${seat}`).getByTestId('seat-stack')).toHaveText(
     buyIn.toLocaleString('en-US'),

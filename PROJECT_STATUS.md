@@ -93,6 +93,10 @@ make screenshots   # screenshot tour of the real stack into docs/screenshots
 - Admin console uses browser `prompt`/`confirm` dialogs for reasons and confirmations (functional, not polished).
 - History queries run on the primary database (read replica / projection later, ADR-013).
 - Web: styling is plain CSS without a design system.
+- CI's Compose E2E job runs with production rate limits: the browser tests
+  register exactly 10 accounts, the per-IP registration limit per hour. A new
+  spec must reuse an existing spec's players (or the job needs a test-only
+  limit).
 
 ## Implemented API (control-api, `/v1`)
 

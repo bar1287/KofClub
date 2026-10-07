@@ -19,8 +19,8 @@ All notable changes to this project are documented here. The format follows
 - The buy-in dialog replaced an amount the player had already typed with its
   default (the wallet balance, capped at the table maximum) when the wallet
   response arrived late, so the player bought in for more than they typed.
-  A typed amount is now kept; a browser test holds the wallet response to
-  check it.
+  A typed amount is now kept; the Omaha browser test holds the wallet
+  response until the amount is typed to check it.
 
 ### Changed — Windows demo diagnostics
 

@@ -40,7 +40,9 @@ test('two players play a hand of Pot-Limit Omaha', async ({ browser }) => {
   await expect(alice.page.getByTestId('table-game')).toContainText('PL Omaha');
   const tableUrl = alice.page.url();
 
-  await sitDown(alice.page, 1, BUY_IN);
+  // The wallet answers only after the amount is typed (a late default once
+  // replaced it).
+  await sitDown(alice.page, 1, BUY_IN, { slowWallet: true });
   await bob.page.goto(tableUrl);
   await sitDown(bob.page, 2, BUY_IN);
 
