@@ -1,6 +1,6 @@
 # Project status
 
-_Last updated: 2026-10-04_
+_Last updated: 2026-10-07_
 
 This file is the hand-off record for humans and AI agents. Keep it in sync
 with the repository at the end of every task.
@@ -132,4 +132,10 @@ The spec §16 roadmap is complete. Suggested next steps, in priority order:
 
 Done after the roadmap (see CHANGELOG): tournament operations (metrics,
 health views, alerts, runbook, chaos and load drills); security follow-ups
-from the review (login rate-limit fallback, deck-key rotation, admin MFA).
+from the review (login rate-limit fallback, deck-key rotation, admin MFA);
+the Docker-only demo (`make demo`, `demo.cmd` on Windows with
+`demo-log.txt` diagnostics) and screenshot tour; a gateway fix for events
+lost between a table's first snapshot and its stream start.
+
+`demo.cmd` cannot be exercised in CI (GitHub's Windows runners only run
+Windows containers); it is checked by review and by users' `demo-log.txt`.

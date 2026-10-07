@@ -36,3 +36,6 @@ test-results/
 
 # Next.js generated
 next-env.d.ts
+
+# demo.cmd diagnostics (Windows)
+demo-log.txt

@@ -10,3 +10,4 @@ bin
 tmp
 **/playwright-report
 **/test-results
+demo-log.txt

@@ -5,6 +5,25 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed — Seat not shown after buying in at a new table
+
+- The realtime gateway sent a table's first snapshot before its event stream
+  from game-service had connected (the stream connects after an owner lookup
+  that can activate the table). An event committed in that window was never
+  delivered, and with no later event nothing revealed the gap: a player who
+  bought in right after opening a new table did not see their seat until
+  another player joined. This was the intermittent Playwright failure in CI
+  (Omaha test). Snapshots now wait until the stream is live (up to 10 s, then
+  `TABLE_UNAVAILABLE` and the client resubscribes); a gateway integration
+  test delays the stream and checks the event arrives.
+
+### Changed — Windows demo diagnostics
+
+- When a step fails, `demo.cmd` writes `demo-log.txt` (Windows and Docker
+  versions, `docker info`, port use and Windows-reserved ports, the build
+  output, container states and logs; never `.env`) and keeps the window open.
+  `.\demo.cmd diagnose` writes it at any time. On success it opens the site.
+
 ### Fixed — Running the demo on a fresh machine
 
 - The web image failed to build from a fresh clone (`apps/web/public` was an
@@ -19,8 +38,8 @@ All notable changes to this project are documented here. The format follows
   PostgreSQL or Redis).
 - CI runs on every branch; it showed the problems above, CI database
   credentials that `.env` overrode, and 24 Go standard-library
-  vulnerabilities fixed by moving to Go 1.26.6. All jobs pass, including
-  Playwright against the `make demo` stack.
+  vulnerabilities fixed by moving to Go 1.26.6. CI's Compose job builds the
+  stack with `make demo` and runs Playwright against it.
 
 ### Added — Demo and screenshots
 

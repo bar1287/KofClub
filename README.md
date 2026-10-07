@@ -64,7 +64,8 @@ git clone https://github.com/bar1287/KofClub.git && cd KofClub
 make demo       # builds and starts every service in Docker, then creates the demo accounts
 ```
 
-The first run builds the images (about 5–10 minutes). Without `make`:
+The first run builds the images (5–10 minutes, up to 25 on a slower PC).
+Without `make`:
 
 ```bash
 ./scripts/init-env.sh
@@ -74,6 +75,9 @@ docker compose exec -T -e SEED_FILE=/app/seeds/demo.json control-api node dist/s
 
 If it fails:
 
+- Windows: `demo.cmd` saves everything needed to find the cause in
+  `demo-log.txt` (also `.\demo.cmd diagnose` at any time). It holds versions,
+  port use, the build output and the service logs, no secrets.
 - `port is already allocated`: ports 3000, 4000 and 4100 must be free (the
   demo publishes nothing else).
 - `Cannot connect to the Docker daemon`: start Docker Desktop first.
