@@ -2,6 +2,7 @@ package ws
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"sync"
 	"time"
@@ -12,6 +13,12 @@ import (
 )
 
 const maxBuffered = 4096
+
+// feedStartTimeout bounds how long a snapshot waits for the table's event
+// stream to start before the subscription reports the table unavailable.
+const feedStartTimeout = 10 * time.Second
+
+var errFeedNotStarted = errors.New("table event stream did not start")
 
 // subscription delivers one table's events to one connection, rendered
 // for that connection's user. It guarantees the client sees a gap-free,
@@ -158,21 +165,33 @@ func (s *subscription) resync(reason, requestID string) {
 			Type: protocol.TypeResyncRequired, TableID: s.tableID, Reason: reason, CurrentSeq: max(s.feed.LastSeq(), 0),
 		})
 	}
+	// Snapshot only once the feed is live, so that every event after the
+	// snapshot reaches this subscription (feed.Started). A table's feed
+	// starts when it is first subscribed and its stream connects after an
+	// owner lookup that may activate the table; an event committed in that
+	// window would otherwise be lost, unnoticed until a later event showed
+	// the gap (never, for a lone player's PLAYER_SEATED).
 	var snap []byte
 	var snapSeq int64
-	var err error
-	for attempt := 0; attempt < 5; attempt++ {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		snap, snapSeq, err = s.conn.hub.game.Snapshot(ctx, s.tableID, s.conn.userID())
-		cancel()
-		if err == nil {
-			break
+	err := errFeedNotStarted
+	select {
+	case <-s.feed.Started():
+		for attempt := 0; attempt < 5; attempt++ {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			snap, snapSeq, err = s.conn.hub.game.Snapshot(ctx, s.tableID, s.conn.userID())
+			cancel()
+			if err == nil {
+				break
+			}
+			select {
+			case <-s.conn.closed:
+				return
+			case <-time.After(time.Duration(attempt+1) * 300 * time.Millisecond):
+			}
 		}
-		select {
-		case <-s.conn.closed:
-			return
-		case <-time.After(time.Duration(attempt+1) * 300 * time.Millisecond):
-		}
+	case <-s.conn.closed:
+		return
+	case <-time.After(feedStartTimeout):
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()

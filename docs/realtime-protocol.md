@@ -140,6 +140,9 @@ catalogue (e.g. `NOT_CLUB_MEMBER`, `CLUB_BANNED`, `TABLE_NOT_FOUND`,
   (`GET /internal/v1/tables/{id}/stream` on the owning game node), with a
   ring of recent events (default 1024) for replays; streams reconnect with
   `after=lastSeq` and reset (forcing client resyncs) when continuity is lost.
+  A stream starts at the table's current seq, so snapshots are taken only
+  once it is live (up to 10 s, else `TABLE_UNAVAILABLE`): every event after
+  a snapshot then reaches the subscriber.
 - Authorization (`SUBSCRIBE_TABLE`, `COMMAND`) asks control-api
   (`GET /internal/v1/tables/{id}/access?userId=&sessionId=`; the session
   decides whether a platform administrator's oversight has a second factor,

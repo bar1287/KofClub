@@ -16,6 +16,8 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -115,6 +117,13 @@ func freePort(t *testing.T) int {
 
 func newStack(t *testing.T, cfg ws.Config, revoker ws.Revoker) *stack {
 	t.Helper()
+	return newStackWith(t, cfg, revoker, 0)
+}
+
+// newStackWith is newStack with a gateway that reaches game-service through
+// a proxy that delays every table event stream connection by streamDelay.
+func newStackWith(t *testing.T, cfg ws.Config, revoker ws.Revoker, streamDelay time.Duration) *stack {
+	t.Helper()
 	pool, dbURL := pgtest.NewPool(t)
 	s := &stack{t: t, ctx: context.Background(), pool: pool, users: map[string]string{}}
 
@@ -174,7 +183,11 @@ func newStack(t *testing.T, cfg ws.Config, revoker ws.Revoker) *stack {
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	s.hub = ws.NewHub(ctx, cfg, verifier, revoker, dbChecker{pool}, gamesvc.New(s.gameURL, internalToken), logger, ws.NewMetrics(prometheus.NewRegistry()))
+	gameURL := s.gameURL
+	if streamDelay > 0 {
+		gameURL = delayingProxy(t, s.gameURL, streamDelay)
+	}
+	s.hub = ws.NewHub(ctx, cfg, verifier, revoker, dbChecker{pool}, gamesvc.New(gameURL, internalToken), logger, ws.NewMetrics(prometheus.NewRegistry()))
 	mux := http.NewServeMux()
 	mux.Handle("GET /ws", s.hub)
 	srv := httptest.NewServer(mux)
@@ -187,6 +200,25 @@ func newStack(t *testing.T, cfg ws.Config, revoker ws.Revoker) *stack {
 		t.Fatal(err)
 	}
 	return s
+}
+
+// delayingProxy forwards to target, holding owner lookups for delay first.
+// The gateway looks up a table's owner right before opening its event
+// stream (and then dials the owner directly), so this delays stream starts.
+func delayingProxy(t *testing.T, target string, delay time.Duration) string {
+	u, err := url.Parse(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rp := httputil.NewSingleHostReverseProxy(u)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/route") {
+			time.Sleep(delay)
+		}
+		rp.ServeHTTP(w, r)
+	}))
+	t.Cleanup(srv.Close)
+	return srv.URL
 }
 
 func waitHTTP(t *testing.T, url string) {
@@ -563,6 +595,23 @@ func TestReconnectReplaysMissedEventsAndResyncsOutsideWindow(t *testing.T) {
 	}
 	if m := carol3.next("SUBSCRIBED", 5*time.Second); m["mode"] != "SNAPSHOT" {
 		t.Fatalf("expected snapshot mode: %v", m)
+	}
+}
+
+// The gateway opens a table's event stream when the table is first
+// subscribed. Every event after SUBSCRIBED must reach the client even when
+// that stream connects late; before the fix, a lone player's PLAYER_SEATED
+// committed in that window was never delivered (and nothing followed it to
+// reveal the gap).
+func TestEventsAfterSubscribedSurviveASlowStreamStart(t *testing.T) {
+	s := newStackWith(t, ws.DefaultConfig, nil, 700*time.Millisecond)
+	alice := s.dial("alice")
+	alice.hello()
+	alice.subscribe(nil)
+	s.seat("alice", 1, 1000)
+	ev := waitEvent(t, alice, func(e map[string]any) bool { return e["kind"] == "PLAYER_SEATED" })
+	if ev["userId"] != s.users["alice"] || num(ev["seat"]) != 1 {
+		t.Fatalf("unexpected PLAYER_SEATED: %v", ev)
 	}
 }
 

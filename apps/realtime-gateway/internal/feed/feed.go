@@ -37,7 +37,8 @@ type Feed struct {
 
 	mu        sync.Mutex
 	ring      []gamesvc.StreamFrame
-	lastSeq   int64 // -1 until the stream started
+	lastSeq   int64         // -1 until the stream started
+	started   chan struct{} // closed once the stream started (replaced on reset)
 	listeners map[Listener]struct{}
 	idleSince time.Time
 	cancel    context.CancelFunc
@@ -47,7 +48,7 @@ type Feed struct {
 // New creates (but does not start) a feed.
 func New(tableID string, src Source, log *slog.Logger, ringCap int) *Feed {
 	return &Feed{tableID: tableID, src: src, log: log.With(slog.String("table_id", tableID)), ringCap: ringCap,
-		lastSeq: -1, listeners: map[Listener]struct{}{}, done: make(chan struct{}), idleSince: time.Now()}
+		lastSeq: -1, started: make(chan struct{}), listeners: map[Listener]struct{}{}, done: make(chan struct{}), idleSince: time.Now()}
 }
 
 // Start runs the stream loop until Stop.
@@ -70,6 +71,22 @@ func (f *Feed) LastSeq() int64 {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.lastSeq
+}
+
+// Started returns a channel that is closed once the stream is live: every
+// event committed from then on reaches the listeners. A snapshot taken
+// before that may miss events that the stream will never carry (it begins
+// at the table's current seq), so subscribers wait for it first.
+func (f *Feed) Started() <-chan struct{} {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.started
+}
+
+// markStartedLocked records the stream's first seq. Caller holds f.mu.
+func (f *Feed) markStartedLocked(seq int64) {
+	f.lastSeq = seq
+	close(f.started)
 }
 
 // Attach registers l. When after >= 0 it also returns the retained events
@@ -165,7 +182,7 @@ func (f *Feed) consume(ctx context.Context, stream *gamesvc.Stream) error {
 		switch frame.Type {
 		case "STREAM_START":
 			if f.lastSeq < 0 {
-				f.lastSeq = frame.Seq
+				f.markStartedLocked(frame.Seq)
 			} else if frame.Seq < f.lastSeq {
 				// The table restarted behind us (should not happen: seqs are durable).
 				f.mu.Unlock()
@@ -175,6 +192,9 @@ func (f *Feed) consume(ctx context.Context, stream *gamesvc.Stream) error {
 			if f.lastSeq >= 0 && frame.Seq != f.lastSeq+1 {
 				f.mu.Unlock()
 				return errGap
+			}
+			if f.lastSeq < 0 {
+				f.markStartedLocked(frame.Seq - 1) // no STREAM_START (not sent by game-service)
 			}
 			f.lastSeq = frame.Seq
 			f.ring = append(f.ring, frame)
@@ -193,6 +213,9 @@ func (f *Feed) consume(ctx context.Context, stream *gamesvc.Stream) error {
 func (f *Feed) reset(reason string) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.lastSeq >= 0 {
+		f.started = make(chan struct{})
+	}
 	f.lastSeq = -1
 	f.ring = nil
 	for l := range f.listeners {
