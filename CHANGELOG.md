@@ -16,6 +16,11 @@ All notable changes to this project are documented here. The format follows
   (Omaha test). Snapshots now wait until the stream is live (up to 10 s, then
   `TABLE_UNAVAILABLE` and the client resubscribes); a gateway integration
   test delays the stream and checks the event arrives.
+- The buy-in dialog replaced an amount the player had already typed with its
+  default (the wallet balance, capped at the table maximum) when the wallet
+  response arrived late, so the player bought in for more than they typed.
+  A typed amount is now kept; a browser test holds the wallet response to
+  check it.
 
 ### Changed — Windows demo diagnostics
 

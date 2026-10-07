@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ErrorAlert } from '@/components/ErrorAlert';
 import { errorMessage, newIdempotencyKey } from '@/lib/api/client';
 import { chips } from '@/lib/format';
@@ -22,12 +22,17 @@ export function BuyInDialog({ tableId, table, seatNo, onClose }: Props) {
   const [key] = useState(newIdempotencyKey);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Once the player has typed an amount, the wallet arriving later must not
+  // replace it with the default.
+  const edited = useRef(false);
 
   useEffect(() => {
     ep.wallet(table.clubId)
       .then((w) => {
         setWallet(w.balance);
-        setAmount(Math.max(table.buyInMin, Math.min(table.buyInMax, w.balance)));
+        if (!edited.current) {
+          setAmount(Math.max(table.buyInMin, Math.min(table.buyInMax, w.balance)));
+        }
       })
       .catch((err: unknown) => setError(errorMessage(err)));
   }, [ep, table.clubId, table.buyInMin, table.buyInMax]);
@@ -65,7 +70,10 @@ export function BuyInDialog({ tableId, table, seatNo, onClose }: Props) {
             step={1}
             required
             value={amount}
-            onChange={(e) => setAmount(Math.trunc(Number(e.target.value)))}
+            onChange={(e) => {
+              edited.current = true;
+              setAmount(Math.trunc(Number(e.target.value)));
+            }}
           />
         </label>
         {tooPoor && (
