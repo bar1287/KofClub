@@ -8,7 +8,8 @@ All notable changes to this project are documented here. The format follows
 ### Security — Go 1.26.9
 
 - Go toolchain and images move to 1.26.9 for standard-library fixes
-  (`net/http`, `html/template` advisories reported by govulncheck).
+  (`net/http`, `html/template` advisories reported by govulncheck), and
+  `golang.org/x/net` to v0.60.0 (HTTP/2 advisories).
 - The browser tests' buy-in helper waits for the wallet before typing (the
   default amount could land mid-typing and be appended to).
 
