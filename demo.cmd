@@ -8,23 +8,22 @@ rem demo-log.txt (".\demo.cmd diagnose" saves it at any time).
 rem Stop it with:   docker compose down
 setlocal
 cd /d "%~dp0"
-set "DEMO_VERSION=2026-10-07"
+set "DEMO_VERSION=2026-10-08"
 set "COMPOSE=docker compose -f docker-compose.yml -f docker-compose.demo.yml"
+set "DOCKER_DESKTOP=%ProgramFiles%\Docker\Docker\Docker Desktop.exe"
+set "DOCKER_BIN=%ProgramFiles%\Docker\Docker\resources\bin"
 echo == KofClub demo (demo.cmd %DEMO_VERSION%)
-if /i "%~1"=="diagnose" goto diagnose
 
-where docker >nul 2>&1
-if errorlevel 1 (
-  echo Docker is not installed, or this window was opened before it was installed.
-  echo Install Docker Desktop from https://www.docker.com/products/docker-desktop/
-  echo then open a NEW PowerShell window, go to this folder and run .\demo.cmd again.
-  pause
-  exit /b 1
-)
+rem The docker command must run (it does not need the engine). Docker Desktop
+rem keeps it in DOCKER_BIN; use that folder when the one on PATH fails.
+docker --version >nul 2>&1
+if errorlevel 1 if exist "%DOCKER_BIN%\docker.exe" set "PATH=%DOCKER_BIN%;%PATH%"
+if /i "%~1"=="diagnose" goto diagnose
+docker --version >nul 2>&1
+if errorlevel 1 goto no_docker_command
 
 docker info >nul 2>&1
 if not errorlevel 1 goto docker_ready
-set "DOCKER_DESKTOP=%ProgramFiles%\Docker\Docker\Docker Desktop.exe"
 if exist "%DOCKER_DESKTOP%" (
   echo == Starting Docker Desktop - look for its window or its whale icon in the taskbar
   start "" "%DOCKER_DESKTOP%"
@@ -40,6 +39,25 @@ set /a tries+=1
 if %tries% geq 120 goto docker_failed
 ping -n 4 127.0.0.1 >nul
 goto wait_docker
+
+:no_docker_command
+echo.
+if exist "%DOCKER_DESKTOP%" (
+  echo Docker Desktop is installed, but Windows cannot find or run its docker
+  echo command. Restart Windows and run .\demo.cmd again. If that does not help,
+  echo reinstall Docker Desktop from https://www.docker.com/products/docker-desktop/
+  echo and restart Windows.
+) else (
+  echo Docker Desktop is not installed. Install it from
+  echo https://www.docker.com/products/docker-desktop/ and restart Windows, then
+  echo open a NEW PowerShell window, go to this folder and run .\demo.cmd again.
+)
+call :collect_docker
+echo.
+echo Details were saved to demo-log.txt in this folder: send that file to
+echo whoever is helping you.
+pause
+exit /b 1
 
 :docker_failed
 echo.
@@ -100,6 +118,13 @@ rem WSL and the end of Docker Desktop's own log (why the engine stopped).
 > demo-log.txt echo KofClub demo diagnostics, demo.cmd %DEMO_VERSION%, %date% %time%
 ver >> demo-log.txt 2>&1
 if exist .env (>> demo-log.txt echo .env exists) else (>> demo-log.txt echo .env is missing)
+if exist "%DOCKER_DESKTOP%" (>> demo-log.txt echo Docker Desktop.exe found) else (>> demo-log.txt echo Docker Desktop.exe not found)
+>> demo-log.txt echo ==== where docker
+where docker >> demo-log.txt 2>&1
+>> demo-log.txt echo ==== Docker Desktop's command folder
+dir "%DOCKER_BIN%" >> demo-log.txt 2>&1
+>> demo-log.txt echo ==== PATH
+path >> demo-log.txt 2>&1
 >> demo-log.txt echo ==== docker version
 docker version >> demo-log.txt 2>&1
 >> demo-log.txt echo ==== docker context ls

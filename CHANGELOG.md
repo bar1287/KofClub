@@ -31,6 +31,12 @@ All notable changes to this project are documented here. The format follows
   (`docker desktop status`, contexts, WSL distributions, its processes and
   the end of its backend log). `.\demo.cmd diagnose` writes it at any time;
   the script prints its version first. On success it opens the site.
+- `demo.cmd` checks that the `docker` command actually runs (`where` found
+  one that Windows could not run, and the script then waited six minutes
+  for an "engine" it could not reach). It falls back to Docker Desktop's
+  `resources\bin` folder, and otherwise says that the command is missing
+  (restart Windows or reinstall Docker Desktop) and logs `where docker`,
+  that folder and PATH.
 
 ### Fixed — Running the demo on a fresh machine
 

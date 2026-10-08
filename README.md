@@ -79,6 +79,9 @@ If it fails:
   `demo-log.txt` (also `.\demo.cmd diagnose` at any time): versions, Docker
   Desktop's engine state and the end of its log, WSL, port use, the build
   output and the service logs (never `.env`).
+- Windows, `'docker' is not recognized`: `demo.cmd` falls back to Docker
+  Desktop's own folder; if that fails too, restart Windows, and if it still
+  fails reinstall Docker Desktop.
 - `port is already allocated`: ports 3000, 4000 and 4100 must be free (the
   demo publishes nothing else).
 - `Cannot connect to the Docker daemon`: start Docker Desktop first.
