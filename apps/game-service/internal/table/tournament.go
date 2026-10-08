@@ -215,6 +215,7 @@ func (a *Actor) tourClaim() bool {
 				return nil, fromEngine(err)
 			}
 			_ = next.SetSittingOut(seat, t.SittingOut)
+			_ = next.SetMuckLosing(seat, true) // the table_seats default
 			if err := store.InsertSeatState(ctx, tx, a.cfg.ID, seat, t.UserID, t.Stack, t.SittingOut); err != nil {
 				return nil, err
 			}

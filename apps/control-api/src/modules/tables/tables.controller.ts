@@ -9,6 +9,8 @@ import {
   autoTopUpSchema,
   CreateTableInput,
   createTableSchema,
+  MuckPreferenceInput,
+  muckPreferenceSchema,
   SeatInput,
   seatSchema,
   TopUpInput,
@@ -18,6 +20,7 @@ import {
   AutoTopUpResultDto,
   CloseResultDto,
   LeaveResultDto,
+  MuckPreferenceResultDto,
   SeatResultDto,
   TableDetailDto,
   TablesService,
@@ -89,6 +92,17 @@ export class TablesController {
     @Ctx() ctx: RequestContext,
   ): Promise<AutoTopUpResultDto> {
     return this.tables.setAutoTopUp(auth, tableId, body, ctx);
+  }
+
+  @Put('tables/:tableId/muck-preference')
+  @RateLimit({ name: 'tables:muck:user', by: 'user', limit: 30, windowSec: 60 })
+  muckPreference(
+    @CurrentAuth() auth: AuthContext,
+    @Param('tableId', new ZodPipe(uuidSchema)) tableId: string,
+    @Body(new ZodPipe(muckPreferenceSchema)) body: MuckPreferenceInput,
+    @Ctx() ctx: RequestContext,
+  ): Promise<MuckPreferenceResultDto> {
+    return this.tables.setMuckPreference(auth, tableId, body, ctx);
   }
 
   @Post('tables/:tableId/leave')

@@ -23,6 +23,7 @@ function statusLine(seat: SeatState, hand: HandState | null): string {
   if (seat.sittingOut) return 'Sitting out';
   if (seat.allIn && hand && hand.street !== 'COMPLETE') return 'All-in';
   if (seat.folded) return 'Folded';
+  if (seat.mucked) return 'Mucked';
   if (seat.lastAction) return seat.lastAction.toLowerCase().replace('_', '-');
   return '';
 }

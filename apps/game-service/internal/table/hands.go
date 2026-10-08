@@ -245,17 +245,12 @@ func (a *Actor) prepareHandEnd(next *poker.Table, evs []poker.Event) ([]draft, f
 // outcomes (with the cards shown at showdown), the board and a result hash.
 func handRecord(handID string, hand *poker.Hand, evs []poker.Event) ([]store.PlayerResult, []string, string) {
 	results := hand.Results()
+	// Cards shown at showdown; mucked hands stay private. (Cards shown
+	// after the hand are CARDS_SHOWN events of the hand.)
 	shown := map[int][]string{}
-	for _, e := range evs {
-		if cr, ok := e.(poker.CardsRevealed); ok {
-			shown[cr.Seat] = cardStrings(cr.Cards)
-		}
-	}
-	if hand.ShowdownReached() {
-		for _, p := range hand.Players() {
-			if !p.Folded {
-				shown[p.Seat] = cardStrings(p.HoleCards)
-			}
+	for _, p := range hand.Players() {
+		if p.ShowedDown {
+			shown[p.Seat] = cardStrings(p.HoleCards)
 		}
 	}
 	players := make([]store.PlayerResult, len(results))
@@ -353,7 +348,7 @@ func (a *Actor) recover(ctx context.Context) error {
 	}
 	states := make([]poker.SeatState, len(seats))
 	for i, s := range seats {
-		states[i] = poker.SeatState{Seat: s.SeatNo, Player: poker.PlayerID(s.UserID), Stack: s.Stack, SittingOut: s.SittingOut}
+		states[i] = poker.SeatState{Seat: s.SeatNo, Player: poker.PlayerID(s.UserID), Stack: s.Stack, SittingOut: s.SittingOut, MuckLosing: s.MuckLosing}
 		a.usernames[s.UserID] = s.Username
 		a.banks.load(s.UserID, s.TimeBank)
 		if s.AutoTopUpTo > 0 {
@@ -423,7 +418,8 @@ func (a *Actor) rebuildHand(hr *store.HandRecord) (*poker.Hand, string, error) {
 	commitment := poker.DeckCommitment(deck, plain[:saltSize])
 	seats := make([]poker.SeatSetup, len(hr.Players))
 	for i, p := range hr.Players {
-		seats[i] = poker.SeatSetup{Seat: p.SeatNo, Player: poker.PlayerID(p.UserID), Stack: p.StartingStack}
+		st, _ := a.table.SeatState(p.SeatNo) // showdown preference as it stands now
+		seats[i] = poker.SeatSetup{Seat: p.SeatNo, Player: poker.PlayerID(p.UserID), Stack: p.StartingStack, MuckLosing: st.MuckLosing}
 	}
 	hand, _, err := poker.NewHand(poker.HandConfig{
 		Game: poker.GameType(hr.GameType), HandNo: hr.HandNo, SmallBlind: hr.SmallBlind, BigBlind: hr.BigBlind, ButtonSeat: hr.ButtonSeat, Seats: seats, Deck: deck,

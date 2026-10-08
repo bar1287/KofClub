@@ -1583,6 +1583,17 @@ type MfaStatus struct {
 	SessionVerified bool `json:"sessionVerified"`
 }
 
+// MuckPreferenceRequest defines model for MuckPreferenceRequest.
+type MuckPreferenceRequest struct {
+	MuckLosingHands bool `json:"muckLosingHands"`
+}
+
+// MuckPreferenceResult defines model for MuckPreferenceResult.
+type MuckPreferenceResult struct {
+	MuckLosingHands bool `json:"muckLosingHands"`
+	TableId         Uuid `json:"tableId"`
+}
+
 // PlatformOverview defines model for PlatformOverview.
 type PlatformOverview struct {
 	Clubs struct {
@@ -2403,6 +2414,9 @@ type SetAutoTopUpJSONRequestBody = AutoTopUpRequest
 
 // ReportChatMessageJSONRequestBody defines body for ReportChatMessage for application/json ContentType.
 type ReportChatMessageJSONRequestBody = ReportChatMessageRequest
+
+// SetMuckPreferenceJSONRequestBody defines body for SetMuckPreference for application/json ContentType.
+type SetMuckPreferenceJSONRequestBody = MuckPreferenceRequest
 
 // TakeSeatJSONRequestBody defines body for TakeSeat for application/json ContentType.
 type TakeSeatJSONRequestBody = SeatRequest

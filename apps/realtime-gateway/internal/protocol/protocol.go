@@ -40,8 +40,9 @@ type UnsubscribeTable struct {
 }
 
 type CommandPayload struct {
-	Kind   string `json:"kind"`
-	Amount int64  `json:"amount,omitempty"`
+	Kind   string   `json:"kind"`
+	Amount int64    `json:"amount,omitempty"`
+	Cards  []string `json:"cards,omitempty"` // SHOW_CARDS
 }
 
 type Command struct {

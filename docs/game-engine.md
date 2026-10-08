@@ -126,8 +126,16 @@ the server re-validates every action.
   ties split evenly and **odd chips go one at a time to the tied winners
   closest to the left of the button**.
 - Showdown reveal order: last aggressor of the final betting round first,
-  otherwise first live player left of the button. All live hands are shown
-  (no mucking in the MVP).
+  otherwise first live player left of the button.
+- Mucking (roadmap W1.5): a player whose seat has `MuckLosing` set does not
+  show a hand that loses every pot it competes for to a hand already shown
+  (`CardsMucked`; ties are shown so the pot can be split). The first hand is
+  always shown, and in an all-in showdown (any live player all-in) every
+  hand is shown. Mucking never changes who wins: pots are awarded on every
+  live hand's value.
+- After the hand, until the next one starts, `ShowCards` lets any player
+  dealt in show some or all of their cards not shown yet (`CardsShown`),
+  e.g. after winning uncontested, folding or mucking.
 
 ## Invariants (tested)
 
@@ -145,6 +153,9 @@ sizing; `-short` runs 2,000/1,500) and checks after every action:
   sum to pot amounts, total awarded = total contributed;
 - folded players never win and never reveal cards; every live player at
   showdown is revealed exactly once;
+- the same hand replayed with every player mucking losing hands awards the
+  same pots and stacks; only hands that lose every pot they compete for are
+  mucked, never the first hand shown and never in an all-in showdown;
 - no player wins more than `Σ_j min(contribution_j, own contribution)`
   (side-pot eligibility bound);
 - every player holds the game's number of hole cards; an `ALL_IN` that is
@@ -169,5 +180,5 @@ voided hand id is never reused.
 
 ## Not yet implemented
 
-Antes, straddles, dead-button/missed-blind rules, run-it-twice, mucking at
-showdown, hi/lo split games, tournaments (M10).
+Antes, straddles, dead-button/missed-blind rules, run-it-twice and hi/lo
+split games (see docs/roadmap.md W2).

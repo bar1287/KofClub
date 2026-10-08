@@ -168,6 +168,18 @@ type cardsRevealedPayload struct {
 	BestFive    []poker.Card `json:"bestFive"`
 }
 
+type cardsMuckedPayload struct {
+	Kind string `json:"kind"`
+	Seat int    `json:"seat"`
+}
+
+type cardsShownPayload struct {
+	Kind   string       `json:"kind"`
+	Seat   int          `json:"seat"`
+	UserID string       `json:"userId"`
+	Cards  []poker.Card `json:"cards"`
+}
+
 type potAwardedPayload struct {
 	Kind          string              `json:"kind"`
 	PotIndex      int                 `json:"potIndex"`
@@ -218,6 +230,8 @@ const (
 	KindUncalled        = "UNCALLED_BET_RETURNED"
 	KindStreetDealt     = "STREET_DEALT"
 	KindCardsRevealed   = "CARDS_REVEALED"
+	KindCardsMucked     = "CARDS_MUCKED"
+	KindCardsShown      = "CARDS_SHOWN"
 	KindPotAwarded      = "POT_AWARDED"
 	KindHandCompleted   = "HAND_COMPLETED"
 	KindHandVoided      = "HAND_VOIDED"
@@ -301,6 +315,8 @@ func translate(handID, deckCommitment string, events []poker.Event, timeout bool
 				Kind: KindCardsRevealed, Seat: ev.Seat, Cards: ev.Cards,
 				Description: ev.Description, BestFive: ev.BestFive,
 			}})
+		case poker.CardsMucked:
+			out = append(out, draft{kind: KindCardsMucked, handID: handID, public: cardsMuckedPayload{Kind: KindCardsMucked, Seat: ev.Seat}})
 		case poker.PotAwarded:
 			out = append(out, draft{kind: KindPotAwarded, handID: handID, public: potAwardedPayload{
 				Kind: KindPotAwarded, PotIndex: ev.PotIndex, Amount: ev.Amount, EligibleSeats: ev.Eligible,

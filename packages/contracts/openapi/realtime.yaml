@@ -146,11 +146,22 @@ components:
       properties:
         kind:
           type: string
-          enum: [FOLD, CHECK, CALL, BET, RAISE, ALL_IN, SIT_OUT, SIT_IN]
+          enum: [FOLD, CHECK, CALL, BET, RAISE, ALL_IN, SIT_OUT, SIT_IN, SHOW_CARDS]
+          description: |
+            SHOW_CARDS shows some or all of the player's hole cards from the
+            hand that just ended (until the next hand starts), e.g. after
+            winning without a showdown, folding or mucking.
         amount:
           type: integer
           format: int64
           description: BET/RAISE "to" amount (total street commitment after the action).
+        cards:
+          type: array
+          description: SHOW_CARDS only, the cards to show (own hole cards not shown yet).
+          minItems: 1
+          maxItems: 4
+          items:
+            $ref: '#/components/schemas/Card'
     Command:
       type: object
       description: |
@@ -410,6 +421,8 @@ components:
         - $ref: '#/components/schemas/UncalledBetReturnedEvent'
         - $ref: '#/components/schemas/StreetDealtEvent'
         - $ref: '#/components/schemas/CardsRevealedEvent'
+        - $ref: '#/components/schemas/CardsMuckedEvent'
+        - $ref: '#/components/schemas/CardsShownEvent'
         - $ref: '#/components/schemas/PotAwardedEvent'
         - $ref: '#/components/schemas/HandCompletedEvent'
         - $ref: '#/components/schemas/HandVoidedEvent'
@@ -430,6 +443,8 @@ components:
           UNCALLED_BET_RETURNED: '#/components/schemas/UncalledBetReturnedEvent'
           STREET_DEALT: '#/components/schemas/StreetDealtEvent'
           CARDS_REVEALED: '#/components/schemas/CardsRevealedEvent'
+          CARDS_MUCKED: '#/components/schemas/CardsMuckedEvent'
+          CARDS_SHOWN: '#/components/schemas/CardsShownEvent'
           POT_AWARDED: '#/components/schemas/PotAwardedEvent'
           HAND_COMPLETED: '#/components/schemas/HandCompletedEvent'
           HAND_VOIDED: '#/components/schemas/HandVoidedEvent'
@@ -771,6 +786,37 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Card'
+    CardsMuckedEvent:
+      type: object
+      description: |
+        The player lost at showdown and mucked (their choice; the hand stays
+        private). Never in an all-in showdown, and never the first hand shown.
+      additionalProperties: false
+      required: [kind, seat]
+      properties:
+        kind:
+          type: string
+          enum: [CARDS_MUCKED]
+        seat:
+          type: integer
+    CardsShownEvent:
+      type: object
+      description: The player showed cards after the hand (SHOW_CARDS).
+      additionalProperties: false
+      required: [kind, seat, userId, cards]
+      properties:
+        kind:
+          type: string
+          enum: [CARDS_SHOWN]
+        seat:
+          type: integer
+        userId:
+          type: string
+          format: uuid
+        cards:
+          type: array
+          items:
+            $ref: '#/components/schemas/Card'
     PotAwardedEvent:
       type: object
       additionalProperties: false
@@ -1068,9 +1114,12 @@ components:
           description: Set while the player is out of chips; the seat is released at this time unless they re-buy.
         shownCards:
           type: array
-          description: Cards revealed at showdown (public).
+          description: Cards revealed at showdown, or shown by the player after the hand (public).
           items:
             $ref: '#/components/schemas/Card'
+        mucked:
+          type: boolean
+          description: The player lost at showdown without showing.
     HandView:
       type: object
       additionalProperties: false
@@ -1141,7 +1190,7 @@ components:
     YouView:
       type: object
       additionalProperties: false
-      required: [userId, seat, holeCards, legalActions, pendingTopUp, autoTopUpTo]
+      required: [userId, seat, holeCards, legalActions, pendingTopUp, autoTopUpTo, muckLosingHands]
       properties:
         userId:
           type: string
@@ -1165,6 +1214,9 @@ components:
           type: integer
           format: int64
           description: The viewer's automatic top-up target (0 = off).
+        muckLosingHands:
+          type: boolean
+          description: The viewer's losing hands are mucked at showdown when the rules allow it.
     TableSnapshot:
       type: object
       description: Complete viewer-sanitized table state; clients replace (never merge) state with it.

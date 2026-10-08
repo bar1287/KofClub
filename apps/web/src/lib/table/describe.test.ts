@@ -3,6 +3,13 @@ import { describeEvent } from './describe';
 const name = (seat: number) => ['', 'alice', 'bob', 'carol'][seat] ?? `Seat ${seat}`;
 
 describe('describeEvent', () => {
+  it('describes mucked hands and cards shown after the hand', () => {
+    expect(describeEvent({ kind: 'CARDS_MUCKED', seat: 2 }, name)).toBe('bob mucks.');
+    expect(
+      describeEvent({ kind: 'CARDS_SHOWN', seat: 1, userId: 'u1', cards: ['Ah', 'Kd'] }, name),
+    ).toBe('alice shows Ah Kd.');
+  });
+
   it('describes betting actions with all-in and timeout markers', () => {
     expect(
       describeEvent(

@@ -136,11 +136,12 @@ func (c *Client) Snapshot(ctx context.Context, tableID, viewer string) (json.Raw
 
 // CommandRequest is forwarded to the table actor.
 type CommandRequest struct {
-	UserID      string `json:"userId"`
-	CommandID   string `json:"commandId"`
-	ExpectedSeq *int64 `json:"expectedSeq,omitempty"`
-	Kind        string `json:"kind"`
-	Amount      int64  `json:"amount"`
+	UserID      string   `json:"userId"`
+	CommandID   string   `json:"commandId"`
+	ExpectedSeq *int64   `json:"expectedSeq,omitempty"`
+	Kind        string   `json:"kind"`
+	Amount      int64    `json:"amount"`
+	Cards       []string `json:"cards,omitempty"`
 }
 
 // CommandResult is the actor's answer.

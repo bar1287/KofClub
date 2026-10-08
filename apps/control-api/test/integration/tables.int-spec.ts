@@ -12,6 +12,7 @@ interface Snapshot {
   hand: null | { handId: string; handNo: number; street: string; toActSeat: number; pot: number };
   you: {
     seat: number;
+    muckLosingHands?: boolean;
     holeCards: string[];
     legalActions: Array<{ kind: string; amount?: number; minTo?: number; maxTo?: number }>;
   } | null;
@@ -300,6 +301,42 @@ describe('tables (integration with game-service)', () => {
     });
     const violations = await ctx.db.query('SELECT * FROM ledger_invariant_violations');
     expect(violations.rows).toEqual([]);
+  });
+
+  it('stores whether a seat mucks losing hands at showdown', async () => {
+    const created = await as(ctx.app, owner)
+      .post(`/v1/clubs/${clubId}/tables`)
+      .send({ name: 'Showdowns', smallBlind: 5, bigBlind: 10, buyInMin: 200, buyInMax: 2000 })
+      .expect(201);
+    const t = created.body.id as string;
+    const notSeated = await as(ctx.app, alice)
+      .put(`/v1/tables/${t}/muck-preference`)
+      .send({ muckLosingHands: false })
+      .expect(409);
+    expect(notSeated.body.error.code).toBe('PLAYER_NOT_SEATED');
+    await as(ctx.app, alice)
+      .post(`/v1/tables/${t}/seat`)
+      .send({ seatNo: 1, buyIn: 500 })
+      .expect(200);
+    expect((await state(alice, t)).you).toMatchObject({ muckLosingHands: true });
+
+    const res = await as(ctx.app, alice)
+      .put(`/v1/tables/${t}/muck-preference`)
+      .send({ muckLosingHands: false })
+      .expect(200);
+    expectSchema('MuckPreferenceResult', res.body);
+    expect(res.body).toEqual({ tableId: t, muckLosingHands: false });
+    expect((await state(alice, t)).you).toMatchObject({ muckLosingHands: false });
+    const bad = await as(ctx.app, alice)
+      .put(`/v1/tables/${t}/muck-preference`)
+      .send({ muckLosingHands: 'no' })
+      .expect(400);
+    expect(bad.body.error.code).toBe('VALIDATION_FAILED');
+    await as(ctx.app, outsider)
+      .put(`/v1/tables/${t}/muck-preference`)
+      .send({ muckLosingHands: true })
+      .expect(403);
+    await as(ctx.app, alice).post(`/v1/tables/${t}/leave`).expect(200);
   });
 
   it('tops up and re-buys from the club wallet, also automatically', async () => {

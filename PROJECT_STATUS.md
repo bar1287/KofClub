@@ -16,7 +16,7 @@ tracing, failover/load/restore drills and a security review.
 **Now: the W roadmap ([docs/roadmap.md](docs/roadmap.md))**, the plan from a
 working platform to a world-class one (table essentials, game variety,
 tournament depth, social, trust and safety, experience, production scale).
-Current milestone: **W1.5 Showdown choices** (W1.1–W1.4 are done).
+Current milestone: **W1.6 Feel: sounds, animations, themes, avatars** (W1.1–W1.5 are done).
 
 ## Milestones (spec §16)
 
@@ -90,7 +90,8 @@ make screenshots   # screenshot tour of the real stack into docs/screenshots
 - Re-buy and top-up (W1.3): a top-up asked for during a hand is kept in the game service's memory until the hand ends (no chips move before then), so a restart in between drops it; the player asks again. Leaving and re-sitting refills the time bank.
 - Table chat (W1.4): live delivery across gateways depends on Redis (frames published while a gateway is disconnected from Redis are lost; the history endpoint has the stored messages). There is no word filter, no per-member chat ban (staff ban the member or turn chat off) and no chat in the tournament lobby.
 - Tables cannot be reopened or edited after creation (close and create a new one).
-- Engine simplifications (documented in docs/game-engine.md): no antes/straddles, no dead button or missed-blind tracking, no mucking at showdown, no hi/lo split games.
+- Engine simplifications (documented in docs/game-engine.md): no antes/straddles, no dead button or missed-blind tracking, no hi/lo split games.
+- Showdown choices (W1.5): cards can be shown after a hand only until the next hand starts, and not after a game-service restart (the finished hand is kept in memory only).
 - A table's game type is fixed at creation (by design; hands record their own game).
 - Tournaments (ADR-016): fixed blind progression and payout table, no antes, rebuys, add-ons, late registration, breaks or hand-for-hand; levels follow the wall clock; tables are polled (1 s) for arrivals/balancing; tournament pages poll the API (no realtime tournament channel), and an unseated player at a tournament table re-checks `myTableId` every 3 s.
 - Web: a page reload that aborts an in-flight token refresh can lose the rotated cookie; the next refresh counts as reuse and the user must log in again (ADR-012).
@@ -116,7 +117,7 @@ Ledger: `GET /clubs/{id}/wallet`, `GET /clubs/{id}/wallet/entries`,
 `POST /clubs/{id}/chips/grants|deductions`, `GET /clubs/{id}/ledger/summary|balances|transactions`,
 `POST /clubs/{id}/ledger/transactions/{txId}/reversal`.
 Tables: `POST|GET /clubs/{id}/tables`, `GET /tables/{id}`, `POST /tables/{id}/seat|top-up|leave|close`,
-`PUT /tables/{id}/auto-top-up`, `GET /tables/{id}/state`. Chat: `GET /tables/{id}/chat`,
+`PUT /tables/{id}/auto-top-up|muck-preference`, `GET /tables/{id}/state`. Chat: `GET /tables/{id}/chat`,
 `POST /tables/{id}/chat/reports`, `GET /clubs/{id}/chat-reports`,
 `POST /clubs/{id}/chat-reports/{reportId}/resolve`. Club admin: `PATCH /clubs/{id}`, `POST /clubs/{id}/transfer-ownership`.
 History: `GET /me/hands`, `GET /hands/{id}`, `GET /clubs/{id}/hands`.
@@ -130,9 +131,8 @@ Canonical contract: `packages/contracts/openapi/control-api.yaml`
 ## Next tasks
 
 Follow [docs/roadmap.md](docs/roadmap.md) in its order of work, one milestone
-at a time: W1.5
-showdown choices (show or muck, show after an uncontested win), W1.6 sounds,
-animations and themes; then W2.1–W2.3 (antes, straddle and bomb pots, run it twice) and W7.1
+at a time: W1.6
+sounds, animations, themes and avatars; then W2.1–W2.3 (antes, straddle and bomb pots, run it twice) and W7.1
 (single origin). Earlier suggestions (tournament structures, late
 registration, realtime tournament channel, passkeys, a keyring for
 `MFA_ENCRYPTION_KEY_B64`, a native client) are part of that plan.

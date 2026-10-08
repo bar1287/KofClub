@@ -5,6 +5,22 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added — Showdown choices (roadmap W1.5)
+
+- Losing hands are mucked at showdown when the rules allow it: a hand that
+  loses every pot it competes for to a hand already shown is not shown
+  (`CARDS_MUCKED`). The first hand and ties are always shown, and in an
+  all-in showdown every hand is shown. Mucking never changes who wins.
+  "Muck losing hands" at the table turns it off (default on;
+  `PUT /v1/tables/{id}/muck-preference`, `you.muckLosingHands`).
+- After a hand, until the next one starts, players show some or all of their
+  cards: one card or all after winning uncontested, folding or mucking
+  (`SHOW_CARDS` command, `CARDS_SHOWN` event). Shown cards appear on the
+  seat, in the table log and in the hand history.
+- A mucked hand stays private everywhere (snapshot, hand record, history).
+  Migration 000016 (`table_seats.muck_losing`); metric
+  `game_cards_shown_total`.
+
 ### Added — Table chat and reactions (roadmap W1.4)
 
 - Players chat at the table and send emoji reactions (shown as a bubble

@@ -17,7 +17,7 @@ func newSeededReader(seed uint64) io.Reader {
 }
 
 type randomHandStats struct {
-	hands, showdowns, uncontested, sidePots, splitPots, allInRunouts, actions int
+	hands, showdowns, uncontested, sidePots, splitPots, allInRunouts, actions, mucks int
 }
 
 // randomHand builds a random hand configuration of the given game from seed.
@@ -342,6 +342,8 @@ func runRandomHands(t *testing.T, game GameType, n int) {
 			}
 		}
 
+		checkMuckingKeepsTheOutcome(t, seed, cfg, actions, h, events, &stats)
+
 		// Deterministic replay: the same deck and actions reproduce the events.
 		if seed%50 == 0 {
 			h2, ev2, _ := NewHand(cfg)
@@ -361,8 +363,70 @@ func runRandomHands(t *testing.T, game GameType, n int) {
 	t.Logf("%s: %+v streets=%v", game, stats, streetsReached)
 	// The generator must actually exercise the interesting paths.
 	if stats.showdowns < n/10 || stats.uncontested < n/10 || stats.sidePots == 0 || stats.splitPots == 0 ||
-		stats.allInRunouts == 0 || streetsReached[StreetRiver] < n/5 {
+		stats.allInRunouts == 0 || stats.mucks == 0 || streetsReached[StreetRiver] < n/5 {
 		t.Fatalf("insufficient coverage: %+v", stats)
+	}
+}
+
+// The same hand played by players who all muck losing hands: the pots,
+// stacks and winners are identical, only hands that lose every pot they
+// compete for are mucked, the first hand at showdown is always shown and
+// nothing is mucked in an all-in showdown.
+func checkMuckingKeepsTheOutcome(t *testing.T, seed uint64, cfg HandConfig, actions []Action, h *Hand, events []Event, stats *randomHandStats) {
+	t.Helper()
+	mcfg := cfg
+	mcfg.Seats = append([]SeatSetup(nil), cfg.Seats...)
+	for i := range mcfg.Seats {
+		mcfg.Seats[i].MuckLosing = true
+	}
+	hm, evm, err := NewHand(mcfg)
+	if err != nil {
+		t.Fatalf("seed %d: %v", seed, err)
+	}
+	for _, a := range actions {
+		more, err := hm.Act(a)
+		if err != nil {
+			t.Fatalf("seed %d muck replay: %v", seed, err)
+		}
+		evm = append(evm, more...)
+	}
+	if !reflect.DeepEqual(eventsOf[PotAwarded](events), eventsOf[PotAwarded](evm)) || !reflect.DeepEqual(stacksBySeat(h), stacksBySeat(hm)) {
+		t.Fatalf("seed %d: mucking changed the outcome", seed)
+	}
+	mucks := eventsOf[CardsMucked](evm)
+	if len(mucks) == 0 {
+		if !reflect.DeepEqual(events, evm) {
+			t.Fatalf("seed %d: events differ without a muck", seed)
+		}
+		return
+	}
+	stats.mucks += len(mucks)
+	allIn := false
+	for _, p := range hm.Players() {
+		allIn = allIn || (p.AllIn && !p.Folded)
+	}
+	if allIn {
+		t.Fatalf("seed %d: a hand was mucked in an all-in showdown", seed)
+	}
+	for _, e := range evm {
+		if _, ok := e.(CardsMucked); ok {
+			t.Fatalf("seed %d: the first hand at showdown was mucked", seed)
+		}
+		if _, ok := e.(CardsRevealed); ok {
+			break
+		}
+	}
+	results := map[int]SeatResult{}
+	for _, r := range hm.Results() {
+		results[r.Seat] = r
+	}
+	for _, m := range mucks {
+		if r := results[m.Seat]; r.Won != 0 || !r.Mucked || r.ShowedDown {
+			t.Fatalf("seed %d: mucked seat %d result %+v", seed, m.Seat, r)
+		}
+	}
+	if got := len(mucks) + len(eventsOf[CardsRevealed](evm)); got != len(eventsOf[CardsRevealed](events)) {
+		t.Fatalf("seed %d: %d players at showdown, %d before", seed, got, len(eventsOf[CardsRevealed](events)))
 	}
 }
 

@@ -100,12 +100,14 @@ type Seat struct {
 	TimeBank   time.Duration
 	// AutoTopUpTo is the stack to top back up to after every hand (0 = off).
 	AutoTopUpTo int64
+	// MuckLosing: losing hands are mucked at showdown when allowed.
+	MuckLosing bool
 }
 
 // LoadSeats returns the seats of a table ordered by seat number.
 func (s *Store) LoadSeats(ctx context.Context, tableID string) ([]Seat, error) {
 	rows, err := s.Pool.Query(ctx, `
-		SELECT s.seat_no, s.user_id::text, u.username, s.stack_cached, s.sitting_out, s.time_bank_ms, s.auto_top_up_to
+		SELECT s.seat_no, s.user_id::text, u.username, s.stack_cached, s.sitting_out, s.time_bank_ms, s.auto_top_up_to, s.muck_losing
 		  FROM table_seats s JOIN users u ON u.id = s.user_id
 		 WHERE s.table_id = $1 ORDER BY s.seat_no`, tableID)
 	if err != nil {
@@ -114,7 +116,7 @@ func (s *Store) LoadSeats(ctx context.Context, tableID string) ([]Seat, error) {
 	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (Seat, error) {
 		var st Seat
 		var bankMs int64
-		err := r.Scan(&st.SeatNo, &st.UserID, &st.Username, &st.Stack, &st.SittingOut, &bankMs, &st.AutoTopUpTo)
+		err := r.Scan(&st.SeatNo, &st.UserID, &st.Username, &st.Stack, &st.SittingOut, &bankMs, &st.AutoTopUpTo, &st.MuckLosing)
 		st.TimeBank = time.Duration(bankMs) * time.Millisecond
 		return st, err
 	})

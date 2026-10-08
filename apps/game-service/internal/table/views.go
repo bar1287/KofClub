@@ -40,8 +40,11 @@ type SeatView struct {
 	StreetBet  int64  `json:"streetBet"`
 	TimeBankMs int64  `json:"timeBankMs"`
 	// BustedUntil is set while the player is out of chips (seat kept to re-buy).
-	BustedUntil *time.Time   `json:"bustedUntil,omitempty"`
-	ShownCards  []poker.Card `json:"shownCards,omitempty"`
+	BustedUntil *time.Time `json:"bustedUntil,omitempty"`
+	// ShownCards: shown at showdown, or (some of them) after the hand.
+	ShownCards []poker.Card `json:"shownCards,omitempty"`
+	// Mucked: lost at showdown without showing.
+	Mucked bool `json:"mucked,omitempty"`
 }
 
 // HandView is the public state of the current (or just completed) hand.
@@ -71,6 +74,8 @@ type YouView struct {
 	LegalActions []poker.LegalAction `json:"legalActions"`
 	PendingTopUp int64               `json:"pendingTopUp"`
 	AutoTopUpTo  int64               `json:"autoTopUpTo"`
+	// MuckLosingHands: the viewer's losing hands are mucked at showdown.
+	MuckLosingHands bool `json:"muckLosingHands"`
 }
 
 // Snapshot is a complete, viewer-sanitized table state. A client must
@@ -115,7 +120,6 @@ func (a *Actor) snapshot(viewer string) Snapshot {
 			inHand[p.Seat] = p
 		}
 	}
-	revealed := hand != nil && hand.IsComplete() && hand.ShowdownReached()
 	for _, st := range a.table.Seats() {
 		user := string(st.Player)
 		v := SeatView{Seat: st.Seat, UserID: user, Username: a.usernames[user], Stack: st.Stack,
@@ -125,9 +129,13 @@ func (a *Actor) snapshot(viewer string) Snapshot {
 		}
 		if p, ok := inHand[st.Seat]; ok && p.Player == st.Player {
 			v.InHand, v.Folded, v.AllIn, v.StreetBet = true, p.Folded, p.AllIn, p.StreetBet
-			if revealed && !p.Folded {
+			switch {
+			case p.ShowedDown:
 				v.ShownCards = p.HoleCards
+			case len(p.Shown) > 0:
+				v.ShownCards = p.Shown
 			}
+			v.Mucked = p.Mucked
 		}
 		s.Seats = append(s.Seats, v)
 	}
@@ -151,9 +159,12 @@ func (a *Actor) snapshot(viewer string) Snapshot {
 	}
 	if viewer != "" {
 		you := &YouView{UserID: viewer, HoleCards: []poker.Card{}, LegalActions: []poker.LegalAction{},
-			PendingTopUp: partsTotal(a.pendingTopUps[viewer]), AutoTopUpTo: a.autoTopUp[viewer]}
+			PendingTopUp: partsTotal(a.pendingTopUps[viewer]), AutoTopUpTo: a.autoTopUp[viewer],
+			MuckLosingHands: true} // what a new seat gets (table_seats default)
 		if seat := a.table.SeatOf(poker.PlayerID(viewer)); seat != 0 {
 			you.Seat = seat
+			st, _ := a.table.SeatState(seat)
+			you.MuckLosingHands = st.MuckLosing
 			if p, ok := inHand[seat]; ok && p.Player == poker.PlayerID(viewer) {
 				you.HoleCards = p.HoleCards
 				if actor, ok := hand.CurrentActor(); ok && actor == seat {

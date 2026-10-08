@@ -96,6 +96,18 @@ type CardsRevealed struct {
 	BestFive    []Card `json:"bestFive"`
 }
 
+// CardsMucked is emitted for a player who lost at showdown without
+// showing (their cards stay private).
+type CardsMucked struct {
+	Seat int `json:"seat"`
+}
+
+// CardsShown is emitted when a player shows cards after the hand is over.
+type CardsShown struct {
+	Seat  int    `json:"seat"`
+	Cards []Card `json:"cards"`
+}
+
 // WinnerShare is one winner's share of a pot.
 type WinnerShare struct {
 	Seat   int   `json:"seat"`
@@ -122,6 +134,9 @@ type SeatResult struct {
 	Net           int64    `json:"net"`
 	Folded        bool     `json:"folded"`
 	ShowedDown    bool     `json:"showedDown"`
+	Mucked        bool     `json:"mucked"`
+	// Shown lists cards shown voluntarily after the hand (see ShowCards).
+	Shown []Card `json:"shown,omitempty"`
 }
 
 // HandCompleted is emitted last.
@@ -139,6 +154,8 @@ func (PlayerActed) EventKind() string         { return "PLAYER_ACTED" }
 func (UncalledBetReturned) EventKind() string { return "UNCALLED_BET_RETURNED" }
 func (StreetDealt) EventKind() string         { return "STREET_DEALT" }
 func (CardsRevealed) EventKind() string       { return "CARDS_REVEALED" }
+func (CardsMucked) EventKind() string         { return "CARDS_MUCKED" }
+func (CardsShown) EventKind() string          { return "CARDS_SHOWN" }
 func (PotAwarded) EventKind() string          { return "POT_AWARDED" }
 func (HandCompleted) EventKind() string       { return "HAND_COMPLETED" }
 

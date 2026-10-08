@@ -6,7 +6,13 @@ import { Database } from '../../infra/database/database';
 import { AuditService } from '../audit/audit.service';
 import { ClubAccessService } from '../clubs/club-access.service';
 import { GameServiceClient } from './game-service.client';
-import type { AutoTopUpInput, CreateTableInput, SeatInput, TopUpInput } from './tables.schemas';
+import type {
+  AutoTopUpInput,
+  CreateTableInput,
+  MuckPreferenceInput,
+  SeatInput,
+  TopUpInput,
+} from './tables.schemas';
 import { SeatRow, TableRow, TablesRepository } from './tables.repository';
 
 export interface TableDetailDto extends TableRow {
@@ -36,6 +42,11 @@ export interface TopUpResultDto {
 export interface AutoTopUpResultDto {
   tableId: string;
   autoTopUpTo: number;
+}
+
+export interface MuckPreferenceResultDto {
+  tableId: string;
+  muckLosingHands: boolean;
 }
 
 export interface LeaveResultDto {
@@ -178,6 +189,23 @@ export class TablesService {
       ctx.requestId,
     );
     return { tableId, autoTopUpTo: res.autoTopUpTo };
+  }
+
+  /** Muck losing hands at showdown or always show them (from the next hand). */
+  async setMuckPreference(
+    auth: AuthContext,
+    tableId: string,
+    input: MuckPreferenceInput,
+    ctx: RequestContext,
+  ): Promise<MuckPreferenceResultDto> {
+    const table = await this.requireTable(auth, tableId);
+    const res = await this.game.put<{ muckLosingHands: boolean }>(
+      table.id,
+      'muck-preference',
+      { userId: auth.userId, muckLosingHands: input.muckLosingHands },
+      ctx.requestId,
+    );
+    return { tableId, muckLosingHands: res.muckLosingHands };
   }
 
   /** A cash table the caller may put chips on (member of an active club). */

@@ -1,5 +1,6 @@
 import type { TableEventPayload, TableSnapshot } from '../types';
 import { aggressiveCommand, actionOptions, isMyTurn, sizingPresets } from './actions';
+import { cardsToShow } from './showdown';
 import { chipsInPlay, initialTableState, seatList, tableReducer, type TableState } from './state';
 
 const TABLE = '0191a000-0000-7000-8000-000000000001';
@@ -36,6 +37,7 @@ function snapshot(overrides: Partial<TableSnapshot> = {}): TableSnapshot {
       legalActions: [],
       pendingTopUp: 0,
       autoTopUpTo: 0,
+      muckLosingHands: true,
     },
     ...overrides,
   };
@@ -314,6 +316,63 @@ describe('tableReducer', () => {
     expect(s.holeCards).toEqual([]);
   });
 
+  it('follows mucked hands, cards shown after the hand and the muck preference', () => {
+    let s = play(ready(), handStart);
+    expect(cardsToShow(s)).toEqual([]); // not while the hand runs
+    s = play(s, [
+      {
+        kind: 'CARDS_REVEALED',
+        seat: 2,
+        cards: ['Qh', 'Qs'],
+        description: 'Pair of Queens',
+        bestFive: ['Qh', 'Qs', 'Th', '7d', '2c'],
+      },
+      { kind: 'CARDS_MUCKED', seat: 1 },
+      {
+        kind: 'HAND_COMPLETED',
+        handId: HAND,
+        handNo: 1,
+        board: ['2c', '7d', 'Th', '3s', '4h'],
+        showdown: true,
+        results: [
+          { seat: 1, userId: ALICE, stack: 990, net: -10, won: 0, contributed: 10, folded: false },
+          { seat: 2, userId: BOB, stack: 1010, net: 10, won: 20, contributed: 10, folded: false },
+        ],
+      },
+    ]);
+    expect(seatOf(s, 1)).toMatchObject({ mucked: true, shownCards: undefined });
+    expect(s.log.map((l) => l.text)).toContain('alice mucks.');
+    expect(cardsToShow(s)).toEqual(['As', 'Kd']);
+
+    s = play(s, [{ kind: 'CARDS_SHOWN', seat: 1, userId: ALICE, cards: ['As'] }]);
+    expect(seatOf(s, 1).shownCards).toEqual(['As']);
+    expect(s.log.at(-1)?.text).toBe('alice shows As.');
+    expect(cardsToShow(s)).toEqual(['Kd']);
+    s = play(s, [{ kind: 'CARDS_SHOWN', seat: 1, userId: ALICE, cards: ['Kd'] }]);
+    expect(seatOf(s, 1).shownCards).toEqual(['As', 'Kd']);
+    expect(cardsToShow(s)).toEqual([]);
+
+    s = play(s, [{ ...handStarted, handNo: 2 } as TableEventPayload]);
+    expect(seatOf(s, 1)).toMatchObject({ mucked: undefined, shownCards: undefined });
+
+    expect(s.myMuckLosing).toBe(true);
+    s = tableReducer(s, { type: 'muck', muckLosing: false });
+    expect(s.myMuckLosing).toBe(false);
+    const fromSnap = ready(
+      snapshot({
+        you: { ...snapshot().you!, muckLosingHands: false },
+        seats: [{ ...seat(1, ALICE, 'alice', 990), mucked: true }, seat(2, BOB, 'bob', 1010)],
+      }),
+    );
+    expect(fromSnap.myMuckLosing).toBe(false);
+    // Sitting down again starts from the seat default.
+    const reseated = play(tableReducer(fromSnap, { type: 'muck', muckLosing: false }), [
+      { kind: 'PLAYER_SEATED', seat: 3, userId: ALICE, username: 'alice', stack: 500 },
+    ]);
+    expect(reseated.myMuckLosing).toBe(true);
+    expect(seatOf(fromSnap, 1).mucked).toBe(true);
+  });
+
   it('follows a time bank: start, what is left after acting, and refills', () => {
     let s = play(ready(), handStart);
     expect(s.hand?.usingTimeBank).toBe(false);
@@ -474,6 +533,7 @@ describe('tableReducer', () => {
           legalActions: [],
           pendingTopUp: 0,
           autoTopUpTo: 0,
+          muckLosingHands: true,
         },
       }),
     );

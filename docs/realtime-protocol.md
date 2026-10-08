@@ -86,7 +86,9 @@ resume, command re-send with the same `requestId`) and
   the same `requestId` (e.g. after a reconnect) returns the original result
   with `duplicate: true` and never applies the action twice — also across
   game-node failovers (accepted ids are persisted).
-- `kind`: `FOLD`, `CHECK`, `CALL`, `BET`, `RAISE`, `ALL_IN`, `SIT_OUT`, `SIT_IN`.
+- `kind`: `FOLD`, `CHECK`, `CALL`, `BET`, `RAISE`, `ALL_IN`, `SIT_OUT`, `SIT_IN`,
+  `SHOW_CARDS` (with `cards`: own hole cards to show from the hand that just
+  ended, until the next hand starts).
   `amount` is the **"to" amount** for `BET`/`RAISE` (total street commitment).
 - `expectedSeq` (recommended) is the last seq the client applied. It is
   rejected with `STALE_GAME_STATE` (details: `currentSeq`, `turnSeq`) when it
@@ -150,6 +152,8 @@ username, text|emoji, sentAt}}`. Club staff hiding a reported message sends
 | `UNCALLED_BET_RETURNED` | seat, amount, stack, pot                                                                                         |                                |
 | `STREET_DEALT`          | street, cards, board                                                                                             |                                |
 | `CARDS_REVEALED`        | seat, cards, description, bestFive                                                                               |                                |
+| `CARDS_MUCKED`          | seat — lost at showdown without showing (the player's choice; never in an all-in showdown)                       |                                |
+| `CARDS_SHOWN`           | seat, userId, cards — shown by the player after the hand (`SHOW_CARDS`)                                          |                                |
 | `POT_AWARDED`           | potIndex, amount, eligibleSeats, winners, description                                                            |                                |
 | `HAND_COMPLETED`        | handId, handNo, board, showdown, results                                                                         |                                |
 | `HAND_VOIDED`           | handId, handNo, reason                                                                                           |                                |
@@ -169,6 +173,12 @@ keeps the seat, sitting out (`PLAYER_SITTING_OUT` reason BUSTED with `until`,
 snapshot `bustedUntil`), and the seat is released (`PLAYER_LEFT` BUSTED)
 unless they re-buy in time. `PUT /v1/tables/{id}/auto-top-up` sets a stack to
 top back up to after every hand (`you.autoTopUpTo`).
+
+Showdown choices (roadmap W1.5): `PUT /v1/tables/{id}/muck-preference`
+(`{muckLosingHands}`, default on, `you.muckLosingHands`) mucks the viewer's
+losing hands from the next hand. Snapshot seats carry `mucked` and
+`shownCards` (shown at showdown or after the hand). History adds cards shown
+after the hand to the participant's shown cards.
 
 Unrevealed cards never appear in public payloads, snapshots of other
 viewers, logs or the persisted event log (ADR-008). Spectating club members

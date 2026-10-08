@@ -29,6 +29,7 @@ import type {
   SeatResult,
   TopUpResult,
   AutoTopUpResult,
+  MuckPreferenceResult,
   MfaStatus,
   Session,
   TotpEnrollment,
@@ -109,6 +110,10 @@ export function endpoints(api: ApiClient) {
     setAutoTopUp: (tableId: string, to: number) =>
       api.request<AutoTopUpResult>('PUT', `/v1/tables/${enc(tableId)}/auto-top-up`, {
         body: { to },
+      }),
+    setMuckPreference: (tableId: string, muckLosingHands: boolean) =>
+      api.request<MuckPreferenceResult>('PUT', `/v1/tables/${enc(tableId)}/muck-preference`, {
+        body: { muckLosingHands },
       }),
     tableChat: (tableId: string) =>
       api.request<ChatHistory>('GET', `/v1/tables/${enc(tableId)}/chat`),

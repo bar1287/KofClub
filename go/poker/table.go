@@ -30,6 +30,9 @@ type SeatState struct {
 	Player     PlayerID `json:"player"`
 	Stack      int64    `json:"stack"`
 	SittingOut bool     `json:"sittingOut"`
+	// MuckLosing: the player's losing hands are mucked at showdown when
+	// the rules allow it (see SeatSetup).
+	MuckLosing bool `json:"muckLosing"`
 }
 
 // Table manages seats, the dealer button and hand sequencing. Like Hand it
@@ -73,13 +76,14 @@ func RestoreTable(cfg TableConfig, seats []SeatState, lastButton int, lastHandNo
 			if err := t.checkSeat(s.Seat, s.Player); err != nil {
 				return nil, err
 			}
-			t.seats[s.Seat] = &SeatState{Seat: s.Seat, Player: s.Player, SittingOut: s.SittingOut}
+			t.seats[s.Seat] = &SeatState{Seat: s.Seat, Player: s.Player, SittingOut: s.SittingOut, MuckLosing: s.MuckLosing}
 			continue
 		}
 		if err := t.SitDown(s.Seat, s.Player, s.Stack); err != nil {
 			return nil, err
 		}
 		t.seats[s.Seat].SittingOut = s.SittingOut
+		t.seats[s.Seat].MuckLosing = s.MuckLosing
 	}
 	t.button, t.handNo = lastButton, lastHandNo
 	return t, nil
@@ -205,6 +209,26 @@ func (t *Table) AddChips(seat int, amount int64) error {
 	return nil
 }
 
+// SetMuckLosing sets whether the seat's losing hands are mucked at
+// showdown, from the next hand on.
+func (t *Table) SetMuckLosing(seat int, on bool) error {
+	s, ok := t.seats[seat]
+	if !ok {
+		return errorf(CodePlayerNotInHand, "seat %d is empty", seat)
+	}
+	s.MuckLosing = on
+	return nil
+}
+
+// ShowCards shows cards from the just-completed hand (see Hand.ShowCards).
+// It is possible until the next hand starts.
+func (t *Table) ShowCards(seat int, cards []Card) (CardsShown, error) {
+	if t.hand == nil {
+		return CardsShown{}, errorf(CodeIllegalAction, "there is no finished hand to show cards from")
+	}
+	return t.hand.ShowCards(seat, cards)
+}
+
 // SetBlinds changes the blinds for the next hand (tournament levels). It
 // fails while a hand is in progress.
 func (t *Table) SetBlinds(smallBlind, bigBlind int64) error {
@@ -286,7 +310,7 @@ func (t *Table) StartHand(deck []Card) (*Hand, []Event, error) {
 	setup := make([]SeatSetup, len(eligible))
 	for i, seat := range eligible {
 		s := t.seats[seat]
-		setup[i] = SeatSetup{Seat: seat, Player: s.Player, Stack: s.Stack}
+		setup[i] = SeatSetup{Seat: seat, Player: s.Player, Stack: s.Stack, MuckLosing: s.MuckLosing}
 	}
 	hand, events, err := NewHand(HandConfig{
 		Game: t.cfg.Game, HandNo: t.handNo + 1, SmallBlind: t.cfg.SmallBlind, BigBlind: t.cfg.BigBlind,

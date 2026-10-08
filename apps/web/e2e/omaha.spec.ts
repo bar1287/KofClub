@@ -107,6 +107,34 @@ test('two players play a hand of Pot-Limit Omaha', async ({ browser }) => {
   await expect.poll(() => chipsOnTable(alice.page)).toBe(2 * BUY_IN + TOP_UP);
   await expect.poll(() => chipsOnTable(bob.page)).toBe(2 * BUY_IN + TOP_UP);
 
+  // --- showdown choices -------------------------------------------------------------
+  // alice will show her losing hands from now on (kept across a reload).
+  const saved = alice.page.waitForResponse(
+    (r) => r.url().includes('/muck-preference') && r.request().method() === 'PUT',
+  );
+  await alice.page.getByTestId('muck-losing').uncheck();
+  expect((await saved).ok()).toBe(true);
+  await alice.page.reload();
+  await expect(alice.page.getByTestId('muck-losing')).not.toBeChecked();
+  // Hand 2: the first to act folds; the winner shows one card afterwards.
+  for (const p of [alice, bob]) {
+    await expect(p.page.getByTestId('poker-table')).toHaveAttribute('data-hand-no', '2');
+  }
+  const fold = (p: Player) => p.page.getByRole('button', { name: 'Fold', exact: true });
+  await expect
+    .poll(async () => (await fold(alice).isVisible()) || (await fold(bob).isVisible()))
+    .toBe(true);
+  const [folder, winner] = (await fold(alice).isVisible()) ? [alice, bob] : [bob, alice];
+  const winnerCards = await myCards(winner.page);
+  await fold(folder).click();
+  await expect(winner.page.getByTestId('show-cards')).toBeVisible();
+  await expect(folder.page.getByTestId('show-cards')).toBeVisible(); // folded cards too
+  await winner.page.getByTestId(`show-${winnerCards[0]}`).click();
+  await expect(folder.page.getByTestId('action-log')).toContainText(
+    `${winner.username} shows ${winnerCards[0]}.`,
+  );
+  await expect(winner.page.getByTestId(`show-${winnerCards[0]}`)).toHaveCount(0);
+
   // --- history: the game and all four of alice's cards ---------------------------
   const history = await aliceCtx.newPage();
   await history.goto('/hands');

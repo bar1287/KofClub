@@ -95,6 +95,13 @@ func UpdateSeatStacks(ctx context.Context, tx pgx.Tx, tableID string, stacks map
 	return tx.SendBatch(ctx, batch).Close()
 }
 
+// SetMuckLosing stores whether a seat's losing hands are mucked at showdown.
+func SetMuckLosing(ctx context.Context, tx pgx.Tx, tableID, userID string, on bool) error {
+	_, err := tx.Exec(ctx, `UPDATE table_seats SET muck_losing = $3, updated_at = now() WHERE table_id = $1 AND user_id = $2`,
+		tableID, userID, on)
+	return err
+}
+
 // SetAutoTopUp stores a seat's automatic top-up target (0 = off).
 func SetAutoTopUp(ctx context.Context, tx pgx.Tx, tableID, userID string, to int64) error {
 	_, err := tx.Exec(ctx, `UPDATE table_seats SET auto_top_up_to = $3, updated_at = now() WHERE table_id = $1 AND user_id = $2`,

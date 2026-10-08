@@ -50,6 +50,7 @@ ephemeral data.
 | 000013_time_bank              | `tables.time_bank_ms`, `tables.time_bank_refill_ms` (W1.2 time bank settings), `table_seats.time_bank_ms` (each seat's remaining bank)                            |
 | 000014_auto_top_up            | `table_seats.auto_top_up_to` (W1.3: stack to top back up to after every hand; 0 = off)                                                                            |
 | 000015_table_chat             | `clubs.table_chat`, `chat_messages` (W1.4: kept 7 days, unique per sender `request_id`, `hidden_at`), `chat_reports` (copy of the message, OPEN/DISMISSED/HIDDEN) |
+| 000016_showdown_choices       | `table_seats.muck_losing` (W1.5: losing hands are mucked at showdown when allowed; default on)                                                                    |
 
 (The table is extended by each milestone; see the migration files for
 authoritative definitions.)

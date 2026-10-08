@@ -24,6 +24,7 @@ var uuidRe = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[
 
 var commandKinds = map[string]bool{
 	"FOLD": true, "CHECK": true, "CALL": true, "BET": true, "RAISE": true, "ALL_IN": true, "SIT_OUT": true, "SIT_IN": true,
+	"SHOW_CARDS": true,
 }
 
 // Conn is one client connection. The read loop handles frames serially;
@@ -402,7 +403,8 @@ func (c *Conn) allowCommand() bool {
 func (c *Conn) handleCommand(ctx context.Context, data []byte) {
 	start := time.Now()
 	var m protocol.Command
-	if json.Unmarshal(data, &m) != nil || !uuidRe.MatchString(m.RequestID) || !uuidRe.MatchString(m.TableID) || !commandKinds[m.Command.Kind] {
+	if json.Unmarshal(data, &m) != nil || !uuidRe.MatchString(m.RequestID) || !uuidRe.MatchString(m.TableID) || !commandKinds[m.Command.Kind] ||
+		len(m.Command.Cards) > 4 {
 		c.enqueue(protocol.TypeCommandResult, protocol.CommandResult{Type: protocol.TypeCommandResult, RequestID: m.RequestID, TableID: m.TableID,
 			Error: &protocol.CommandError{Code: "VALIDATION_FAILED", Message: "COMMAND requires requestId/tableId UUIDs and a valid command.kind"}})
 		return
@@ -434,6 +436,7 @@ func (c *Conn) handleCommand(ctx context.Context, data []byte) {
 	defer cancel()
 	res, err := c.hub.game.Command(cctx, m.TableID, gamesvc.CommandRequest{
 		UserID: c.userID(), CommandID: m.RequestID, ExpectedSeq: m.ExpectedSeq, Kind: m.Command.Kind, Amount: m.Command.Amount,
+		Cards: m.Command.Cards,
 	})
 	if err != nil {
 		var apiErr *gamesvc.APIError

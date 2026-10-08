@@ -44,6 +44,7 @@ func (s *Server) Register(mux *http.ServeMux) {
 	mux.Handle("POST /internal/v1/tables/{tableId}/sitting-out", s.auth(s.sittingOut))
 	mux.Handle("POST /internal/v1/tables/{tableId}/top-up", s.auth(s.topUp))
 	mux.Handle("PUT /internal/v1/tables/{tableId}/auto-top-up", s.auth(s.autoTopUp))
+	mux.Handle("PUT /internal/v1/tables/{tableId}/muck-preference", s.auth(s.muckPreference))
 	mux.Handle("POST /internal/v1/tables/{tableId}/commands", s.auth(s.command))
 	mux.Handle("POST /internal/v1/tables/{tableId}/close", s.auth(s.close))
 	mux.Handle("GET /internal/v1/tables/{tableId}/snapshot", s.auth(s.snapshot))
@@ -91,17 +92,23 @@ type autoTopUpBody struct {
 	To     int64  `json:"to"`
 }
 
+type muckPreferenceBody struct {
+	UserID          string `json:"userId"`
+	MuckLosingHands bool   `json:"muckLosingHands"`
+}
+
 type sittingOutBody struct {
 	UserID     string `json:"userId"`
 	SittingOut bool   `json:"sittingOut"`
 }
 
 type commandBody struct {
-	UserID      string `json:"userId"`
-	CommandID   string `json:"commandId"`
-	ExpectedSeq *int64 `json:"expectedSeq"`
-	Kind        string `json:"kind"`
-	Amount      int64  `json:"amount"`
+	UserID      string   `json:"userId"`
+	CommandID   string   `json:"commandId"`
+	ExpectedSeq *int64   `json:"expectedSeq"`
+	Kind        string   `json:"kind"`
+	Amount      int64    `json:"amount"`
+	Cards       []string `json:"cards"`
 }
 
 func decode(w http.ResponseWriter, r *http.Request, v any) bool {
@@ -220,6 +227,19 @@ func (s *Server) autoTopUp(w http.ResponseWriter, r *http.Request) {
 	respond(w, r, http.StatusOK, map[string]any{"autoTopUpTo": to}, err)
 }
 
+func (s *Server) muckPreference(w http.ResponseWriter, r *http.Request) {
+	var b muckPreferenceBody
+	if !decode(w, r, &b) || !validID(w, r, "userId", b.UserID) {
+		return
+	}
+	a, ok := s.actor(w, r)
+	if !ok {
+		return
+	}
+	on, err := a.SetMuckLosing(r.Context(), b.UserID, b.MuckLosingHands)
+	respond(w, r, http.StatusOK, map[string]any{"muckLosingHands": on}, err)
+}
+
 func (s *Server) sittingOut(w http.ResponseWriter, r *http.Request) {
 	var b sittingOutBody
 	if !decode(w, r, &b) || !validID(w, r, "userId", b.UserID) {
@@ -244,7 +264,7 @@ func (s *Server) command(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	res, err := a.Command(r.Context(), table.CommandRequest{
-		UserID: b.UserID, CommandID: b.CommandID, ExpectedSeq: b.ExpectedSeq, Kind: b.Kind, Amount: b.Amount, ReceivedAt: received,
+		UserID: b.UserID, CommandID: b.CommandID, ExpectedSeq: b.ExpectedSeq, Kind: b.Kind, Amount: b.Amount, Cards: b.Cards, ReceivedAt: received,
 	})
 	if err != nil {
 		var te *table.Error

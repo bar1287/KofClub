@@ -9,6 +9,7 @@ import { RequireAuth } from '@/components/RequireAuth';
 import { ActionBar } from '@/components/table/ActionBar';
 import { ActionLog } from '@/components/table/ActionLog';
 import { BuyInDialog } from '@/components/table/BuyInDialog';
+import { ShowCards } from '@/components/table/ShowCards';
 import { TableChat } from '@/components/table/TableChat';
 import { TopUpDialog } from '@/components/table/TopUpDialog';
 import { ConnectionBadge } from '@/components/table/ConnectionBadge';
@@ -19,12 +20,13 @@ import { chips, ordinal } from '@/lib/format';
 import { formatCountdown, useNow } from '@/lib/time';
 import { useSession } from '@/lib/session';
 import { FOLLOW_INTERVAL_MS, followDecision } from '@/lib/table/follow';
+import { cardsToShow } from '@/lib/table/showdown';
 import { useTable } from '@/lib/table/useTable';
 import { useTableChat } from '@/lib/table/useTableChat';
 
 function TableRoom({ tableId }: { tableId: string }) {
   const { ep, user } = useSession();
-  const { state, connection, busy, error, clearError, send, markLeaving, noteTopUp } =
+  const { state, connection, busy, error, clearError, send, markLeaving, noteTopUp, noteMuck } =
     useTable(tableId);
   const chat = useTableChat(tableId, connection);
   const [buyInSeat, setBuyInSeat] = useState<number | null>(null);
@@ -70,6 +72,17 @@ function TableRoom({ tableId }: { tableId: string }) {
       clearInterval(timer);
     };
   }, [unseated, tournamentId, tableId, ep, router]);
+
+  async function setMuck(on: boolean) {
+    setHttpError(null);
+    noteMuck(on); // shown at once; reverted if the server refuses
+    try {
+      noteMuck((await ep.setMuckPreference(tableId, on)).muckLosingHands);
+    } catch (err) {
+      noteMuck(!on);
+      setHttpError(errorMessage(err));
+    }
+  }
 
   async function leave() {
     setHttpError(null);
@@ -143,6 +156,19 @@ function TableRoom({ tableId }: { tableId: string }) {
                 {me.stack === 0 ? 'Re-buy' : 'Add chips'}
               </button>
             )}
+            <label
+              className="row small"
+              style={{ gap: 4 }}
+              title="When your hand loses at showdown, it is not shown (except in all-in showdowns)"
+            >
+              <input
+                type="checkbox"
+                checked={state.myMuckLosing}
+                onChange={(e) => void setMuck(e.target.checked)}
+                data-testid="muck-losing"
+              />
+              Muck losing hands
+            </label>
             <button
               className="btn small"
               disabled={!live || busy || (me.sittingOut && me.stack === 0)}
@@ -211,6 +237,7 @@ function TableRoom({ tableId }: { tableId: string }) {
             reactions={chat.reactions}
           />
           {me && <ActionBar state={state} enabled={live} busy={busy} send={send} />}
+          {me && <ShowCards cards={cardsToShow(state)} enabled={live && !busy} send={send} />}
           <div className="stack" style={{ marginTop: 12 }}>
             {error && (
               <div className="alert error" role="alert" onClick={clearError}>

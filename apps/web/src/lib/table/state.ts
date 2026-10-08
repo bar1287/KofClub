@@ -34,9 +34,12 @@ export interface SeatState {
   timeBankMs: number;
   /** Out of chips: the seat is released at this local time unless they re-buy. */
   bustedUntil?: number;
+  /** Cards shown at showdown, or (some of them) by the player after the hand. */
   shownCards?: Card[];
   /** Hand description at showdown ("Two Pair, Kings and Fives"). */
   shownDescription?: string;
+  /** Lost at showdown without showing. */
+  mucked?: boolean;
   /** Last action this street (for the seat badge). */
   lastAction?: string;
 }
@@ -120,6 +123,8 @@ export interface TableState {
   myPendingTopUp: number;
   /** The viewer's automatic top-up target (0 = off). */
   myAutoTopUpTo: number;
+  /** The viewer's losing hands are mucked at showdown. */
+  myMuckLosing: boolean;
   /** Presentation-only action log (not authoritative state). */
   log: LogEntry[];
 }
@@ -132,7 +137,9 @@ export type TableAction =
   | { type: 'live'; seq: number }
   | { type: 'leaving'; leaving: boolean }
   /** The viewer's top-up settings changed through the HTTP API. */
-  | { type: 'topUp'; pending?: number; autoTopUpTo?: number };
+  | { type: 'topUp'; pending?: number; autoTopUpTo?: number }
+  /** The viewer's showdown preference changed through the HTTP API. */
+  | { type: 'muck'; muckLosing: boolean };
 
 const LOG_LIMIT = 60;
 
@@ -154,6 +161,7 @@ export function initialTableState(tableId: string, viewerId: string | null): Tab
     departure: null,
     myPendingTopUp: 0,
     myAutoTopUpTo: 0,
+    myMuckLosing: true,
     log: [],
   };
 }
@@ -190,6 +198,8 @@ export function tableReducer(state: TableState, action: TableAction): TableState
         myPendingTopUp: action.pending ?? state.myPendingTopUp,
         myAutoTopUpTo: action.autoTopUpTo ?? state.myAutoTopUpTo,
       };
+    case 'muck':
+      return { ...state, myMuckLosing: action.muckLosing };
   }
 }
 
@@ -217,6 +227,7 @@ export function applySnapshot(
         ? toLocalTime(s.bustedUntil, snap.serverTime, receivedAt)
         : undefined,
       shownCards: s.shownCards,
+      mucked: s.mucked,
     };
   }
   let hand: HandState | null = null;
@@ -270,6 +281,7 @@ export function applySnapshot(
     departure: you?.seat ? null : state.departure,
     myPendingTopUp: you?.pendingTopUp ?? 0,
     myAutoTopUpTo: you?.autoTopUpTo ?? 0,
+    myMuckLosing: you?.muckLosingHands ?? true,
     log,
   };
 }
@@ -340,6 +352,8 @@ function applyEvent(state: TableState, msg: TableEventMessage, receivedAt: numbe
         },
         mySeat: mine ? ev.seat : state.mySeat,
         departure: mine ? null : state.departure,
+        // A new seat mucks losing hands until the player changes it.
+        myMuckLosing: mine ? true : state.myMuckLosing,
         log: log(),
       };
     }
@@ -402,6 +416,7 @@ function applyEvent(state: TableState, msg: TableEventMessage, receivedAt: numbe
           streetBet: 0,
           shownCards: undefined,
           shownDescription: undefined,
+          mucked: undefined,
           lastAction: undefined,
         };
       });
@@ -549,6 +564,18 @@ function applyEvent(state: TableState, msg: TableEventMessage, receivedAt: numbe
         }),
         log: log(),
       };
+    case 'CARDS_MUCKED':
+      return { ...state, seats: updateSeat(state, ev.seat, { mucked: true }), log: log() };
+    case 'CARDS_SHOWN': {
+      const before = state.seats[ev.seat]?.shownCards ?? [];
+      return {
+        ...state,
+        seats: updateSeat(state, ev.seat, {
+          shownCards: [...before, ...ev.cards.filter((c) => !before.includes(c))],
+        }),
+        log: log(),
+      };
+    }
     case 'POT_AWARDED': {
       let seats = mapSeats(state.seats, (s) => ({ ...s, streetBet: 0 }));
       for (const w of ev.winners) {
@@ -631,6 +658,7 @@ function applyEvent(state: TableState, msg: TableEventMessage, receivedAt: numbe
           streetBet: 0,
           shownCards: undefined,
           shownDescription: undefined,
+          mucked: undefined,
           lastAction: undefined,
         })),
       };

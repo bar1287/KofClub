@@ -75,6 +75,10 @@ export function describeEvent(
       return `${titleCase(ev.street)}: ${ev.cards.join(' ')}`;
     case 'CARDS_REVEALED':
       return `${name(ev.seat)} shows ${ev.cards.join(' ')} — ${ev.description}.`;
+    case 'CARDS_MUCKED':
+      return `${name(ev.seat)} mucks.`;
+    case 'CARDS_SHOWN':
+      return `${name(ev.seat)} shows ${ev.cards.join(' ')}.`;
     case 'POT_AWARDED': {
       const potName = ev.potIndex === 0 ? 'the pot' : `side pot ${ev.potIndex}`;
       const winners = ev.winners.map((w) => `${name(w.seat)} (${w.amount})`).join(', ');

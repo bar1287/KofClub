@@ -60,6 +60,21 @@ func (e BlindPostedEventKind) Valid() bool {
 	}
 }
 
+// Defines values for CardsMuckedEventKind.
+const (
+	CardsMuckedEventKindCARDSMUCKED CardsMuckedEventKind = "CARDS_MUCKED"
+)
+
+// Valid indicates whether the value is a known member of the CardsMuckedEventKind enum.
+func (e CardsMuckedEventKind) Valid() bool {
+	switch e {
+	case CardsMuckedEventKindCARDSMUCKED:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CardsRevealedEventKind.
 const (
 	CardsRevealedEventKindCARDSREVEALED CardsRevealedEventKind = "CARDS_REVEALED"
@@ -69,6 +84,21 @@ const (
 func (e CardsRevealedEventKind) Valid() bool {
 	switch e {
 	case CardsRevealedEventKindCARDSREVEALED:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CardsShownEventKind.
+const (
+	CardsShownEventKindCARDSSHOWN CardsShownEventKind = "CARDS_SHOWN"
+)
+
+// Valid indicates whether the value is a known member of the CardsShownEventKind enum.
+func (e CardsShownEventKind) Valid() bool {
+	switch e {
+	case CardsShownEventKindCARDSSHOWN:
 		return true
 	default:
 		return false
@@ -239,14 +269,15 @@ func (e CommandType) Valid() bool {
 
 // Defines values for CommandPayloadKind.
 const (
-	CommandPayloadKindALLIN  CommandPayloadKind = "ALL_IN"
-	CommandPayloadKindBET    CommandPayloadKind = "BET"
-	CommandPayloadKindCALL   CommandPayloadKind = "CALL"
-	CommandPayloadKindCHECK  CommandPayloadKind = "CHECK"
-	CommandPayloadKindFOLD   CommandPayloadKind = "FOLD"
-	CommandPayloadKindRAISE  CommandPayloadKind = "RAISE"
-	CommandPayloadKindSITIN  CommandPayloadKind = "SIT_IN"
-	CommandPayloadKindSITOUT CommandPayloadKind = "SIT_OUT"
+	CommandPayloadKindALLIN     CommandPayloadKind = "ALL_IN"
+	CommandPayloadKindBET       CommandPayloadKind = "BET"
+	CommandPayloadKindCALL      CommandPayloadKind = "CALL"
+	CommandPayloadKindCHECK     CommandPayloadKind = "CHECK"
+	CommandPayloadKindFOLD      CommandPayloadKind = "FOLD"
+	CommandPayloadKindRAISE     CommandPayloadKind = "RAISE"
+	CommandPayloadKindSHOWCARDS CommandPayloadKind = "SHOW_CARDS"
+	CommandPayloadKindSITIN     CommandPayloadKind = "SIT_IN"
+	CommandPayloadKindSITOUT    CommandPayloadKind = "SIT_OUT"
 )
 
 // Valid indicates whether the value is a known member of the CommandPayloadKind enum.
@@ -263,6 +294,8 @@ func (e CommandPayloadKind) Valid() bool {
 	case CommandPayloadKindFOLD:
 		return true
 	case CommandPayloadKindRAISE:
+		return true
+	case CommandPayloadKindSHOWCARDS:
 		return true
 	case CommandPayloadKindSITIN:
 		return true
@@ -1055,6 +1088,16 @@ type BlindPostedEventKind string
 // Card Rank + suit, e.g. "As", "Td", "2c".
 type Card = string
 
+// CardsMuckedEvent The player lost at showdown and mucked (their choice; the hand stays
+// private). Never in an all-in showdown, and never the first hand shown.
+type CardsMuckedEvent struct {
+	Kind CardsMuckedEventKind `json:"kind"`
+	Seat int                  `json:"seat"`
+}
+
+// CardsMuckedEventKind defines model for CardsMuckedEvent.Kind.
+type CardsMuckedEventKind string
+
 // CardsRevealedEvent defines model for CardsRevealedEvent.
 type CardsRevealedEvent struct {
 	BestFive    []Card                 `json:"bestFive"`
@@ -1066,6 +1109,17 @@ type CardsRevealedEvent struct {
 
 // CardsRevealedEventKind defines model for CardsRevealedEvent.Kind.
 type CardsRevealedEventKind string
+
+// CardsShownEvent The player showed cards after the hand (SHOW_CARDS).
+type CardsShownEvent struct {
+	Cards  []Card              `json:"cards"`
+	Kind   CardsShownEventKind `json:"kind"`
+	Seat   int                 `json:"seat"`
+	UserId openapi_types.UUID  `json:"userId"`
+}
+
+// CardsShownEventKind defines model for CardsShownEvent.Kind.
+type CardsShownEventKind string
 
 // ChatEmoji defines model for ChatEmoji.
 type ChatEmoji string
@@ -1153,11 +1207,20 @@ type CommandError struct {
 // CommandPayload defines model for CommandPayload.
 type CommandPayload struct {
 	// Amount BET/RAISE "to" amount (total street commitment after the action).
-	Amount *int64             `json:"amount,omitempty"`
-	Kind   CommandPayloadKind `json:"kind"`
+	Amount *int64 `json:"amount,omitempty"`
+
+	// Cards SHOW_CARDS only, the cards to show (own hole cards not shown yet).
+	Cards *[]Card `json:"cards,omitempty"`
+
+	// Kind SHOW_CARDS shows some or all of the player's hole cards from the
+	// hand that just ended (until the next hand starts), e.g. after
+	// winning without a showdown, folding or mucking.
+	Kind CommandPayloadKind `json:"kind"`
 }
 
-// CommandPayloadKind defines model for CommandPayload.Kind.
+// CommandPayloadKind SHOW_CARDS shows some or all of the player's hole cards from the
+// hand that just ended (until the next hand starts), e.g. after
+// winning without a showdown, folding or mucking.
 type CommandPayloadKind string
 
 // CommandResult defines model for CommandResult.
@@ -1477,9 +1540,12 @@ type SeatView struct {
 	Folded      bool       `json:"folded"`
 	InHand      bool       `json:"inHand"`
 	Leaving     bool       `json:"leaving"`
-	Seat        int        `json:"seat"`
 
-	// ShownCards Cards revealed at showdown (public).
+	// Mucked The player lost at showdown without showing.
+	Mucked *bool `json:"mucked,omitempty"`
+	Seat   int   `json:"seat"`
+
+	// ShownCards Cards revealed at showdown, or shown by the player after the hand (public).
 	ShownCards *[]Card `json:"shownCards,omitempty"`
 	SittingOut bool    `json:"sittingOut"`
 	Stack      int64   `json:"stack"`
@@ -1727,6 +1793,9 @@ type YouView struct {
 	AutoTopUpTo  int64         `json:"autoTopUpTo"`
 	HoleCards    []Card        `json:"holeCards"`
 	LegalActions []LegalAction `json:"legalActions"`
+
+	// MuckLosingHands The viewer's losing hands are mucked at showdown when the rules allow it.
+	MuckLosingHands bool `json:"muckLosingHands"`
 
 	// PendingTopUp Chips the viewer added during the current hand, applied when it ends.
 	PendingTopUp int64 `json:"pendingTopUp"`
@@ -2178,6 +2247,74 @@ func (t *TableEventPayload) MergeCardsRevealedEvent(v CardsRevealedEvent) error 
 	return err
 }
 
+// AsCardsMuckedEvent returns the union data inside the TableEventPayload as a CardsMuckedEvent
+func (t TableEventPayload) AsCardsMuckedEvent() (CardsMuckedEvent, error) {
+	var body CardsMuckedEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCardsMuckedEvent overwrites any union data inside the TableEventPayload as the provided CardsMuckedEvent
+func (t *TableEventPayload) FromCardsMuckedEvent(v CardsMuckedEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"CARDS_MUCKED"}`))
+	t.union = b
+	return err
+}
+
+// MergeCardsMuckedEvent performs a merge with any union data inside the TableEventPayload, using the provided CardsMuckedEvent
+func (t *TableEventPayload) MergeCardsMuckedEvent(v CardsMuckedEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"CARDS_MUCKED"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCardsShownEvent returns the union data inside the TableEventPayload as a CardsShownEvent
+func (t TableEventPayload) AsCardsShownEvent() (CardsShownEvent, error) {
+	var body CardsShownEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCardsShownEvent overwrites any union data inside the TableEventPayload as the provided CardsShownEvent
+func (t *TableEventPayload) FromCardsShownEvent(v CardsShownEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"CARDS_SHOWN"}`))
+	t.union = b
+	return err
+}
+
+// MergeCardsShownEvent performs a merge with any union data inside the TableEventPayload, using the provided CardsShownEvent
+func (t *TableEventPayload) MergeCardsShownEvent(v CardsShownEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"CARDS_SHOWN"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
 // AsPotAwardedEvent returns the union data inside the TableEventPayload as a PotAwardedEvent
 func (t TableEventPayload) AsPotAwardedEvent() (PotAwardedEvent, error) {
 	var body PotAwardedEvent
@@ -2330,8 +2467,12 @@ func (t TableEventPayload) ValueByDiscriminator() (interface{}, error) {
 	switch discriminator {
 	case "BLIND_POSTED":
 		return t.AsBlindPostedEvent()
+	case "CARDS_MUCKED":
+		return t.AsCardsMuckedEvent()
 	case "CARDS_REVEALED":
 		return t.AsCardsRevealedEvent()
+	case "CARDS_SHOWN":
+		return t.AsCardsShownEvent()
 	case "HAND_COMPLETED":
 		return t.AsHandCompletedEvent()
 	case "HAND_STARTED":

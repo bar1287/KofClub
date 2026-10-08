@@ -75,11 +75,12 @@ export class HistoryService {
         this.logger.warn({ handId, err: (err as Error).message }, 'hole_cards_unavailable');
       }
     }
+    const events = await this.repo.events(handId);
     return {
       ...hand,
-      players,
+      players: withShownCards(players, events),
       myHoleCards,
-      events: await this.repo.events(handId),
+      events,
       viewerRole,
     };
   }
@@ -93,6 +94,31 @@ export class HistoryService {
       throw err;
     }
   }
+}
+
+/**
+ * Adds cards players showed after the hand (CARDS_SHOWN events, roadmap
+ * W1.5) to the cards shown at showdown. Both are public by the players'
+ * choice; mucked and folded hands stay private.
+ */
+export function withShownCards(
+  players: ParticipantRow[],
+  events: Array<{ event: Record<string, unknown> }>,
+): ParticipantRow[] {
+  const shown = new Map<number, string[]>();
+  for (const { event } of events) {
+    if (event.kind !== 'CARDS_SHOWN' || !Array.isArray(event.cards)) continue;
+    const seat = Number(event.seat);
+    shown.set(seat, [...(shown.get(seat) ?? []), ...(event.cards as string[])]);
+  }
+  if (shown.size === 0) return players;
+  return players.map((p) => {
+    const extra = shown.get(p.seat);
+    if (!extra) return p;
+    const cards = [...(p.shownCards ?? [])];
+    for (const c of extra) if (!cards.includes(c)) cards.push(c);
+    return { ...p, shownCards: cards };
+  });
 }
 
 function notFound(): AppError {

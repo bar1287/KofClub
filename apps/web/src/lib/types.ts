@@ -21,6 +21,7 @@ export type SeatResult = Api['SeatResult'];
 export type LeaveResult = Api['LeaveResult'];
 export type TopUpResult = Api['TopUpResult'];
 export type AutoTopUpResult = Api['AutoTopUpResult'];
+export type MuckPreferenceResult = Api['MuckPreferenceResult'];
 export type ErrorBody = Api['ErrorBody'];
 export type Invite = Api['Invite'];
 export type InviteCreated = Api['InviteCreated'];

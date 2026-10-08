@@ -78,6 +78,7 @@ func (a *Actor) handleSit(req SitRequest, username string) (SitResult, error) {
 		}
 		return SitResult{}, fromEngine(err)
 	}
+	_ = next.SetMuckLosing(seatNo, true) // the table_seats default
 	d := draft{kind: KindPlayerSeated, public: playerSeatedPayload{
 		Kind: KindPlayerSeated, Seat: seatNo, UserID: req.UserID, Username: username, Stack: req.BuyIn,
 	}}
@@ -243,7 +244,9 @@ type CommandRequest struct {
 	ExpectedSeq *int64
 	Kind        string
 	Amount      int64
-	ReceivedAt  time.Time
+	// Cards are the cards to show (SHOW_CARDS).
+	Cards      []string
+	ReceivedAt time.Time
 }
 
 // CommandResult links a command id to the resulting table sequence.
@@ -296,8 +299,14 @@ func (a *Actor) handleCommand(req CommandRequest) CommandResult {
 	}
 
 	switch req.Kind {
-	case "SIT_OUT", "SIT_IN":
-		seq, err := a.handleSittingOut(req.UserID, req.Kind == "SIT_OUT", "REQUEST")
+	case "SIT_OUT", "SIT_IN", "SHOW_CARDS":
+		var seq int64
+		var err error
+		if req.Kind == "SHOW_CARDS" {
+			seq, err = a.handleShowCards(req)
+		} else {
+			seq, err = a.handleSittingOut(req.UserID, req.Kind == "SIT_OUT", "REQUEST")
+		}
 		if err != nil {
 			var te *Error
 			if errors.As(err, &te) {

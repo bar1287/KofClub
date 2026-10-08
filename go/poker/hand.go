@@ -9,6 +9,10 @@ type SeatSetup struct {
 	Seat   int // 1-based seat number
 	Player PlayerID
 	Stack  int64
+	// MuckLosing lets the player's hand be mucked at showdown when it
+	// cannot win anything against the hands already shown (never in an
+	// all-in showdown, where every hand is shown).
+	MuckLosing bool
 }
 
 // HandConfig fully determines a hand together with the actions applied to it.
@@ -38,6 +42,9 @@ type handPlayer struct {
 	actedAtBet    int64 // current bet level right after this player's last action
 	won           int64
 	showedDown    bool
+	muckLosing    bool
+	mucked        bool   // lost at showdown without showing
+	shown         []Card // shown voluntarily after the hand
 }
 
 // Hand is one hand of a flop game (Hold'em or Omaha, see GameType). It is
@@ -70,7 +77,7 @@ func NewHand(cfg HandConfig) (*Hand, []Event, error) {
 	seats := append([]SeatSetup(nil), cfg.Seats...)
 	sort.Slice(seats, func(i, j int) bool { return seats[i].Seat < seats[j].Seat })
 	for i, s := range seats {
-		h.players = append(h.players, &handPlayer{seat: s.Seat, player: s.Player, startingStack: s.Stack, stack: s.Stack})
+		h.players = append(h.players, &handPlayer{seat: s.Seat, player: s.Player, startingStack: s.Stack, stack: s.Stack, muckLosing: s.MuckLosing})
 		if s.Seat == cfg.ButtonSeat {
 			h.button = i
 		}
@@ -256,6 +263,11 @@ type PlayerView struct {
 	AllIn       bool
 	HoleCards   []Card
 	Won         int64
+	// ShowedDown: the cards were shown at showdown; Mucked: the hand lost
+	// at showdown unseen; Shown: cards shown voluntarily after the hand.
+	ShowedDown bool
+	Mucked     bool
+	Shown      []Card
 }
 
 // Players returns snapshots of every dealt-in player, ordered by seat.
@@ -266,6 +278,7 @@ func (h *Hand) Players() []PlayerView {
 		out[i] = PlayerView{
 			Seat: p.seat, Player: p.player, Stack: p.stack, StreetBet: p.streetBet,
 			Contributed: p.contributed, Folded: p.folded, AllIn: p.allIn, HoleCards: append([]Card(nil), p.hole...), Won: p.won,
+			ShowedDown: p.showedDown, Mucked: p.mucked, Shown: append([]Card(nil), p.shown...),
 		}
 	}
 	return out
@@ -622,33 +635,53 @@ func (h *Hand) finishShowdown() []Event {
 	h.showdown = true
 	var events []Event
 
-	// Reveal order: last aggressor on the river first, otherwise first
-	// active player left of the button; then clockwise.
 	n := len(h.players)
+	values := map[int]HandValue{}
+	best := map[int][]Card{}
+	allIn := false
+	for _, p := range h.players {
+		if p.folded {
+			continue
+		}
+		values[p.seat], best[p.seat] = h.rules.best(p.hole, h.board)
+		allIn = allIn || p.allIn
+	}
+	contribs := make([]Contribution, n)
+	for i, p := range h.players {
+		contribs[i] = Contribution{Seat: p.seat, Amount: p.contributed, Folded: p.folded}
+	}
+	pots := BuildPots(contribs)
+
+	// Reveal order: last aggressor on the river first, otherwise first
+	// active player left of the button; then clockwise. A player who chose
+	// to muck losing hands does not show a hand that loses every pot it
+	// competes for to a hand already shown; in an all-in showdown every
+	// hand is shown. Mucking never changes who wins.
 	start := (h.button + 1) % n
 	if h.lastAggr >= 0 {
 		start = h.lastAggr
 	}
-	values := map[int]HandValue{}
+	shown := map[int]bool{}
 	for k := 0; k < n; k++ {
 		p := h.players[(start+k)%n]
 		if p.folded {
 			continue
 		}
-		v, best := h.rules.best(p.hole, h.board)
-		values[p.seat] = v
+		v := values[p.seat]
+		if p.muckLosing && !allIn && beatenEverywhere(p.seat, v, pots, values, shown) {
+			p.mucked = true
+			events = append(events, CardsMucked{Seat: p.seat})
+			continue
+		}
+		shown[p.seat] = true
 		p.showedDown = true
 		events = append(events, CardsRevealed{
-			Seat: p.seat, Cards: append([]Card(nil), p.hole...), HandValue: uint32(v), Description: v.Describe(), BestFive: best,
+			Seat: p.seat, Cards: append([]Card(nil), p.hole...), HandValue: uint32(v), Description: v.Describe(), BestFive: best[p.seat],
 		})
 	}
 
-	contribs := make([]Contribution, n)
-	for i, p := range h.players {
-		contribs[i] = Contribution{Seat: p.seat, Amount: p.contributed, Folded: p.folded}
-	}
 	order := h.oddChipOrder()
-	for idx, pot := range BuildPots(contribs) {
+	for idx, pot := range pots {
 		shares := AwardPot(pot, values, order)
 		desc := ""
 		for _, s := range shares {
@@ -664,6 +697,77 @@ func (h *Hand) finishShowdown() []Event {
 	return append(events, h.complete())
 }
 
+// beatenEverywhere reports whether, in every pot seat competes for, a hand
+// already shown is strictly better (a tie must be shown to split the pot).
+func beatenEverywhere(seat int, v HandValue, pots []Pot, values map[int]HandValue, shown map[int]bool) bool {
+	competes := false
+	for _, pot := range pots {
+		if !containsInt(pot.Eligible, seat) {
+			continue
+		}
+		competes = true
+		beaten := false
+		for _, q := range pot.Eligible {
+			if shown[q] && values[q] > v {
+				beaten = true
+				break
+			}
+		}
+		if !beaten {
+			return false
+		}
+	}
+	return competes
+}
+
+func containsInt(xs []int, x int) bool {
+	for _, y := range xs {
+		if y == x {
+			return true
+		}
+	}
+	return false
+}
+
+// ShowCards shows some or all of a player's hole cards once the hand is
+// over: after winning without a showdown, after folding or after mucking.
+// Cards already shown cannot be shown again.
+func (h *Hand) ShowCards(seat int, cards []Card) (CardsShown, error) {
+	if !h.IsComplete() {
+		return CardsShown{}, errorf(CodeIllegalAction, "cards can be shown when the hand is over")
+	}
+	i := h.index(seat)
+	if i < 0 {
+		return CardsShown{}, errorf(CodePlayerNotInHand, "seat %d was not dealt into the hand", seat)
+	}
+	p := h.players[i]
+	if p.showedDown {
+		return CardsShown{}, errorf(CodeIllegalAction, "these cards were shown at showdown")
+	}
+	if len(cards) == 0 {
+		return CardsShown{}, errorf(CodeIllegalAction, "choose at least one card to show")
+	}
+	seen := map[Card]bool{}
+	for _, c := range cards {
+		if seen[c] || !containsCard(p.hole, c) || containsCard(p.shown, c) {
+			return CardsShown{}, errorf(CodeIllegalAction, "%s is not a card you can show", c)
+		}
+		seen[c] = true
+	}
+	p.shown = append(p.shown, cards...)
+	h.results[i].Shown = append([]Card(nil), p.shown...)
+	return CardsShown{Seat: seat, Cards: append([]Card(nil), cards...)}, nil
+}
+
+func containsCard(cs []Card, c Card) bool {
+	for _, x := range cs {
+		if x == c {
+			return true
+		}
+	}
+	return false
+}
+
 func (h *Hand) complete() Event {
 	h.street = StreetComplete
 	h.toAct = -1
@@ -672,7 +776,7 @@ func (h *Hand) complete() Event {
 		h.results[i] = SeatResult{
 			Seat: p.seat, Player: p.player, StartingStack: p.startingStack, EndingStack: p.stack,
 			Contributed: p.contributed, Won: p.won, Net: p.stack - p.startingStack,
-			Folded: p.folded, ShowedDown: p.showedDown,
+			Folded: p.folded, ShowedDown: p.showedDown, Mucked: p.mucked,
 		}
 	}
 	return HandCompleted{HandNo: h.cfg.HandNo, Board: h.Board(), ShowdownReached: h.showdown, Results: h.Results()}
@@ -689,6 +793,7 @@ func (h *Hand) Clone() *Hand {
 	for i, p := range h.players {
 		cp := *p
 		cp.hole = append([]Card(nil), p.hole...)
+		cp.shown = append([]Card(nil), p.shown...)
 		c.players[i] = &cp
 	}
 	return &c

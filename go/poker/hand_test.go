@@ -438,9 +438,15 @@ func TestInvalidConfigsAreRejected(t *testing.T) {
 		func(c *HandConfig) { c.SmallBlind = 20 },
 		func(c *HandConfig) { c.Seats = c.Seats[:1] },
 		func(c *HandConfig) { c.ButtonSeat = 7 },
-		func(c *HandConfig) { c.Seats = []SeatSetup{{1, "a", 100}, {1, "b", 100}} },
-		func(c *HandConfig) { c.Seats = []SeatSetup{{1, "a", 100}, {2, "a", 100}} },
-		func(c *HandConfig) { c.Seats = []SeatSetup{{1, "a", 100}, {2, "b", 0}} },
+		func(c *HandConfig) {
+			c.Seats = []SeatSetup{{Seat: 1, Player: "a", Stack: 100}, {Seat: 1, Player: "b", Stack: 100}}
+		},
+		func(c *HandConfig) {
+			c.Seats = []SeatSetup{{Seat: 1, Player: "a", Stack: 100}, {Seat: 2, Player: "a", Stack: 100}}
+		},
+		func(c *HandConfig) {
+			c.Seats = []SeatSetup{{Seat: 1, Player: "a", Stack: 100}, {Seat: 2, Player: "b", Stack: 0}}
+		},
 		func(c *HandConfig) { c.Deck = c.Deck[:40] },
 	}
 	for i, m := range mutate {

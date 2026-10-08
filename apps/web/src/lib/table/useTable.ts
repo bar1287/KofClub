@@ -18,6 +18,8 @@ export interface TableHandle {
   markLeaving(leaving: boolean): void;
   /** Records the viewer's top-up state returned by the HTTP API. */
   noteTopUp(patch: { pending?: number; autoTopUpTo?: number }): void;
+  /** Records the viewer's showdown preference returned by the HTTP API. */
+  noteMuck(muckLosing: boolean): void;
 }
 
 /** Codes after which local state must not be trusted until resynced. */
@@ -125,7 +127,8 @@ export function useTable(tableId: string): TableHandle {
     (patch: { pending?: number; autoTopUpTo?: number }) => dispatch({ type: 'topUp', ...patch }),
     [],
   );
+  const noteMuck = useCallback((muckLosing: boolean) => dispatch({ type: 'muck', muckLosing }), []);
   const clearError = useCallback(() => setError(null), []);
 
-  return { state, connection, busy, error, clearError, send, markLeaving, noteTopUp };
+  return { state, connection, busy, error, clearError, send, markLeaving, noteTopUp, noteMuck };
 }

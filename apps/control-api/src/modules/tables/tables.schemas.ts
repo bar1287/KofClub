@@ -43,3 +43,6 @@ export const autoTopUpSchema = z
   .object({ to: z.number().int().min(0).max(1_000_000_000_000) })
   .strict();
 export type AutoTopUpInput = z.infer<typeof autoTopUpSchema>;
+
+export const muckPreferenceSchema = z.object({ muckLosingHands: z.boolean() }).strict();
+export type MuckPreferenceInput = z.infer<typeof muckPreferenceSchema>;

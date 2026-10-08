@@ -990,6 +990,36 @@ paths:
           $ref: '#/components/responses/Error'
         '409':
           $ref: '#/components/responses/Error'
+  /v1/tables/{tableId}/muck-preference:
+    parameters:
+      - $ref: '#/components/parameters/TableId'
+    put:
+      tags: [tables]
+      operationId: setMuckPreference
+      summary: Muck your losing hands at showdown, or always show them
+      description: |
+        Applies from the next hand. When on (the default), a hand that loses
+        every pot it competes for to a hand already shown is mucked
+        (CARDS_MUCKED); in an all-in showdown every hand is shown.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MuckPreferenceRequest'
+      responses:
+        '200':
+          description: Saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MuckPreferenceResult'
+        '400':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
   /v1/tables/{tableId}/leave:
     parameters:
       - $ref: '#/components/parameters/TableId'
@@ -2822,6 +2852,22 @@ components:
         autoTopUpTo:
           type: integer
           format: int64
+    MuckPreferenceRequest:
+      type: object
+      additionalProperties: false
+      required: [muckLosingHands]
+      properties:
+        muckLosingHands:
+          type: boolean
+    MuckPreferenceResult:
+      type: object
+      additionalProperties: false
+      required: [tableId, muckLosingHands]
+      properties:
+        tableId:
+          $ref: '#/components/schemas/Uuid'
+        muckLosingHands:
+          type: boolean
     LeaveResult:
       type: object
       additionalProperties: false

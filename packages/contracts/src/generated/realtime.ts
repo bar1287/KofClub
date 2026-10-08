@@ -29,6 +29,18 @@ export type components = {
     };
     /** @description Rank + suit, e.g. "As", "Td", "2c". */
     Card: string;
+    /**
+     * @description The player lost at showdown and mucked (their choice; the hand stays
+     *     private). Never in an all-in showdown, and never the first hand shown.
+     */
+    CardsMuckedEvent: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: 'CARDS_MUCKED';
+      seat: number;
+    };
     CardsRevealedEvent: {
       bestFive: components['schemas']['Card'][];
       cards: components['schemas']['Card'][];
@@ -39,6 +51,18 @@ export type components = {
        */
       kind: 'CARDS_REVEALED';
       seat: number;
+    };
+    /** @description The player showed cards after the hand (SHOW_CARDS). */
+    CardsShownEvent: {
+      cards: components['schemas']['Card'][];
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: 'CARDS_SHOWN';
+      seat: number;
+      /** Format: uuid */
+      userId: string;
     };
     /** @enum {string} */
     ChatEmoji: '👍' | '👏' | '😂' | '😮' | '😢' | '😡' | '🔥' | '🎉' | '🤝' | '😎' | '🙏' | '💪';
@@ -136,8 +160,24 @@ export type components = {
        * @description BET/RAISE "to" amount (total street commitment after the action).
        */
       amount?: number;
-      /** @enum {string} */
-      kind: 'FOLD' | 'CHECK' | 'CALL' | 'BET' | 'RAISE' | 'ALL_IN' | 'SIT_OUT' | 'SIT_IN';
+      /** @description SHOW_CARDS only, the cards to show (own hole cards not shown yet). */
+      cards?: components['schemas']['Card'][];
+      /**
+       * @description SHOW_CARDS shows some or all of the player's hole cards from the
+       *     hand that just ended (until the next hand starts), e.g. after
+       *     winning without a showdown, folding or mucking.
+       * @enum {string}
+       */
+      kind:
+        | 'FOLD'
+        | 'CHECK'
+        | 'CALL'
+        | 'BET'
+        | 'RAISE'
+        | 'ALL_IN'
+        | 'SIT_OUT'
+        | 'SIT_IN'
+        | 'SHOW_CARDS';
     };
     CommandResult: {
       accepted: boolean;
@@ -457,8 +497,10 @@ export type components = {
       folded: boolean;
       inHand: boolean;
       leaving: boolean;
+      /** @description The player lost at showdown without showing. */
+      mucked?: boolean;
       seat: number;
-      /** @description Cards revealed at showdown (public). */
+      /** @description Cards revealed at showdown, or shown by the player after the hand (public). */
       shownCards?: components['schemas']['Card'][];
       sittingOut: boolean;
       /** Format: int64 */
@@ -565,6 +607,8 @@ export type components = {
       | components['schemas']['UncalledBetReturnedEvent']
       | components['schemas']['StreetDealtEvent']
       | components['schemas']['CardsRevealedEvent']
+      | components['schemas']['CardsMuckedEvent']
+      | components['schemas']['CardsShownEvent']
       | components['schemas']['PotAwardedEvent']
       | components['schemas']['HandCompletedEvent']
       | components['schemas']['HandVoidedEvent']
@@ -733,6 +777,8 @@ export type components = {
       autoTopUpTo: number;
       holeCards: components['schemas']['Card'][];
       legalActions: components['schemas']['LegalAction'][];
+      /** @description The viewer's losing hands are mucked at showdown when the rules allow it. */
+      muckLosingHands: boolean;
       /**
        * Format: int64
        * @description Chips the viewer added during the current hand, applied when it ends.
