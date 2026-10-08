@@ -768,6 +768,21 @@ func (e TableSnapshotMessageType) Valid() bool {
 	}
 }
 
+// Defines values for TimeBankStartedEventKind.
+const (
+	TimeBankStartedEventKindTIMEBANKSTARTED TimeBankStartedEventKind = "TIME_BANK_STARTED"
+)
+
+// Valid indicates whether the value is a known member of the TimeBankStartedEventKind enum.
+func (e TimeBankStartedEventKind) Valid() bool {
+	switch e {
+	case TimeBankStartedEventKindTIMEBANKSTARTED:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for TournamentTableInfoStatus.
 const (
 	TournamentTableInfoStatusFINISHED TournamentTableInfoStatus = "FINISHED"
@@ -983,9 +998,12 @@ type HandCompletedEventKind string
 
 // HandPlayer defines model for HandPlayer.
 type HandPlayer struct {
-	Seat   int                `json:"seat"`
-	Stack  int64              `json:"stack"`
-	UserId openapi_types.UUID `json:"userId"`
+	Seat  int   `json:"seat"`
+	Stack int64 `json:"stack"`
+
+	// TimeBankMs Time bank after this hand's refill.
+	TimeBankMs int64              `json:"timeBankMs"`
+	UserId     openapi_types.UUID `json:"userId"`
 }
 
 // HandResult defines model for HandResult.
@@ -1046,6 +1064,9 @@ type HandView struct {
 
 	// TurnSeq Sequence of the TURN_STARTED event of the current turn.
 	TurnSeq int64 `json:"turnSeq"`
+
+	// UsingTimeBank The actor's turn timer ran out and actionDeadline is the end of their time bank.
+	UsingTimeBank bool `json:"usingTimeBank"`
 }
 
 // HandViewStreet defines model for HandView.Street.
@@ -1118,7 +1139,10 @@ type PlayerActedEvent struct {
 	Seat      int                    `json:"seat"`
 	Stack     int64                  `json:"stack"`
 	StreetBet int64                  `json:"streetBet"`
-	Timeout   bool                   `json:"timeout"`
+
+	// TimeBankMs The actor's time bank left after this action.
+	TimeBankMs *int64 `json:"timeBankMs,omitempty"`
+	Timeout    bool   `json:"timeout"`
 }
 
 // PlayerActedEventAction defines model for PlayerActedEvent.Action.
@@ -1237,10 +1261,13 @@ type SeatView struct {
 	Seat    int  `json:"seat"`
 
 	// ShownCards Cards revealed at showdown (public).
-	ShownCards *[]Card            `json:"shownCards,omitempty"`
-	SittingOut bool               `json:"sittingOut"`
-	Stack      int64              `json:"stack"`
-	StreetBet  int64              `json:"streetBet"`
+	ShownCards *[]Card `json:"shownCards,omitempty"`
+	SittingOut bool    `json:"sittingOut"`
+	Stack      int64   `json:"stack"`
+	StreetBet  int64   `json:"streetBet"`
+
+	// TimeBankMs Time bank left (while it runs, the value from before it started).
+	TimeBankMs int64              `json:"timeBankMs"`
 	UserId     openapi_types.UUID `json:"userId"`
 	Username   string             `json:"username"`
 }
@@ -1337,6 +1364,12 @@ type TableInfo struct {
 	SmallBlind int64           `json:"smallBlind"`
 	Status     TableInfoStatus `json:"status"`
 
+	// TimeBankMs Each seat's time bank (also its cap); 0 when the table has none.
+	TimeBankMs int64 `json:"timeBankMs"`
+
+	// TimeBankRefillMs Added back for every hand a player is dealt into, up to timeBankMs.
+	TimeBankRefillMs int64 `json:"timeBankRefillMs"`
+
 	// Tournament Tournament context of a tournament table (level and blinds in effect for new hands).
 	Tournament *TournamentTableInfo `json:"tournament,omitempty"`
 }
@@ -1375,6 +1408,19 @@ type TableSnapshotMessage struct {
 // TableSnapshotMessageType defines model for TableSnapshotMessage.Type.
 type TableSnapshotMessageType string
 
+// TimeBankStartedEvent The actor's turn timer ran out and their time bank is running; deadline replaces the turn's.
+type TimeBankStartedEvent struct {
+	Deadline time.Time                `json:"deadline"`
+	Kind     TimeBankStartedEventKind `json:"kind"`
+	Seat     int                      `json:"seat"`
+
+	// TimeoutMs Length of the time bank now running (all that was left).
+	TimeoutMs int64 `json:"timeoutMs"`
+}
+
+// TimeBankStartedEventKind defines model for TimeBankStartedEvent.Kind.
+type TimeBankStartedEventKind string
+
 // TournamentTableInfo Tournament context of a tournament table (level and blinds in effect for new hands).
 type TournamentTableInfo struct {
 	BigBlind       int64                     `json:"bigBlind"`
@@ -1404,7 +1450,10 @@ type TurnStartedEvent struct {
 	Pot          int64                  `json:"pot"`
 	Seat         int                    `json:"seat"`
 	Street       TurnStartedEventStreet `json:"street"`
-	TimeoutMs    int64                  `json:"timeoutMs"`
+
+	// TimeBankMs The actor's time bank, used if the turn timer runs out.
+	TimeBankMs int64 `json:"timeBankMs"`
+	TimeoutMs  int64 `json:"timeoutMs"`
 }
 
 // TurnStartedEventKind defines model for TurnStartedEvent.Kind.
@@ -1735,6 +1784,40 @@ func (t *TableEventPayload) MergeTurnStartedEvent(v TurnStartedEvent) error {
 	return err
 }
 
+// AsTimeBankStartedEvent returns the union data inside the TableEventPayload as a TimeBankStartedEvent
+func (t TableEventPayload) AsTimeBankStartedEvent() (TimeBankStartedEvent, error) {
+	var body TimeBankStartedEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromTimeBankStartedEvent overwrites any union data inside the TableEventPayload as the provided TimeBankStartedEvent
+func (t *TableEventPayload) FromTimeBankStartedEvent(v TimeBankStartedEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"TIME_BANK_STARTED"}`))
+	t.union = b
+	return err
+}
+
+// MergeTimeBankStartedEvent performs a merge with any union data inside the TableEventPayload, using the provided TimeBankStartedEvent
+func (t *TableEventPayload) MergeTimeBankStartedEvent(v TimeBankStartedEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"TIME_BANK_STARTED"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
 // AsUncalledBetReturnedEvent returns the union data inside the TableEventPayload as a UncalledBetReturnedEvent
 func (t TableEventPayload) AsUncalledBetReturnedEvent() (UncalledBetReturnedEvent, error) {
 	var body UncalledBetReturnedEvent
@@ -2013,6 +2096,8 @@ func (t TableEventPayload) ValueByDiscriminator() (interface{}, error) {
 		return t.AsStreetDealtEvent()
 	case "TABLE_CLOSED":
 		return t.AsTableClosedEvent()
+	case "TIME_BANK_STARTED":
+		return t.AsTimeBankStartedEvent()
 	case "TURN_STARTED":
 		return t.AsTurnStartedEvent()
 	case "UNCALLED_BET_RETURNED":

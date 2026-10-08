@@ -1237,6 +1237,16 @@ export type components = {
       maxSeats: number;
       name: string;
       smallBlind: components['schemas']['ChipAmount'];
+      /**
+       * @description Seconds added back for every hand a player is dealt into, up to timeBankSec.
+       * @default 2
+       */
+      timeBankRefillSec: number;
+      /**
+       * @description Extra seconds per seat, used only after the turn timer runs out (0 = no time bank).
+       * @default 30
+       */
+      timeBankSec: number;
     };
     CreateTournamentRequest: {
       /** @default 20 */
@@ -1407,6 +1417,11 @@ export type components = {
       seat: number;
       /** Format: int64 */
       stack: number;
+      /**
+       * Format: int64
+       * @description Time bank after this hand's refill.
+       */
+      timeBankMs: number;
       /** Format: uuid */
       userId: string;
     };
@@ -1505,6 +1520,8 @@ export type components = {
        * @description Sequence of the TURN_STARTED event of the current turn.
        */
       turnSeq: number;
+      /** @description The actor's turn timer ran out and actionDeadline is the end of their time bank. */
+      usingTimeBank: boolean;
     };
     HandVoidedEvent: {
       /** Format: uuid */
@@ -1744,6 +1761,11 @@ export type components = {
       stack: number;
       /** Format: int64 */
       streetBet: number;
+      /**
+       * Format: int64
+       * @description The actor's time bank left after this action.
+       */
+      timeBankMs?: number;
       timeout: boolean;
     };
     PlayerLeftEvent: {
@@ -1880,6 +1902,11 @@ export type components = {
       stack: number;
       /** Format: int64 */
       streetBet: number;
+      /**
+       * Format: int64
+       * @description Time bank left (while it runs, the value from before it started).
+       */
+      timeBankMs: number;
       /** Format: uuid */
       userId: string;
       username: string;
@@ -1923,6 +1950,10 @@ export type components = {
       smallBlind: components['schemas']['ChipAmount'];
       /** @enum {string} */
       status: 'OPEN' | 'CLOSED';
+      /** @description Added back to a seat's bank for every hand it is dealt into, up to timeBankSec. */
+      timeBankRefillSec: number;
+      /** @description Each seat's time bank (also its cap); 0 when the table has none. */
+      timeBankSec: number;
       /**
        * Format: uuid
        * @description Set for a tournament's tables (seats are assigned by the tournament).
@@ -1954,6 +1985,7 @@ export type components = {
       | components['schemas']['HoleCardsDealtEvent']
       | components['schemas']['PlayerActedEvent']
       | components['schemas']['TurnStartedEvent']
+      | components['schemas']['TimeBankStartedEvent']
       | components['schemas']['UncalledBetReturnedEvent']
       | components['schemas']['StreetDealtEvent']
       | components['schemas']['CardsRevealedEvent']
@@ -1979,6 +2011,16 @@ export type components = {
       smallBlind: number;
       /** @enum {string} */
       status: 'OPEN' | 'CLOSED';
+      /**
+       * Format: int64
+       * @description Each seat's time bank (also its cap); 0 when the table has none.
+       */
+      timeBankMs: number;
+      /**
+       * Format: int64
+       * @description Added back for every hand a player is dealt into, up to timeBankMs.
+       */
+      timeBankRefillMs: number;
       tournament?: components['schemas']['TournamentTableInfo'];
     };
     TableList: {
@@ -2007,6 +2049,22 @@ export type components = {
       tableId: string;
       /** @description The viewer's private view (absent for anonymous spectators). */
       you?: components['schemas']['YouView'];
+    };
+    /** @description The actor's turn timer ran out and their time bank is running; deadline replaces the turn's. */
+    TimeBankStartedEvent: {
+      /** Format: date-time */
+      deadline: string;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: 'TIME_BANK_STARTED';
+      seat: number;
+      /**
+       * Format: int64
+       * @description Length of the time bank now running (all that was left).
+       */
+      timeoutMs: number;
     };
     /**
      * Format: date-time
@@ -2142,6 +2200,11 @@ export type components = {
       seat: number;
       /** @enum {string} */
       street: 'PREFLOP' | 'FLOP' | 'TURN' | 'RIVER';
+      /**
+       * Format: int64
+       * @description The actor's time bank, used if the turn timer runs out.
+       */
+      timeBankMs: number;
       /** Format: int64 */
       timeoutMs: number;
     };

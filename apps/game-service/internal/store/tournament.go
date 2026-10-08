@@ -325,7 +325,8 @@ func TakenSeats(ctx context.Context, tx pgx.Tx, tableID string) (map[int]bool, e
 
 // InsertSeatState seats a player with a sitting-out flag (tournament moves).
 func InsertSeatState(ctx context.Context, tx pgx.Tx, tableID string, seatNo int, userID string, stack int64, sittingOut bool) error {
-	_, err := tx.Exec(ctx, `INSERT INTO table_seats (table_id, seat_no, user_id, stack_cached, sitting_out) VALUES ($1, $2, $3, $4, $5)`,
+	_, err := tx.Exec(ctx, `INSERT INTO table_seats (table_id, seat_no, user_id, stack_cached, sitting_out, time_bank_ms)
+	                        VALUES ($1, $2, $3, $4, $5, (SELECT time_bank_ms FROM tables WHERE id = $1))`,
 		tableID, seatNo, userID, stack, sittingOut)
 	if isUniqueViolation(err) {
 		return fmt.Errorf("%w: seat %d", ErrDuplicate, seatNo)

@@ -72,6 +72,8 @@ export class TablesService {
         buyInMin: input.buyInMin,
         buyInMax: input.buyInMax,
         actionTimeoutMs: input.actionTimeoutSec * 1000,
+        timeBankMs: input.timeBankSec * 1000,
+        timeBankRefillMs: input.timeBankRefillSec * 1000,
         createdBy: auth.userId,
       });
       await this.audit.record(q, ctx, {

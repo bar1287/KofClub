@@ -46,23 +46,29 @@ type TableConfig struct {
 	BuyInMin      int64
 	BuyInMax      int64
 	ActionTimeout time.Duration
-	Status        string
+	// TimeBank is each seat's extra time after the turn timer (and its cap);
+	// TimeBankRefill is added back per hand dealt in. Zero bank = none.
+	TimeBank       time.Duration
+	TimeBankRefill time.Duration
+	Status         string
 }
 
 // LoadTable reads a table's configuration.
 func (s *Store) LoadTable(ctx context.Context, tableID string) (TableConfig, error) {
 	var c TableConfig
-	var timeoutMs int
+	var timeoutMs, bankMs, refillMs int
 	err := s.Pool.QueryRow(ctx, `
 		SELECT id::text, club_id::text, name, game_type, max_seats, small_blind, big_blind, buyin_min, buyin_max, action_timeout_ms, status,
-		       coalesce(tournament_id::text, ''), coalesce(tournament_table_no, 0)
+		       coalesce(tournament_id::text, ''), coalesce(tournament_table_no, 0), time_bank_ms, time_bank_refill_ms
 		  FROM tables WHERE id = $1`, tableID).
 		Scan(&c.ID, &c.ClubID, &c.Name, &c.GameType, &c.MaxSeats, &c.SmallBlind, &c.BigBlind, &c.BuyInMin, &c.BuyInMax, &timeoutMs, &c.Status,
-			&c.TournamentID, &c.TableNo)
+			&c.TournamentID, &c.TableNo, &bankMs, &refillMs)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return c, ErrNotFound
 	}
 	c.ActionTimeout = time.Duration(timeoutMs) * time.Millisecond
+	c.TimeBank = time.Duration(bankMs) * time.Millisecond
+	c.TimeBankRefill = time.Duration(refillMs) * time.Millisecond
 	return c, err
 }
 
@@ -91,12 +97,13 @@ type Seat struct {
 	Username   string
 	Stack      int64
 	SittingOut bool
+	TimeBank   time.Duration
 }
 
 // LoadSeats returns the seats of a table ordered by seat number.
 func (s *Store) LoadSeats(ctx context.Context, tableID string) ([]Seat, error) {
 	rows, err := s.Pool.Query(ctx, `
-		SELECT s.seat_no, s.user_id::text, u.username, s.stack_cached, s.sitting_out
+		SELECT s.seat_no, s.user_id::text, u.username, s.stack_cached, s.sitting_out, s.time_bank_ms
 		  FROM table_seats s JOIN users u ON u.id = s.user_id
 		 WHERE s.table_id = $1 ORDER BY s.seat_no`, tableID)
 	if err != nil {
@@ -104,7 +111,9 @@ func (s *Store) LoadSeats(ctx context.Context, tableID string) ([]Seat, error) {
 	}
 	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (Seat, error) {
 		var st Seat
-		err := r.Scan(&st.SeatNo, &st.UserID, &st.Username, &st.Stack, &st.SittingOut)
+		var bankMs int64
+		err := r.Scan(&st.SeatNo, &st.UserID, &st.Username, &st.Stack, &st.SittingOut, &bankMs)
+		st.TimeBank = time.Duration(bankMs) * time.Millisecond
 		return st, err
 	})
 }

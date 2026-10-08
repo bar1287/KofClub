@@ -22,6 +22,7 @@ function seat(n: number, userId: string, patch: Partial<SeatState> = {}): SeatSt
     folded: false,
     allIn: false,
     streetBet: 0,
+    timeBankMs: 30_000,
     ...patch,
   };
 }
@@ -42,6 +43,7 @@ function hand(patch: Partial<HandState> = {}): HandState {
     toActSeat: 2,
     deadlineAt: null,
     turnTimeoutMs: 30_000,
+    usingTimeBank: false,
     turnSeq: 40,
     deckCommitment: '',
     awards: [],

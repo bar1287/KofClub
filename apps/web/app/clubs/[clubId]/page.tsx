@@ -203,6 +203,8 @@ function CreateTable({ clubId, onCreated }: { clubId: string; onCreated: (t: Tab
     buyInMin: 200,
     buyInMax: 2000,
     actionTimeoutSec: 20,
+    timeBankSec: 30,
+    timeBankRefillSec: 2,
   });
   const [key, setKey] = useState(newIdempotencyKey);
   const [error, setError] = useState<string | null>(null);
@@ -319,6 +321,17 @@ function CreateTable({ clubId, onCreated }: { clubId: string; onCreated: (t: Tab
             max={120}
             value={form.actionTimeoutSec}
             onChange={num('actionTimeoutSec')}
+          />
+        </label>
+        <label className="field">
+          Time bank (s)
+          <input
+            type="number"
+            name="timeBankSec"
+            min={0}
+            max={300}
+            value={form.timeBankSec}
+            onChange={num('timeBankSec')}
           />
         </label>
       </div>

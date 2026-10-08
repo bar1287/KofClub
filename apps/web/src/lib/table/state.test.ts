@@ -24,6 +24,8 @@ function snapshot(overrides: Partial<TableSnapshot> = {}): TableSnapshot {
       buyInMin: 200,
       buyInMax: 2000,
       actionTimeoutMs: 20000,
+      timeBankMs: 30000,
+      timeBankRefillMs: 2000,
       status: 'OPEN',
     },
     seats: [seat(1, ALICE, 'alice', 1000), seat(2, BOB, 'bob', 1000)],
@@ -44,6 +46,7 @@ function seat(n: number, userId: string, username: string, stack: number) {
     folded: false,
     allIn: false,
     streetBet: 0,
+    timeBankMs: 30000,
   };
 }
 
@@ -86,8 +89,8 @@ const handStarted: TableEventPayload = {
   bigBlind: 10,
   deckCommitment: 'ab'.repeat(32),
   players: [
-    { seat: 1, userId: ALICE, stack: 1000 },
-    { seat: 2, userId: BOB, stack: 1000 },
+    { seat: 1, userId: ALICE, stack: 1000, timeBankMs: 30000 },
+    { seat: 2, userId: BOB, stack: 1000, timeBankMs: 30000 },
   ],
 };
 
@@ -105,6 +108,7 @@ const handStart: TableEventPayload[] = [
     pot: 15,
     deadline: '2026-01-01T00:00:20.000Z',
     timeoutMs: 20000,
+    timeBankMs: 30000,
     legalActions: [
       { kind: 'FOLD' },
       { kind: 'CALL', amount: 5 },
@@ -197,6 +201,7 @@ describe('tableReducer', () => {
         pot: 20,
         deadline: '2026-01-01T00:00:20.000Z',
         timeoutMs: 20000,
+        timeBankMs: 30000,
       },
       {
         kind: 'PLAYER_ACTED',
@@ -224,6 +229,7 @@ describe('tableReducer', () => {
         pot: 20,
         deadline: '2026-01-01T00:00:40.000Z',
         timeoutMs: 20000,
+        timeBankMs: 30000,
       },
       {
         kind: 'PLAYER_ACTED',
@@ -301,6 +307,83 @@ describe('tableReducer', () => {
     expect(s.holeCards).toEqual([]);
   });
 
+  it('follows a time bank: start, what is left after acting, and refills', () => {
+    let s = play(ready(), handStart);
+    expect(s.hand?.usingTimeBank).toBe(false);
+    s = play(s, [
+      {
+        kind: 'TIME_BANK_STARTED',
+        seat: 1,
+        deadline: '2026-01-01T00:00:30.000Z',
+        timeoutMs: 30000,
+      },
+    ]);
+    expect(s.hand).toMatchObject({ usingTimeBank: true, turnTimeoutMs: 30000, toActSeat: 1 });
+    expect(s.hand?.deadlineAt).toBe(1_000 + 30_000);
+    expect(s.log.at(-1)?.text).toBe('alice is using the time bank (30s).');
+
+    s = play(s, [
+      {
+        kind: 'PLAYER_ACTED',
+        seat: 1,
+        action: 'CALL',
+        added: 5,
+        streetBet: 10,
+        stack: 990,
+        allIn: false,
+        pot: 20,
+        timeout: false,
+        timeBankMs: 12000,
+      },
+    ]);
+    expect(s.hand?.usingTimeBank).toBe(false);
+    expect(seatOf(s, 1).timeBankMs).toBe(12000);
+    expect(seatOf(s, 2).timeBankMs).toBe(30000);
+
+    // The next hand reports every dealt-in player's refilled bank.
+    s = play(s, [
+      {
+        ...handStarted,
+        handNo: 2,
+        players: [
+          { seat: 1, userId: ALICE, stack: 990, timeBankMs: 14000 },
+          { seat: 2, userId: BOB, stack: 1010, timeBankMs: 30000 },
+        ],
+      } as TableEventPayload,
+    ]);
+    expect(seatOf(s, 1).timeBankMs).toBe(14000);
+  });
+
+  it("times a running bank from a snapshot by the actor's bank", () => {
+    const s = ready(
+      snapshot({
+        phase: 'HAND_IN_PROGRESS',
+        seats: [
+          { ...seat(1, ALICE, 'alice', 990), inHand: true, timeBankMs: 25000 },
+          { ...seat(2, BOB, 'bob', 990), inHand: true },
+        ],
+        hand: {
+          handId: HAND,
+          handNo: 1,
+          street: 'FLOP',
+          board: ['2c', '7d', 'Th'],
+          pot: 20,
+          currentBet: 0,
+          minRaise: 10,
+          buttonSeat: 2,
+          smallBlindSeat: 2,
+          bigBlindSeat: 1,
+          toActSeat: 1,
+          usingTimeBank: true,
+          actionDeadline: '2026-01-01T00:00:10.000Z',
+          turnSeq: 2,
+          deckCommitment: 'cd'.repeat(32),
+        },
+      }),
+    );
+    expect(s.hand).toMatchObject({ usingTimeBank: true, turnTimeoutMs: 25000 });
+  });
+
   it('restores start-of-hand stacks when a hand is voided', () => {
     let s = play(ready(), handStart);
     expect(seatOf(s, 1).stack).toBe(995);
@@ -327,6 +410,7 @@ describe('tableReducer', () => {
           smallBlindSeat: 1,
           bigBlindSeat: 2,
           toActSeat: 2,
+          usingTimeBank: false,
           actionDeadline: '2026-01-01T00:00:05.000Z',
           turnSeq: 2,
           deckCommitment: 'cd'.repeat(32),

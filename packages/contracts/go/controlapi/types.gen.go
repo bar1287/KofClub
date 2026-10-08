@@ -1078,6 +1078,12 @@ type CreateTableRequest struct {
 
 	// SmallBlind Integer amount of virtual chips (no monetary value).
 	SmallBlind ChipAmount `json:"smallBlind"`
+
+	// TimeBankRefillSec Seconds added back for every hand a player is dealt into, up to timeBankSec.
+	TimeBankRefillSec *int `json:"timeBankRefillSec,omitempty"`
+
+	// TimeBankSec Extra seconds per seat, used only after the turn timer runs out (0 = no time bank).
+	TimeBankSec *int `json:"timeBankSec,omitempty"`
 }
 
 // CreateTableRequestGameType See GameType. Fixed for the table's lifetime.
@@ -1632,6 +1638,12 @@ type Table struct {
 	SmallBlind ChipAmount  `json:"smallBlind"`
 	Status     TableStatus `json:"status"`
 
+	// TimeBankRefillSec Added back to a seat's bank for every hand it is dealt into, up to timeBankSec.
+	TimeBankRefillSec int `json:"timeBankRefillSec"`
+
+	// TimeBankSec Each seat's time bank (also its cap); 0 when the table has none.
+	TimeBankSec int `json:"timeBankSec"`
+
 	// TournamentId Set for a tournament's tables (seats are assigned by the tournament).
 	TournamentId *openapi_types.UUID `json:"tournamentId"`
 }
@@ -1670,6 +1682,12 @@ type TableDetail struct {
 	// SmallBlind Integer amount of virtual chips (no monetary value).
 	SmallBlind ChipAmount        `json:"smallBlind"`
 	Status     TableDetailStatus `json:"status"`
+
+	// TimeBankRefillSec Added back to a seat's bank for every hand it is dealt into, up to timeBankSec.
+	TimeBankRefillSec int `json:"timeBankRefillSec"`
+
+	// TimeBankSec Each seat's time bank (also its cap); 0 when the table has none.
+	TimeBankSec int `json:"timeBankSec"`
 
 	// TournamentId Set for a tournament's tables (seats are assigned by the tournament).
 	TournamentId *openapi_types.UUID `json:"tournamentId"`

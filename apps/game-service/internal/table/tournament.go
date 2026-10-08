@@ -225,6 +225,7 @@ func (a *Actor) tourClaim() bool {
 				return nil, err
 			}
 			a.usernames[t.UserID] = t.Username
+			a.banks.seat(t.UserID)
 			drafts = append(drafts, draft{kind: KindPlayerSeated, public: playerSeatedPayload{
 				Kind: KindPlayerSeated, Seat: seat, UserID: t.UserID, Username: t.Username, Stack: t.Stack,
 			}})

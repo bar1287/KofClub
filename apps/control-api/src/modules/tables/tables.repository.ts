@@ -15,6 +15,8 @@ export interface TableRow {
   buyInMin: number;
   buyInMax: number;
   actionTimeoutSec: number;
+  timeBankSec: number;
+  timeBankRefillSec: number;
   status: 'OPEN' | 'CLOSED';
   createdBy: string;
   createdAt: string;
@@ -31,7 +33,7 @@ export interface SeatRow {
 
 const SELECT = `
   SELECT t.id, t.club_id, t.name, t.game_type, t.tournament_id, t.max_seats, t.small_blind, t.big_blind, t.buyin_min, t.buyin_max,
-         t.action_timeout_ms, t.status, t.created_by, t.created_at,
+         t.action_timeout_ms, t.time_bank_ms, t.time_bank_refill_ms, t.status, t.created_by, t.created_at,
          (SELECT count(*)::int FROM table_seats s WHERE s.table_id = t.id) AS seated_count
     FROM tables t`;
 
@@ -49,6 +51,8 @@ function map(r: any): TableRow {
     buyInMin: toChips(r.buyin_min),
     buyInMax: toChips(r.buyin_max),
     actionTimeoutSec: Math.round(r.action_timeout_ms / 1000),
+    timeBankSec: Math.round(r.time_bank_ms / 1000),
+    timeBankRefillSec: Math.round(r.time_bank_refill_ms / 1000),
     status: r.status,
     createdBy: r.created_by,
     createdAt: (r.created_at as Date).toISOString(),
@@ -78,13 +82,15 @@ export class TablesRepository {
       buyInMin: number;
       buyInMax: number;
       actionTimeoutMs: number;
+      timeBankMs: number;
+      timeBankRefillMs: number;
       createdBy: string;
     },
   ): Promise<void> {
     await q.query(
       `INSERT INTO tables (id, club_id, name, game_type, max_seats, small_blind, big_blind, buyin_min, buyin_max,
-                           action_timeout_ms, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+                           action_timeout_ms, time_bank_ms, time_bank_refill_ms, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
       [
         t.id,
         t.clubId,
@@ -96,6 +102,8 @@ export class TablesRepository {
         t.buyInMin,
         t.buyInMax,
         t.actionTimeoutMs,
+        t.timeBankMs,
+        t.timeBankRefillMs,
         t.createdBy,
       ],
     );

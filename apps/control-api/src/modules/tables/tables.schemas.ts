@@ -16,6 +16,8 @@ export const createTableSchema = z
     buyInMin: chips,
     buyInMax: chips,
     actionTimeoutSec: z.number().int().min(5).max(120).default(20),
+    timeBankSec: z.number().int().min(0).max(300).default(30),
+    timeBankRefillSec: z.number().int().min(0).max(60).default(2),
   })
   .strict()
   .refine((t) => t.bigBlind >= t.smallBlind, {

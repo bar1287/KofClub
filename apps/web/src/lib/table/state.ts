@@ -30,6 +30,8 @@ export interface SeatState {
   folded: boolean;
   allIn: boolean;
   streetBet: number;
+  /** Time bank left (while it runs: the value from before it started). */
+  timeBankMs: number;
   shownCards?: Card[];
   /** Hand description at showdown ("Two Pair, Kings and Fives"). */
   shownDescription?: string;
@@ -61,6 +63,8 @@ export interface HandState {
   /** Turn deadline converted to the local clock (ms since epoch), or null. */
   deadlineAt: number | null;
   turnTimeoutMs: number;
+  /** The actor's turn timer ran out: deadlineAt is the end of their time bank. */
+  usingTimeBank: boolean;
   /** Seq of the current TURN_STARTED (used as expectedSeq for commands). */
   turnSeq: number;
   deckCommitment: string;
@@ -192,6 +196,7 @@ export function applySnapshot(
       folded: s.folded,
       allIn: s.allIn,
       streetBet: s.streetBet,
+      timeBankMs: s.timeBankMs,
       shownCards: s.shownCards,
     };
   }
@@ -214,7 +219,11 @@ export function applySnapshot(
       deadlineAt: h.actionDeadline
         ? toLocalTime(h.actionDeadline, snap.serverTime, receivedAt)
         : null,
-      turnTimeoutMs: snap.table.actionTimeoutMs,
+      // A running bank lasts as long as the actor's bank was when it started.
+      turnTimeoutMs: h.usingTimeBank
+        ? (seats[h.toActSeat]?.timeBankMs ?? 0)
+        : snap.table.actionTimeoutMs,
+      usingTimeBank: h.usingTimeBank,
       turnSeq: h.turnSeq,
       deckCommitment: h.deckCommitment,
       awards: [],
@@ -305,6 +314,7 @@ function applyEvent(state: TableState, msg: TableEventMessage, receivedAt: numbe
             folded: false,
             allIn: false,
             streetBet: 0,
+            timeBankMs: state.table?.timeBankMs ?? 0,
           },
         },
         mySeat: mine ? ev.seat : state.mySeat,
@@ -339,12 +349,17 @@ function applyEvent(state: TableState, msg: TableEventMessage, receivedAt: numbe
     }
     case 'HAND_STARTED': {
       const startStacks: Record<number, number> = {};
-      for (const p of ev.players) startStacks[p.seat] = p.stack;
+      const banks: Record<number, number> = {};
+      for (const p of ev.players) {
+        startStacks[p.seat] = p.stack;
+        banks[p.seat] = p.timeBankMs;
+      }
       const seats = mapSeats(state.seats, (s) => {
         const start = startStacks[s.seat];
         return {
           ...s,
           stack: start ?? s.stack,
+          timeBankMs: banks[s.seat] ?? s.timeBankMs,
           inHand: start !== undefined,
           folded: false,
           allIn: false,
@@ -384,6 +399,7 @@ function applyEvent(state: TableState, msg: TableEventMessage, receivedAt: numbe
           toActSeat: 0,
           deadlineAt: null,
           turnTimeoutMs: state.table?.actionTimeoutMs ?? 0,
+          usingTimeBank: false,
           turnSeq: state.hand?.turnSeq ?? 0,
           deckCommitment: ev.deckCommitment,
           awards: [],
@@ -414,6 +430,7 @@ function applyEvent(state: TableState, msg: TableEventMessage, receivedAt: numbe
       const mine = ev.seat === state.mySeat && state.mySeat !== 0;
       return {
         ...state,
+        seats: updateSeat(state, ev.seat, { timeBankMs: ev.timeBankMs }),
         hand: withHand(state, {
           toActSeat: ev.seat,
           street: ev.street,
@@ -422,11 +439,22 @@ function applyEvent(state: TableState, msg: TableEventMessage, receivedAt: numbe
           pot: ev.pot,
           deadlineAt: toLocalTime(ev.deadline, msg.serverTime, receivedAt),
           turnTimeoutMs: ev.timeoutMs,
+          usingTimeBank: false,
           turnSeq: msg.seq,
         }),
         legalActions: mine ? (ev.legalActions ?? []) : [],
       };
     }
+    case 'TIME_BANK_STARTED':
+      return {
+        ...state,
+        hand: withHand(state, {
+          deadlineAt: toLocalTime(ev.deadline, msg.serverTime, receivedAt),
+          turnTimeoutMs: ev.timeoutMs,
+          usingTimeBank: true,
+        }),
+        log: log(),
+      };
     case 'PLAYER_ACTED': {
       return {
         ...state,
@@ -436,12 +464,14 @@ function applyEvent(state: TableState, msg: TableEventMessage, receivedAt: numbe
           allIn: ev.allIn,
           folded: ev.action === 'FOLD' || state.seats[ev.seat]?.folded === true,
           lastAction: ev.allIn ? 'ALL-IN' : ev.action,
+          ...(ev.timeBankMs !== undefined ? { timeBankMs: ev.timeBankMs } : {}),
         }),
         hand: withHand(state, {
           pot: ev.pot,
           currentBet: Math.max(state.hand?.currentBet ?? 0, ev.streetBet),
           toActSeat: 0,
           deadlineAt: null,
+          usingTimeBank: false,
         }),
         legalActions: ev.seat === state.mySeat ? [] : state.legalActions,
         log: log(),

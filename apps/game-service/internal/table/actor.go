@@ -86,12 +86,17 @@ type Actor struct {
 	turnTimer   *time.Timer
 	turnToken   int64
 	deadline    time.Time
-	handTimer   *time.Timer
-	recent      *eventRing
-	processed   *commandCache
-	subs        map[int64]*Subscription
-	nextSubID   int64
-	draining    bool
+	banks       *timeBanks
+	// bankToken is the turnToken whose time bank is running (started at
+	// bankStart); any other value means the turn timer is still running.
+	bankToken int64
+	bankStart time.Time
+	handTimer *time.Timer
+	recent    *eventRing
+	processed *commandCache
+	subs      map[int64]*Subscription
+	nextSubID int64
+	draining  bool
 	// closeAnnounced is set once TABLE_CLOSED was published by this actor.
 	closeAnnounced bool
 	// traceCtx is the trace context of the request being processed (nil for
@@ -120,6 +125,7 @@ func Start(ctx context.Context, deps Deps, tableID string, epoch int64) (*Actor,
 		leaving:     map[string]bool{},
 		timeouts:    map[string]int{},
 		sitRequests: map[string]int{},
+		banks:       newTimeBanks(cfg.TimeBank, cfg.TimeBankRefill),
 		recent:      newEventRing(1000),
 		processed:   newCommandCache(4096),
 		subs:        map[int64]*Subscription{},
@@ -400,10 +406,36 @@ func (a *Actor) turnDraft(next *poker.Table) *draft {
 	base := turnStartedPayload{
 		Kind: KindTurnStarted, Seat: seat, Street: string(hand.Street()), CurrentBet: hand.CurrentBet(),
 		MinRaise: hand.MinRaise(), Pot: hand.Pot(), Deadline: a.deadline.UTC(), TimeoutMs: a.cfg.ActionTimeout.Milliseconds(),
+		TimeBankMs: a.banks.get(string(s.Player)).Milliseconds(),
 	}
 	private := base
 	private.LegalActions = hand.LegalActions()
 	return &draft{kind: KindTurnStarted, handID: a.handIDFor(next), public: base, private: map[string]any{string(s.Player): private}}
+}
+
+// inTimeBank reports whether the current turn is running on the actor's
+// time bank.
+func (a *Actor) inTimeBank() bool { return a.bankToken == a.turnToken && !a.bankStart.IsZero() }
+
+// startTimeBank is called when the turn timer of turn token runs out and
+// the actor has time in the bank: it announces TIME_BANK_STARTED with the
+// new deadline and re-arms the timer for it.
+func (a *Actor) startTimeBank(token int64, seat int, user string) {
+	left := a.banks.get(user)
+	start := time.Now()
+	deadline := start.Add(left)
+	d := draft{kind: KindTimeBankStarted, handID: a.handID, public: timeBankStartedPayload{
+		Kind: KindTimeBankStarted, Seat: seat, Deadline: deadline.UTC(), TimeoutMs: left.Milliseconds(),
+	}}
+	if _, err := a.commit(a.table, []draft{d}, nil); err != nil {
+		a.log.Warn("time_bank_start_failed", slog.String("error", err.Error()))
+		a.stopTimers()
+		a.turnTimer = time.AfterFunc(a.deps.Timing.RetryBackoff, func() { a.post(func() { a.onTurnTimeout(token) }) })
+		return
+	}
+	a.bankToken, a.bankStart, a.deadline = token, start, deadline
+	a.deps.Metrics.TimeBanks.Inc()
+	a.afterChange()
 }
 
 func (a *Actor) handIDFor(next *poker.Table) string {

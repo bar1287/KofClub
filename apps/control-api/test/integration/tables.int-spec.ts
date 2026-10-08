@@ -66,6 +66,18 @@ describe('tables (integration with game-service)', () => {
       .send({ name: 'Bad', smallBlind: 10, bigBlind: 5, buyInMin: 100, buyInMax: 50 })
       .expect(400);
     expect(bad.body.error.code).toBe('VALIDATION_FAILED');
+    const badBank = await as(ctx.app, owner)
+      .post(`/v1/clubs/${clubId}/tables`)
+      .send({
+        name: 'Slow',
+        smallBlind: 5,
+        bigBlind: 10,
+        buyInMin: 200,
+        buyInMax: 2000,
+        timeBankSec: 301,
+      })
+      .expect(400);
+    expect(badBank.body.error.code).toBe('VALIDATION_FAILED');
     await as(ctx.app, alice)
       .post(`/v1/clubs/${clubId}/tables`)
       .send({ name: 'Mine', smallBlind: 5, bigBlind: 10, buyInMin: 200, buyInMax: 2000 })
@@ -81,12 +93,16 @@ describe('tables (integration with game-service)', () => {
         buyInMin: 200,
         buyInMax: 2000,
         actionTimeoutSec: 30,
+        timeBankSec: 45,
       })
       .expect(201);
     expectSchema('TableDetail', res.body);
     expect(res.body).toMatchObject({
       name: 'Main Table',
       gameType: 'NLHE',
+      actionTimeoutSec: 30,
+      timeBankSec: 45,
+      timeBankRefillSec: 2,
       status: 'OPEN',
       seatedCount: 0,
       seats: [],

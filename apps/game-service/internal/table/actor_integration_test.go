@@ -455,6 +455,7 @@ func TestBuyInRules(t *testing.T) {
 
 func TestTimeoutsAutoActAndSitOut(t *testing.T) {
 	e := newEnv(t, "alice", "bob")
+	e.exec(`UPDATE tables SET time_bank_ms = 0 WHERE id = $1`, e.tableID) // timeouts without a time bank
 	timing := fast
 	timing.ActionTimeout = 150 * time.Millisecond
 	a := e.start("node-1", timing)

@@ -56,6 +56,8 @@ export function describeEvent(
     case 'HOLE_CARDS_DEALT':
     case 'TURN_STARTED':
       return null;
+    case 'TIME_BANK_STARTED':
+      return `${name(ev.seat)} is using the time bank (${Math.round(ev.timeoutMs / 1000)}s).`;
     case 'PLAYER_ACTED': {
       const amount = ev.action === 'CALL' ? ev.added : ev.streetBet;
       const label =

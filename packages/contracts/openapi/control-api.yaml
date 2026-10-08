@@ -2175,6 +2175,8 @@ components:
           buyInMin,
           buyInMax,
           actionTimeoutSec,
+          timeBankSec,
+          timeBankRefillSec,
           status,
           createdBy,
           createdAt,
@@ -2207,6 +2209,12 @@ components:
           $ref: '#/components/schemas/ChipAmount'
         actionTimeoutSec:
           type: integer
+        timeBankSec:
+          type: integer
+          description: Each seat's time bank (also its cap); 0 when the table has none.
+        timeBankRefillSec:
+          type: integer
+          description: Added back to a seat's bank for every hand it is dealt into, up to timeBankSec.
         status:
           type: string
           enum: [OPEN, CLOSED]
@@ -2282,6 +2290,18 @@ components:
           minimum: 5
           maximum: 120
           default: 20
+        timeBankSec:
+          type: integer
+          minimum: 0
+          maximum: 300
+          default: 30
+          description: Extra seconds per seat, used only after the turn timer runs out (0 = no time bank).
+        timeBankRefillSec:
+          type: integer
+          minimum: 0
+          maximum: 60
+          default: 2
+          description: Seconds added back for every hand a player is dealt into, up to timeBankSec.
     TournamentStatus:
       type: string
       enum: [REGISTERING, RUNNING, FINISHED, CANCELLED]

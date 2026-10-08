@@ -98,23 +98,31 @@ resume, command re-send with the same `requestId`) and
 
 ## Table events (`TABLE_EVENT.event.kind`)
 
-| Kind                    | Public fields                                                                 | Private (recipient only)       |
-| ----------------------- | ----------------------------------------------------------------------------- | ------------------------------ |
-| `PLAYER_SEATED`         | seat, userId, username, stack                                                 |                                |
-| `PLAYER_LEFT`           | seat, userId, reason (LEFT/BUSTED/TABLE_CLOSED), cashOut                      |                                |
-| `PLAYER_SITTING_OUT`    | seat, userId, sittingOut, reason                                              |                                |
-| `HAND_STARTED`          | handId, gameType, handNo, button/blind seats, blinds, deckCommitment, players |                                |
-| `BLIND_POSTED`          | seat, blind, amount, allIn, stack, pot                                        |                                |
-| `HOLE_CARDS_DEALT`      | seats                                                                         | `cards` (own 2 or 4 cards)     |
-| `TURN_STARTED`          | seat, street, currentBet, minRaise, pot, deadline, timeoutMs                  | `legalActions` (acting player) |
-| `PLAYER_ACTED`          | seat, action, added, streetBet, stack, allIn, pot, timeout                    |                                |
-| `UNCALLED_BET_RETURNED` | seat, amount, stack, pot                                                      |                                |
-| `STREET_DEALT`          | street, cards, board                                                          |                                |
-| `CARDS_REVEALED`        | seat, cards, description, bestFive                                            |                                |
-| `POT_AWARDED`           | potIndex, amount, eligibleSeats, winners, description                         |                                |
-| `HAND_COMPLETED`        | handId, handNo, board, showdown, results                                      |                                |
-| `HAND_VOIDED`           | handId, handNo, reason                                                        |                                |
-| `TABLE_CLOSED`          | (none) — no new hands or players; seats are cashed out after the hand         |                                |
+| Kind                    | Public fields                                                                                                    | Private (recipient only)       |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| `PLAYER_SEATED`         | seat, userId, username, stack                                                                                    |                                |
+| `PLAYER_LEFT`           | seat, userId, reason (LEFT/BUSTED/TABLE_CLOSED), cashOut                                                         |                                |
+| `PLAYER_SITTING_OUT`    | seat, userId, sittingOut, reason                                                                                 |                                |
+| `HAND_STARTED`          | handId, gameType, handNo, button/blind seats, blinds, deckCommitment, players (with timeBankMs after the refill) |                                |
+| `BLIND_POSTED`          | seat, blind, amount, allIn, stack, pot                                                                           |                                |
+| `HOLE_CARDS_DEALT`      | seats                                                                                                            | `cards` (own 2 or 4 cards)     |
+| `TURN_STARTED`          | seat, street, currentBet, minRaise, pot, deadline, timeoutMs, timeBankMs                                         | `legalActions` (acting player) |
+| `TIME_BANK_STARTED`     | seat, deadline, timeoutMs — the turn timer ran out and the actor's time bank runs until deadline                 |                                |
+| `PLAYER_ACTED`          | seat, action, added, streetBet, stack, allIn, pot, timeout, timeBankMs (left)                                    |                                |
+| `UNCALLED_BET_RETURNED` | seat, amount, stack, pot                                                                                         |                                |
+| `STREET_DEALT`          | street, cards, board                                                                                             |                                |
+| `CARDS_REVEALED`        | seat, cards, description, bestFive                                                                               |                                |
+| `POT_AWARDED`           | potIndex, amount, eligibleSeats, winners, description                                                            |                                |
+| `HAND_COMPLETED`        | handId, handNo, board, showdown, results                                                                         |                                |
+| `HAND_VOIDED`           | handId, handNo, reason                                                                                           |                                |
+| `TABLE_CLOSED`          | (none) — no new hands or players; seats are cashed out after the hand                                            |                                |
+
+Time bank (roadmap W1.2): a table sets each seat's bank (`timeBankMs`, also
+its cap; 0 = none) and a refill per hand dealt in (`timeBankRefillMs`). The
+bank starts only when the turn timer runs out (`TIME_BANK_STARTED`); acting
+keeps what is left, letting it expire uses it all and applies the default
+action. Players who are leaving or absent from a tournament never get it.
+Snapshots carry each seat's `timeBankMs` and `hand.usingTimeBank`.
 
 Unrevealed cards never appear in public payloads, snapshots of other
 viewers, logs or the persisted event log (ADR-008). Spectating club members

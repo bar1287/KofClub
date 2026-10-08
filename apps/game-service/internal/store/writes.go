@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -60,9 +61,10 @@ func UpsertRuntime(ctx context.Context, tx pgx.Tx, tableID string, r Runtime) er
 	return err
 }
 
-// InsertSeat seats a player.
+// InsertSeat seats a player with the table's full time bank.
 func InsertSeat(ctx context.Context, tx pgx.Tx, tableID string, seatNo int, userID string, stack int64) error {
-	_, err := tx.Exec(ctx, `INSERT INTO table_seats (table_id, seat_no, user_id, stack_cached) VALUES ($1, $2, $3, $4)`,
+	_, err := tx.Exec(ctx, `INSERT INTO table_seats (table_id, seat_no, user_id, stack_cached, time_bank_ms)
+	                        VALUES ($1, $2, $3, $4, (SELECT time_bank_ms FROM tables WHERE id = $1))`,
 		tableID, seatNo, userID, stack)
 	if isUniqueViolation(err) {
 		return fmt.Errorf("%w: seat %d", ErrDuplicate, seatNo)
@@ -89,6 +91,16 @@ func UpdateSeatStacks(ctx context.Context, tx pgx.Tx, tableID string, stacks map
 	for userID, stack := range stacks {
 		batch.Queue(`UPDATE table_seats SET stack_cached = $3, updated_at = now() WHERE table_id = $1 AND user_id = $2`,
 			tableID, userID, stack)
+	}
+	return tx.SendBatch(ctx, batch).Close()
+}
+
+// UpdateSeatTimeBanks stores the remaining time bank of the given users.
+func UpdateSeatTimeBanks(ctx context.Context, tx pgx.Tx, tableID string, banks map[string]time.Duration) error {
+	batch := &pgx.Batch{}
+	for userID, bank := range banks {
+		batch.Queue(`UPDATE table_seats SET time_bank_ms = $3, updated_at = now() WHERE table_id = $1 AND user_id = $2`,
+			tableID, userID, bank.Milliseconds())
 	}
 	return tx.SendBatch(ctx, batch).Close()
 }

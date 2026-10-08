@@ -317,6 +317,7 @@ components:
         - $ref: '#/components/schemas/HoleCardsDealtEvent'
         - $ref: '#/components/schemas/PlayerActedEvent'
         - $ref: '#/components/schemas/TurnStartedEvent'
+        - $ref: '#/components/schemas/TimeBankStartedEvent'
         - $ref: '#/components/schemas/UncalledBetReturnedEvent'
         - $ref: '#/components/schemas/StreetDealtEvent'
         - $ref: '#/components/schemas/CardsRevealedEvent'
@@ -335,6 +336,7 @@ components:
           HOLE_CARDS_DEALT: '#/components/schemas/HoleCardsDealtEvent'
           PLAYER_ACTED: '#/components/schemas/PlayerActedEvent'
           TURN_STARTED: '#/components/schemas/TurnStartedEvent'
+          TIME_BANK_STARTED: '#/components/schemas/TimeBankStartedEvent'
           UNCALLED_BET_RETURNED: '#/components/schemas/UncalledBetReturnedEvent'
           STREET_DEALT: '#/components/schemas/StreetDealtEvent'
           CARDS_REVEALED: '#/components/schemas/CardsRevealedEvent'
@@ -537,10 +539,14 @@ components:
           format: int64
         timeout:
           type: boolean
+        timeBankMs:
+          type: integer
+          format: int64
+          description: The actor's time bank left after this action.
     TurnStartedEvent:
       type: object
       additionalProperties: false
-      required: [kind, seat, street, currentBet, minRaise, pot, deadline, timeoutMs]
+      required: [kind, seat, street, currentBet, minRaise, pot, deadline, timeoutMs, timeBankMs]
       properties:
         kind:
           type: string
@@ -565,11 +571,33 @@ components:
         timeoutMs:
           type: integer
           format: int64
+        timeBankMs:
+          type: integer
+          format: int64
+          description: The actor's time bank, used if the turn timer runs out.
         legalActions:
           type: array
           description: Private to the acting player.
           items:
             $ref: '#/components/schemas/LegalAction'
+    TimeBankStartedEvent:
+      type: object
+      additionalProperties: false
+      description: The actor's turn timer ran out and their time bank is running; deadline replaces the turn's.
+      required: [kind, seat, deadline, timeoutMs]
+      properties:
+        kind:
+          type: string
+          enum: [TIME_BANK_STARTED]
+        seat:
+          type: integer
+        deadline:
+          type: string
+          format: date-time
+        timeoutMs:
+          type: integer
+          format: int64
+          description: Length of the time bank now running (all that was left).
     UncalledBetReturnedEvent:
       type: object
       additionalProperties: false
@@ -694,7 +722,7 @@ components:
     HandPlayer:
       type: object
       additionalProperties: false
-      required: [seat, userId, stack]
+      required: [seat, userId, stack, timeBankMs]
       properties:
         seat:
           type: integer
@@ -704,6 +732,10 @@ components:
         stack:
           type: integer
           format: int64
+        timeBankMs:
+          type: integer
+          format: int64
+          description: Time bank after this hand's refill.
     WinnerShare:
       type: object
       additionalProperties: false
@@ -828,6 +860,8 @@ components:
           buyInMin,
           buyInMax,
           actionTimeoutMs,
+          timeBankMs,
+          timeBankRefillMs,
           status,
         ]
       properties:
@@ -855,6 +889,14 @@ components:
         actionTimeoutMs:
           type: integer
           format: int64
+        timeBankMs:
+          type: integer
+          format: int64
+          description: Each seat's time bank (also its cap); 0 when the table has none.
+        timeBankRefillMs:
+          type: integer
+          format: int64
+          description: Added back for every hand a player is dealt into, up to timeBankMs.
         status:
           type: string
           enum: [OPEN, CLOSED]
@@ -864,7 +906,19 @@ components:
       type: object
       additionalProperties: false
       required:
-        [seat, userId, username, stack, sittingOut, leaving, inHand, folded, allIn, streetBet]
+        [
+          seat,
+          userId,
+          username,
+          stack,
+          sittingOut,
+          leaving,
+          inHand,
+          folded,
+          allIn,
+          streetBet,
+          timeBankMs,
+        ]
       properties:
         seat:
           type: integer
@@ -889,6 +943,10 @@ components:
         streetBet:
           type: integer
           format: int64
+        timeBankMs:
+          type: integer
+          format: int64
+          description: Time bank left (while it runs, the value from before it started).
         shownCards:
           type: array
           description: Cards revealed at showdown (public).
@@ -911,6 +969,7 @@ components:
           bigBlindSeat,
           toActSeat,
           actionDeadline,
+          usingTimeBank,
           turnSeq,
           deckCommitment,
         ]
@@ -950,6 +1009,9 @@ components:
           type: string
           format: date-time
           nullable: true
+        usingTimeBank:
+          type: boolean
+          description: The actor's turn timer ran out and actionDeadline is the end of their time bank.
         turnSeq:
           type: integer
           format: int64

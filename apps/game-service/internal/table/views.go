@@ -9,16 +9,18 @@ import (
 
 // TableInfo is the static table configuration in snapshots.
 type TableInfo struct {
-	ClubID          string `json:"clubId"`
-	Name            string `json:"name"`
-	GameType        string `json:"gameType"`
-	MaxSeats        int    `json:"maxSeats"`
-	SmallBlind      int64  `json:"smallBlind"`
-	BigBlind        int64  `json:"bigBlind"`
-	BuyInMin        int64  `json:"buyInMin"`
-	BuyInMax        int64  `json:"buyInMax"`
-	ActionTimeoutMs int64  `json:"actionTimeoutMs"`
-	Status          string `json:"status"`
+	ClubID           string `json:"clubId"`
+	Name             string `json:"name"`
+	GameType         string `json:"gameType"`
+	MaxSeats         int    `json:"maxSeats"`
+	SmallBlind       int64  `json:"smallBlind"`
+	BigBlind         int64  `json:"bigBlind"`
+	BuyInMin         int64  `json:"buyInMin"`
+	BuyInMax         int64  `json:"buyInMax"`
+	ActionTimeoutMs  int64  `json:"actionTimeoutMs"`
+	TimeBankMs       int64  `json:"timeBankMs"`
+	TimeBankRefillMs int64  `json:"timeBankRefillMs"`
+	Status           string `json:"status"`
 	// Tournament is set at tournament tables; the blinds above are then the
 	// current level's.
 	Tournament *tournamentInfo `json:"tournament,omitempty"`
@@ -36,6 +38,7 @@ type SeatView struct {
 	Folded     bool         `json:"folded"`
 	AllIn      bool         `json:"allIn"`
 	StreetBet  int64        `json:"streetBet"`
+	TimeBankMs int64        `json:"timeBankMs"`
 	ShownCards []poker.Card `json:"shownCards,omitempty"`
 }
 
@@ -53,6 +56,7 @@ type HandView struct {
 	BigBlindSeat   int          `json:"bigBlindSeat"`
 	ToActSeat      int          `json:"toActSeat"`
 	ActionDeadline *time.Time   `json:"actionDeadline"`
+	UsingTimeBank  bool         `json:"usingTimeBank"`
 	TurnSeq        int64        `json:"turnSeq"`
 	DeckCommitment string       `json:"deckCommitment"`
 }
@@ -91,6 +95,7 @@ func (a *Actor) snapshot(viewer string) Snapshot {
 			ClubID: a.cfg.ClubID, Name: a.cfg.Name, GameType: string(a.table.Config().Game), MaxSeats: a.cfg.MaxSeats, SmallBlind: a.cfg.SmallBlind,
 			BigBlind: a.cfg.BigBlind, BuyInMin: a.cfg.BuyInMin, BuyInMax: a.cfg.BuyInMax,
 			ActionTimeoutMs: a.cfg.ActionTimeout.Milliseconds(), Status: a.cfg.Status,
+			TimeBankMs: a.cfg.TimeBank.Milliseconds(), TimeBankRefillMs: a.cfg.TimeBankRefill.Milliseconds(),
 		},
 		Seats: []SeatView{},
 	}
@@ -110,7 +115,7 @@ func (a *Actor) snapshot(viewer string) Snapshot {
 	for _, st := range a.table.Seats() {
 		user := string(st.Player)
 		v := SeatView{Seat: st.Seat, UserID: user, Username: a.usernames[user], Stack: st.Stack,
-			SittingOut: st.SittingOut, Leaving: a.leaving[user]}
+			SittingOut: st.SittingOut, Leaving: a.leaving[user], TimeBankMs: a.banks.get(user).Milliseconds()}
 		if p, ok := inHand[st.Seat]; ok && p.Player == st.Player {
 			v.InHand, v.Folded, v.AllIn, v.StreetBet = true, p.Folded, p.AllIn, p.StreetBet
 			if revealed && !p.Folded {
@@ -133,6 +138,7 @@ func (a *Actor) snapshot(viewer string) Snapshot {
 			hv.ToActSeat = seat
 			d := a.deadline.UTC()
 			hv.ActionDeadline = &d
+			hv.UsingTimeBank = a.inTimeBank()
 		}
 		s.Hand = hv
 	}

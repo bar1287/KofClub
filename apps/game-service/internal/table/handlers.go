@@ -115,6 +115,7 @@ func (a *Actor) handleSit(req SitRequest, username string) (SitResult, error) {
 		return SitResult{}, err
 	}
 	a.usernames[req.UserID] = username
+	a.banks.seat(req.UserID)
 	a.sitRequests[req.RequestID] = seatNo
 	delete(a.leaving, req.UserID)
 	a.timeouts[req.UserID] = 0
@@ -350,6 +351,32 @@ func (a *Actor) applyAction(action poker.Action, req *CommandRequest) (CommandRe
 
 	var extra []draft
 	var works []func(ctx context.Context, tx pgx.Tx) error
+
+	// The actor keeps what is left of a running time bank; a timeout during
+	// it uses it all up.
+	actorSeat, _ := a.table.SeatState(action.Seat)
+	actorUser := string(actorSeat.Player)
+	var bankLeft *time.Duration
+	if a.inTimeBank() {
+		left := time.Duration(0)
+		if !timeout {
+			left = a.banks.afterSpending(actorUser, time.Since(a.bankStart))
+		}
+		bankLeft = &left
+		works = append(works, func(ctx context.Context, tx pgx.Tx) error {
+			return store.UpdateSeatTimeBanks(ctx, tx, a.cfg.ID, map[string]time.Duration{actorUser: left})
+		})
+	}
+	remaining := a.banks.get(actorUser).Milliseconds()
+	if bankLeft != nil {
+		remaining = bankLeft.Milliseconds()
+	}
+	for i := range drafts {
+		if p, ok := drafts[i].public.(playerActedPayload); ok && p.Seat == action.Seat {
+			p.TimeBankMs = &remaining
+			drafts[i].public = p
+		}
+	}
 	if req == nil {
 		// Automatic sit-out after repeated timeouts (also when the timeout
 		// action itself ends the hand).
@@ -401,6 +428,9 @@ func (a *Actor) applyAction(action poker.Action, req *CommandRequest) (CommandRe
 	if err != nil {
 		return CommandResult{}, err
 	}
+	if bankLeft != nil {
+		a.banks.set(map[string]time.Duration{actorUser: *bankLeft})
+	}
 	source := "player"
 	if timeout {
 		source = "server"
@@ -431,6 +461,12 @@ func (a *Actor) onTurnTimeout(token int64) {
 	s, _ := a.table.SeatState(action.Seat)
 	user := string(s.Player)
 	leaving := a.leaving[user]
+	// The turn timer ran out: a player with time in the bank gets it first
+	// (not players leaving or absent from a tournament, who act at once).
+	if a.bankToken != token && !leaving && !(a.tour != nil && s.SittingOut) && a.banks.get(user) > 0 {
+		a.startTimeBank(token, action.Seat, user)
+		return
+	}
 	if _, err := a.applyAction(action, nil); err != nil {
 		a.log.Warn("timeout_action_failed", slog.String("error", err.Error()))
 		// Retry later with the same deadline token while storage recovers.

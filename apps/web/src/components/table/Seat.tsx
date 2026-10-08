@@ -79,7 +79,11 @@ export function SeatView({ seat, hand, isMe, myCards, holeCards, position }: Pro
         </div>
         {seat.shownDescription && <div className="small muted">{seat.shownDescription}</div>}
         {acting && hand?.deadlineAt && (
-          <TurnTimer deadlineAt={hand.deadlineAt} totalMs={hand.turnTimeoutMs} />
+          <TurnTimer
+            deadlineAt={hand.deadlineAt}
+            totalMs={hand.turnTimeoutMs}
+            bank={hand.usingTimeBank}
+          />
         )}
       </div>
       {seat.streetBet > 0 && handLive && (

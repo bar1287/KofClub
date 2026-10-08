@@ -60,9 +60,10 @@ type sittingOutPayload struct {
 }
 
 type handPlayer struct {
-	Seat   int    `json:"seat"`
-	UserID string `json:"userId"`
-	Stack  int64  `json:"stack"`
+	Seat       int    `json:"seat"`
+	UserID     string `json:"userId"`
+	Stack      int64  `json:"stack"`
+	TimeBankMs int64  `json:"timeBankMs"` // after this hand's refill
 }
 
 type handStartedPayload struct {
@@ -107,6 +108,8 @@ type playerActedPayload struct {
 	AllIn     bool   `json:"allIn"`
 	Pot       int64  `json:"pot"`
 	Timeout   bool   `json:"timeout"`
+	// TimeBankMs is the actor's time bank left after the action.
+	TimeBankMs *int64 `json:"timeBankMs,omitempty"`
 }
 
 type turnStartedPayload struct {
@@ -118,7 +121,17 @@ type turnStartedPayload struct {
 	Pot          int64               `json:"pot"`
 	Deadline     time.Time           `json:"deadline"`
 	TimeoutMs    int64               `json:"timeoutMs"`
+	TimeBankMs   int64               `json:"timeBankMs"`             // used if the turn timer runs out
 	LegalActions []poker.LegalAction `json:"legalActions,omitempty"` // private: only for the actor
+}
+
+// timeBankStartedPayload: the actor's turn timer ran out and their time
+// bank is running until Deadline.
+type timeBankStartedPayload struct {
+	Kind      string    `json:"kind"`
+	Seat      int       `json:"seat"`
+	Deadline  time.Time `json:"deadline"`
+	TimeoutMs int64     `json:"timeoutMs"`
 }
 
 type uncalledPayload struct {
@@ -181,20 +194,21 @@ type handVoidedPayload struct {
 
 // Event kinds.
 const (
-	KindPlayerSeated  = "PLAYER_SEATED"
-	KindPlayerLeft    = "PLAYER_LEFT"
-	KindSittingOut    = "PLAYER_SITTING_OUT"
-	KindHandStarted   = "HAND_STARTED"
-	KindBlindPosted   = "BLIND_POSTED"
-	KindHoleCards     = "HOLE_CARDS_DEALT"
-	KindPlayerActed   = "PLAYER_ACTED"
-	KindTurnStarted   = "TURN_STARTED"
-	KindUncalled      = "UNCALLED_BET_RETURNED"
-	KindStreetDealt   = "STREET_DEALT"
-	KindCardsRevealed = "CARDS_REVEALED"
-	KindPotAwarded    = "POT_AWARDED"
-	KindHandCompleted = "HAND_COMPLETED"
-	KindHandVoided    = "HAND_VOIDED"
+	KindPlayerSeated    = "PLAYER_SEATED"
+	KindPlayerLeft      = "PLAYER_LEFT"
+	KindSittingOut      = "PLAYER_SITTING_OUT"
+	KindHandStarted     = "HAND_STARTED"
+	KindBlindPosted     = "BLIND_POSTED"
+	KindHoleCards       = "HOLE_CARDS_DEALT"
+	KindPlayerActed     = "PLAYER_ACTED"
+	KindTurnStarted     = "TURN_STARTED"
+	KindTimeBankStarted = "TIME_BANK_STARTED"
+	KindUncalled        = "UNCALLED_BET_RETURNED"
+	KindStreetDealt     = "STREET_DEALT"
+	KindCardsRevealed   = "CARDS_REVEALED"
+	KindPotAwarded      = "POT_AWARDED"
+	KindHandCompleted   = "HAND_COMPLETED"
+	KindHandVoided      = "HAND_VOIDED"
 )
 
 // draft is an event before it receives a sequence number.

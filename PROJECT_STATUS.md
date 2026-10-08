@@ -16,7 +16,7 @@ tracing, failover/load/restore drills and a security review.
 **Now: the W roadmap ([docs/roadmap.md](docs/roadmap.md))**, the plan from a
 working platform to a world-class one (table essentials, game variety,
 tournament depth, social, trust and safety, experience, production scale).
-Current milestone: **W1.2 Time bank** (W1.1 pre-actions is done).
+Current milestone: **W1.3 Re-buy and top-up** (W1.1 pre-actions and W1.2 time bank are done).
 
 ## Milestones (spec §16)
 
@@ -127,7 +127,7 @@ Canonical contract: `packages/contracts/openapi/control-api.yaml`
 ## Next tasks
 
 Follow [docs/roadmap.md](docs/roadmap.md) in its order of work, one milestone
-at a time: W1.2 time bank, W1.3 re-buy and top-up, W1.4
+at a time: W1.3 re-buy and top-up, W1.4
 table chat and reactions, W1.5 showdown choices, W1.6 sounds, animations and
 themes; then W2.1–W2.3 (antes, straddle and bomb pots, run it twice) and W7.1
 (single origin). Earlier suggestions (tournament structures, late

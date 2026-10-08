@@ -5,6 +5,21 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added — Time bank (roadmap W1.2)
+
+- Each seat has a time bank that starts only when the turn timer runs out.
+  Acting keeps what is left; letting it run out uses all of it and applies
+  the default action. Every hand a player is dealt into adds a refill, up to
+  the table's bank. Tables set both (`timeBankSec`, default 30, 0 turns it
+  off; `timeBankRefillSec`, default 2). The table form has a "Time bank (s)"
+  field.
+- Realtime: `TIME_BANK_STARTED` event; the remaining bank is on
+  `TURN_STARTED`, `PLAYER_ACTED`, `HAND_STARTED` players and snapshot seats,
+  and `hand.usingTimeBank` marks a running bank. The client's timer turns
+  blue and shows the bank's seconds.
+- Migration 000013 adds the table settings and each seat's remaining bank;
+  metric `game_time_banks_started_total`.
+
 ### Added — Pre-actions (roadmap W1.1)
 
 - While others act, a player in the hand can queue Check/Fold, Check or Call

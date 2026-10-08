@@ -85,9 +85,31 @@ func (a *Actor) startHand() {
 		})
 	}
 
+	// Every player dealt in gets the table's time bank refill.
+	dealt := make([]string, 0, len(hand.Players()))
+	for _, p := range hand.Players() {
+		dealt = append(dealt, string(p.Player))
+	}
+	banks := a.banks.refilled(dealt)
+
 	prevHandID, prevCommitment := a.handID, a.commitment
 	a.handID, a.commitment = handID, commitHex
 	drafts := translate(handID, commitHex, evs, false)
+	for i := range drafts {
+		if p, ok := drafts[i].public.(handStartedPayload); ok {
+			for j := range p.Players {
+				p.Players[j].TimeBankMs = banks[p.Players[j].UserID].Milliseconds()
+			}
+			drafts[i].public = p
+		}
+	}
+	// Applied now so that TURN_STARTED (below) reports the refilled bank;
+	// restored if the hand does not commit.
+	prevBanks := make(map[string]time.Duration, len(dealt))
+	for _, u := range dealt {
+		prevBanks[u] = a.banks.get(u)
+	}
+	a.banks.set(banks)
 	if a.tour != nil {
 		info := a.tour.info(time.Now())
 		for i := range drafts {
@@ -113,6 +135,9 @@ func (a *Actor) startHand() {
 		if err := store.InsertHand(ctx, tx, newHand); err != nil {
 			return nil, err
 		}
+		if err := store.UpdateSeatTimeBanks(ctx, tx, a.cfg.ID, banks); err != nil {
+			return nil, err
+		}
 		if endBuild == nil {
 			return drafts, nil
 		}
@@ -124,6 +149,7 @@ func (a *Actor) startHand() {
 	})
 	if err != nil {
 		a.handID, a.commitment = prevHandID, prevCommitment
+		a.banks.set(prevBanks)
 		a.log.Warn("start_hand_persist_failed", slog.String("error", err.Error()))
 		return
 	}
@@ -335,6 +361,7 @@ func (a *Actor) recover(ctx context.Context) error {
 	for i, s := range seats {
 		states[i] = poker.SeatState{Seat: s.SeatNo, Player: poker.PlayerID(s.UserID), Stack: s.Stack, SittingOut: s.SittingOut}
 		a.usernames[s.UserID] = s.Username
+		a.banks.load(s.UserID, s.TimeBank)
 	}
 	table, err := poker.RestoreTable(poker.TableConfig{Game: poker.GameType(a.cfg.GameType), MaxSeats: a.cfg.MaxSeats,
 		SmallBlind: a.cfg.SmallBlind, BigBlind: a.cfg.BigBlind, DealSittingOut: a.tour != nil},

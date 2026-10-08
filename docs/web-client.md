@@ -52,7 +52,9 @@ control API enforces every permission.
 - Opponents' cards are drawn face down until the server reveals them at
   showdown; the client never receives them earlier (ADR-008).
 - The turn timer uses `deadline - serverTime` relative to the receipt time,
-  immune to client clock skew. The server enforces the timeout.
+  immune to client clock skew. The server enforces the timeout. When the
+  server starts the actor's time bank (`TIME_BANK_STARTED`), the timer turns
+  blue and counts the bank's seconds.
 - Leaving mid-hand returns `LEAVING_AFTER_HAND`; the stack is cashed out to
   the club wallet when the hand ends.
 - The hand's deck commitment (SHA-256) is shown for audit.
