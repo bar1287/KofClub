@@ -3,6 +3,14 @@
 import { useEffect, useState } from 'react';
 import { chips } from '@/lib/format';
 import { actionOptions, aggressiveCommand, isMyTurn, sizingPresets } from '@/lib/table/actions';
+import {
+  availablePreActions,
+  preActionContext,
+  preActionLabel,
+  preActionStillValid,
+  resolvePreAction,
+  type PreAction,
+} from '@/lib/table/preactions';
 import type { TableState } from '@/lib/table/state';
 import type { CommandPayload } from '@/lib/types';
 
@@ -16,7 +24,9 @@ interface Props {
 
 /**
  * Fold / check / call / bet / raise controls built from the server's legal
- * actions. Sizes are "to" amounts (total street commitment).
+ * actions. Sizes are "to" amounts (total street commitment). While others
+ * act, the viewer can queue a pre-action; it is sent as an ordinary command
+ * when their turn starts (or dropped if it no longer fits).
  */
 export function ActionBar({ state, enabled, busy, send }: Props) {
   const myTurn = isMyTurn(state);
@@ -24,6 +34,21 @@ export function ActionBar({ state, enabled, busy, send }: Props) {
   const presets = sizingPresets(state);
   const agg = opts.aggressive;
   const [size, setSize] = useState<number>(agg?.minTo ?? 0);
+  const [pre, setPre] = useState<PreAction | null>(null);
+  const preCtx = preActionContext(state);
+
+  // On the viewer's turn a queued pre-action is played (once); while waiting
+  // it is dropped as soon as it stops applying (new street, a bet, ...).
+  useEffect(() => {
+    if (!pre) return;
+    if (myTurn) {
+      const command = resolvePreAction(pre, state);
+      setPre(null);
+      if (command && enabled) void send(command);
+    } else if (!preActionStillValid(pre, preCtx)) {
+      setPre(null);
+    }
+  }, [pre, myTurn, state, preCtx, enabled, send]);
 
   // Reset the sizing whenever a new turn starts.
   const turnSeq = state.hand?.turnSeq;
@@ -40,6 +65,24 @@ export function ActionBar({ state, enabled, busy, send }: Props) {
             ? `Waiting for ${actor.username}…`
             : 'Waiting for the next hand…'}
         </span>
+        {preCtx && (
+          <div className="pre-actions" role="group" aria-label="Act in advance">
+            {availablePreActions(preCtx).map((kind) => {
+              const on = pre?.kind === kind;
+              return (
+                <label key={kind} className={`pre-action${on ? ' selected' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={on}
+                    data-testid={`pre-action-${kind}`}
+                    onChange={() => setPre(on ? null : { ...preCtx, kind })}
+                  />
+                  {preActionLabel(kind, preCtx.toCall, chips)}
+                </label>
+              );
+            })}
+          </div>
+        )}
       </div>
     );
   }

@@ -5,6 +5,16 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added — Pre-actions (roadmap W1.1)
+
+- While others act, a player in the hand can queue Check/Fold, Check or Call
+  any (nothing to call), or Fold, Call _amount_ or Call any (facing a bet).
+  The choice is sent as an ordinary command when the turn starts, so the
+  server still validates it, or dropped if it no longer fits: every
+  pre-action ends with its street, Check when a bet is made and Call when
+  the amount changes.
+- docs/roadmap.md: the plan beyond M10 (W1–W7).
+
 ### Fixed — Seat not shown after buying in at a new table
 
 - The realtime gateway sent a table's first snapshot before its event stream

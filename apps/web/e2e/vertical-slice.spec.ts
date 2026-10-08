@@ -93,6 +93,23 @@ test('two players play a complete hand of Hold’em', async ({ browser }) => {
     return true;
   };
 
+  // --- pre-actions: the big blind queues "Check" while the button acts ------
+  // Heads-up, the button (small blind) acts first preflop.
+  const callButton = (p: Player) => p.page.getByRole('button', { name: /^Call \d/ });
+  await expect
+    .poll(async () => (await callButton(alice).isVisible()) || (await callButton(bob).isVisible()))
+    .toBe(true);
+  const [first, waiting] = (await callButton(alice).isVisible()) ? [alice, bob] : [bob, alice];
+  await expect(waiting.page.getByTestId('pre-action-CALL_ANY')).toBeVisible();
+  await waiting.page.getByTestId('pre-action-CHECK').check();
+  await expect(waiting.page.getByTestId('pre-action-CHECK')).toBeChecked();
+  await callButton(first).click();
+  // The queued check is played without a click: the flop comes.
+  for (const p of [alice, bob]) {
+    await expect(p.page.getByTestId('action-log')).toContainText(`${waiting.username} checks`);
+    await expect(p.page.getByTestId('board').locator('[data-card]')).toHaveCount(3);
+  }
+
   const actions = await playPassively([alice, bob], handDone(1), async (_actor, count) => {
     if (count !== 1) return;
     // Reconnect mid-hand: a reload restores the same private state.

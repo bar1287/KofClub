@@ -43,6 +43,12 @@ control API enforces every permission.
   command carries `expectedSeq` (the last applied seq); a
   `STALE_GAME_STATE`/`NOT_YOUR_TURN` rejection triggers a resync.
 - Bet/raise amounts are "to" amounts. Choosing the maximum sends `ALL_IN`.
+- Pre-actions (`src/lib/table/preactions.ts`): while others act, a player in
+  the hand can tick Check/Fold, Check or Call any (nothing to call), or Fold,
+  Call _amount_ or Call any (facing a bet). Nothing is sent early. When the
+  turn starts, the choice becomes an ordinary command, validated by the
+  server, or is dropped if it no longer fits. Every pre-action ends with its
+  street; Check ends when a bet is made and Call when the amount changes.
 - Opponents' cards are drawn face down until the server reveals them at
   showdown; the client never receives them earlier (ADR-008).
 - The turn timer uses `deadline - serverTime` relative to the receipt time,
