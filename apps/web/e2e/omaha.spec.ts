@@ -43,6 +43,21 @@ test('two players play a hand of Pot-Limit Omaha', async ({ browser }) => {
   // The wallet answers only after the amount is typed (a late default once
   // replaced it).
   await sitDown(alice.page, 1, BUY_IN, { slowWallet: true });
+
+  // --- adding chips: alone at the table, they are added at once ----------------
+  const TOP_UP = 500;
+  await alice.page.getByTestId('add-chips').click();
+  const topUp = alice.page.getByRole('dialog');
+  await expect(topUp).toContainText(/Wallet: [\d,]+/);
+  await topUp.getByLabel('Chips to add').fill(String(TOP_UP));
+  await topUp.getByRole('button', { name: 'Add chips' }).click();
+  await expect(alice.page.getByTestId('seat-1').getByTestId('seat-stack')).toHaveText(
+    (BUY_IN + TOP_UP).toLocaleString('en-US'),
+  );
+  await expect(alice.page.getByTestId('action-log')).toContainText(
+    `${alice.username} adds ${TOP_UP} chips.`,
+  );
+
   await bob.page.goto(tableUrl);
   await sitDown(bob.page, 2, BUY_IN);
 
@@ -89,8 +104,8 @@ test('two players play a hand of Pot-Limit Omaha', async ({ browser }) => {
     return true;
   };
   await playPassively([alice, bob], handDone);
-  await expect.poll(() => chipsOnTable(alice.page)).toBe(2 * BUY_IN);
-  await expect.poll(() => chipsOnTable(bob.page)).toBe(2 * BUY_IN);
+  await expect.poll(() => chipsOnTable(alice.page)).toBe(2 * BUY_IN + TOP_UP);
+  await expect.poll(() => chipsOnTable(bob.page)).toBe(2 * BUY_IN + TOP_UP);
 
   // --- history: the game and all four of alice's cards ---------------------------
   const history = await aliceCtx.newPage();

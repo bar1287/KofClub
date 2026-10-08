@@ -56,7 +56,18 @@ type sittingOutPayload struct {
 	Seat       int    `json:"seat"`
 	UserID     string `json:"userId"`
 	SittingOut bool   `json:"sittingOut"`
-	Reason     string `json:"reason,omitempty"` // TIMEOUTS | REQUEST | LEAVING
+	Reason     string `json:"reason,omitempty"` // TIMEOUTS | REQUEST | LEAVING | BUSTED | TOP_UP
+	// Until is set with BUSTED: the seat is released then unless the player re-buys.
+	Until *time.Time `json:"until,omitempty"`
+}
+
+// playerToppedUpPayload: chips added from the club wallet to a stack.
+type playerToppedUpPayload struct {
+	Kind   string `json:"kind"`
+	Seat   int    `json:"seat"`
+	UserID string `json:"userId"`
+	Amount int64  `json:"amount"`
+	Stack  int64  `json:"stack"`
 }
 
 type handPlayer struct {
@@ -197,6 +208,7 @@ const (
 	KindPlayerSeated    = "PLAYER_SEATED"
 	KindPlayerLeft      = "PLAYER_LEFT"
 	KindSittingOut      = "PLAYER_SITTING_OUT"
+	KindPlayerToppedUp  = "PLAYER_TOPPED_UP"
 	KindHandStarted     = "HAND_STARTED"
 	KindBlindPosted     = "BLIND_POSTED"
 	KindHoleCards       = "HOLE_CARDS_DEALT"

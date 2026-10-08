@@ -5,6 +5,26 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added — Re-buy and top-up (roadmap W1.3)
+
+- Seated cash-table players add chips from the club wallet ("Add chips").
+  Between hands the chips are added at once; during a hand they wait for it
+  to end and no chips move before then. The stack may not exceed the
+  table's maximum buy-in (checked again when the hand ends: only what still
+  fits is added), and a re-buy from an empty stack must reach the minimum.
+  Retries with the same Idempotency-Key apply once.
+- A player who runs out of chips keeps the seat, sitting out, for 60
+  seconds to re-buy (the table shows a countdown and a Re-buy button);
+  then the seat is released. Busted seats survive a game-service restart.
+- Automatic top-up: after every hand the stack is topped back up to a
+  chosen target (skipped when the wallet is short).
+- "Sit out" reads "Sit out next hand" during a hand.
+- API: `POST /v1/tables/{id}/top-up`, `PUT /v1/tables/{id}/auto-top-up`;
+  realtime: `PLAYER_TOPPED_UP`, `PLAYER_SITTING_OUT` reasons BUSTED (with
+  `until`) and TOP_UP, snapshot `bustedUntil`, `you.pendingTopUp`,
+  `you.autoTopUpTo`. Migration 000014; metric `game_top_ups_total`.
+- "Wait for the big blind" moved to W2.2 with missed-blind rules.
+
 ### Fixed — Realtime feed swept while a subscriber joined
 
 - The gateway's idle sweep could stop a table's event stream just as a new

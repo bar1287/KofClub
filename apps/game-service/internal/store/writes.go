@@ -95,6 +95,13 @@ func UpdateSeatStacks(ctx context.Context, tx pgx.Tx, tableID string, stacks map
 	return tx.SendBatch(ctx, batch).Close()
 }
 
+// SetAutoTopUp stores a seat's automatic top-up target (0 = off).
+func SetAutoTopUp(ctx context.Context, tx pgx.Tx, tableID, userID string, to int64) error {
+	_, err := tx.Exec(ctx, `UPDATE table_seats SET auto_top_up_to = $3, updated_at = now() WHERE table_id = $1 AND user_id = $2`,
+		tableID, userID, to)
+	return err
+}
+
 // UpdateSeatTimeBanks stores the remaining time bank of the given users.
 func UpdateSeatTimeBanks(ctx context.Context, tx pgx.Tx, tableID string, banks map[string]time.Duration) error {
 	batch := &pgx.Batch{}

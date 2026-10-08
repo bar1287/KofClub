@@ -42,6 +42,9 @@ type Timing struct {
 	// TournamentPoll is how often a tournament table checks for arriving
 	// players, balancing and the tournament's end (default 1s).
 	TournamentPoll time.Duration
+	// BustGrace is how long a player without chips keeps the seat to re-buy
+	// (default DefaultBustGrace).
+	BustGrace time.Duration
 }
 
 // DefaultTiming is used in production.
@@ -91,12 +94,20 @@ type Actor struct {
 	// bankStart); any other value means the turn timer is still running.
 	bankToken int64
 	bankStart time.Time
-	handTimer *time.Timer
-	recent    *eventRing
-	processed *commandCache
-	subs      map[int64]*Subscription
-	nextSubID int64
-	draining  bool
+	// Re-buy and top-up (topup.go): chips asked for during a hand, seats of
+	// busted players and when they are released, automatic top-up targets,
+	// and results of top-up requests (idempotent retries).
+	pendingTopUps map[string][]topUpPart
+	busted        map[string]time.Time
+	bustTimer     *time.Timer
+	autoTopUp     map[string]int64
+	topUpRequests map[string]TopUpResult
+	handTimer     *time.Timer
+	recent        *eventRing
+	processed     *commandCache
+	subs          map[int64]*Subscription
+	nextSubID     int64
+	draining      bool
 	// closeAnnounced is set once TABLE_CLOSED was published by this actor.
 	closeAnnounced bool
 	// traceCtx is the trace context of the request being processed (nil for
@@ -114,21 +125,25 @@ func Start(ctx context.Context, deps Deps, tableID string, epoch int64) (*Actor,
 		return nil, err
 	}
 	a := &Actor{
-		deps:        deps,
-		cfg:         cfg,
-		fence:       store.Fence{TableID: tableID, NodeID: deps.Store.NodeID, Epoch: epoch},
-		log:         deps.Log.With(slog.String("table_id", tableID), slog.Int64("lease_epoch", epoch)),
-		inbox:       make(chan func(), 256),
-		done:        make(chan struct{}),
-		stopCh:      make(chan struct{}),
-		usernames:   map[string]string{},
-		leaving:     map[string]bool{},
-		timeouts:    map[string]int{},
-		sitRequests: map[string]int{},
-		banks:       newTimeBanks(cfg.TimeBank, cfg.TimeBankRefill),
-		recent:      newEventRing(1000),
-		processed:   newCommandCache(4096),
-		subs:        map[int64]*Subscription{},
+		deps:          deps,
+		cfg:           cfg,
+		fence:         store.Fence{TableID: tableID, NodeID: deps.Store.NodeID, Epoch: epoch},
+		log:           deps.Log.With(slog.String("table_id", tableID), slog.Int64("lease_epoch", epoch)),
+		inbox:         make(chan func(), 256),
+		done:          make(chan struct{}),
+		stopCh:        make(chan struct{}),
+		usernames:     map[string]string{},
+		leaving:       map[string]bool{},
+		timeouts:      map[string]int{},
+		sitRequests:   map[string]int{},
+		banks:         newTimeBanks(cfg.TimeBank, cfg.TimeBankRefill),
+		pendingTopUps: map[string][]topUpPart{},
+		busted:        map[string]time.Time{},
+		autoTopUp:     map[string]int64{},
+		topUpRequests: map[string]TopUpResult{},
+		recent:        newEventRing(1000),
+		processed:     newCommandCache(4096),
+		subs:          map[int64]*Subscription{},
 	}
 	if deps.Timing.ActionTimeout > 0 {
 		a.cfg.ActionTimeout = deps.Timing.ActionTimeout
@@ -143,6 +158,7 @@ func Start(ctx context.Context, deps Deps, tableID string, epoch int64) (*Actor,
 	}
 	deps.Metrics.ActiveTables.Inc()
 	go a.run()
+	a.post(a.armBustTimer) // busted players restored by recover
 	if a.tour != nil {
 		go a.tourLoop()
 	}

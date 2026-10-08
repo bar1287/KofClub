@@ -44,9 +44,12 @@ export function describeEvent(
           return `${name(ev.seat)} leaves the table (${ev.cashOut} back to wallet).`;
       }
     case 'PLAYER_SITTING_OUT': {
+      if (ev.reason === 'BUSTED') return `${name(ev.seat)} is out of chips.`;
       const why = ev.reason === 'TIMEOUTS' ? ' (timed out)' : '';
       return ev.sittingOut ? `${name(ev.seat)} sits out${why}.` : `${name(ev.seat)} is back.`;
     }
+    case 'PLAYER_TOPPED_UP':
+      return `${name(ev.seat)} adds ${ev.amount} chips.`;
     case 'HAND_STARTED':
       return ev.tournament
         ? `Hand #${ev.handNo} begins (level ${ev.tournament.level}, blinds ${ev.tournament.smallBlind}/${ev.tournament.bigBlind}).`

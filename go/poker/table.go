@@ -68,6 +68,14 @@ func RestoreTable(cfg TableConfig, seats []SeatState, lastButton int, lastHandNo
 		return nil, err
 	}
 	for _, s := range seats {
+		if s.Stack == 0 {
+			// A busted player keeping the seat to re-buy (never dealt in).
+			if err := t.checkSeat(s.Seat, s.Player); err != nil {
+				return nil, err
+			}
+			t.seats[s.Seat] = &SeatState{Seat: s.Seat, Player: s.Player, SittingOut: s.SittingOut}
+			continue
+		}
 		if err := t.SitDown(s.Seat, s.Player, s.Stack); err != nil {
 			return nil, err
 		}
@@ -126,20 +134,29 @@ func (t *Table) FreeSeats() []int {
 // SitDown seats a player. Players may sit down during a hand; they are
 // dealt into the next one.
 func (t *Table) SitDown(seat int, player PlayerID, stack int64) error {
+	if stack <= 0 {
+		return errorf(CodeInvalidConfig, "stack must be positive")
+	}
+	if err := t.checkSeat(seat, player); err != nil {
+		return err
+	}
+	t.seats[seat] = &SeatState{Seat: seat, Player: player, Stack: stack}
+	return nil
+}
+
+// checkSeat validates that player can take seat.
+func (t *Table) checkSeat(seat int, player PlayerID) error {
 	switch {
 	case seat < 1 || seat > t.cfg.MaxSeats:
 		return errorf(CodeInvalidConfig, "seat %d does not exist", seat)
 	case player == "":
 		return errorf(CodeInvalidConfig, "player required")
-	case stack <= 0:
-		return errorf(CodeInvalidConfig, "stack must be positive")
 	case t.SeatOf(player) != 0:
 		return errorf(CodeAlreadySeated, "player already seated")
 	}
 	if _, taken := t.seats[seat]; taken {
 		return errorf(CodeSeatTaken, "seat %d is taken", seat)
 	}
-	t.seats[seat] = &SeatState{Seat: seat, Player: player, Stack: stack}
 	return nil
 }
 

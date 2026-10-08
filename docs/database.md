@@ -48,6 +48,7 @@ ephemeral data.
 | 000011_seal_key_ids           | `hands.seal_key_id`: keyring key that sealed the deck and hole cards (existing hands: 1); deck-key rotation                                                   |
 | 000012_mfa                    | `user_mfa` (encrypted TOTP secret, last used step), `user_mfa_recovery_codes` (hashes), `sessions.mfa_at` (ADR-017)                                           |
 | 000013_time_bank              | `tables.time_bank_ms`, `tables.time_bank_refill_ms` (W1.2 time bank settings), `table_seats.time_bank_ms` (each seat's remaining bank)                        |
+| 000014_auto_top_up            | `table_seats.auto_top_up_to` (W1.3: stack to top back up to after every hand; 0 = off)                                                                        |
 
 (The table is extended by each milestone; see the migration files for
 authoritative definitions.)

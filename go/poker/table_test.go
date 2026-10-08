@@ -149,6 +149,32 @@ func TestRestoreTable(t *testing.T) {
 	}
 }
 
+// A busted player keeps the seat with no chips (to re-buy): it restores,
+// is never dealt in, and re-enters play once chips are added.
+func TestRestoreTableKeepsBustedSeats(t *testing.T) {
+	table, err := RestoreTable(TableConfig{MaxSeats: 6, SmallBlind: 5, BigBlind: 10},
+		[]SeatState{{Seat: 1, Player: "a", Stack: 300}, {Seat: 2, Player: "b", Stack: 0, SittingOut: true}}, 0, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s, ok := table.SeatState(2); !ok || s.Stack != 0 || s.Player != "b" {
+		t.Fatalf("busted seat: %+v %v", s, ok)
+	}
+	if table.CanStartHand() {
+		t.Fatal("a seat without chips must not be dealt in")
+	}
+	if err := table.AddChips(2, 200); err != nil {
+		t.Fatal(err)
+	}
+	_ = table.SetSittingOut(2, false)
+	if !table.CanStartHand() {
+		t.Fatal("re-bought seat should play")
+	}
+	if _, err := RestoreTable(table.Config(), []SeatState{{Seat: 1, Player: "a", Stack: 0}, {Seat: 1, Player: "b", Stack: 0}}, 0, 0); err == nil {
+		t.Fatal("two players in one seat must be rejected")
+	}
+}
+
 func TestCloneIsIndependent(t *testing.T) {
 	table := newTestTable(t)
 	_ = table.SitDown(1, "a", 1000)

@@ -29,7 +29,14 @@ function snapshot(overrides: Partial<TableSnapshot> = {}): TableSnapshot {
       status: 'OPEN',
     },
     seats: [seat(1, ALICE, 'alice', 1000), seat(2, BOB, 'bob', 1000)],
-    you: { userId: ALICE, seat: 1, holeCards: [], legalActions: [] },
+    you: {
+      userId: ALICE,
+      seat: 1,
+      holeCards: [],
+      legalActions: [],
+      pendingTopUp: 0,
+      autoTopUpTo: 0,
+    },
     ...overrides,
   };
 }
@@ -422,9 +429,53 @@ describe('tableReducer', () => {
     expect(s.stale).toBe(true);
   });
 
+  it("follows busted seats, re-buys, top-ups and the viewer's pending chips", () => {
+    let s = ready(snapshot({ phase: 'HAND_IN_PROGRESS' }));
+    s = play(s, [
+      {
+        kind: 'PLAYER_SITTING_OUT',
+        seat: 2,
+        userId: BOB,
+        sittingOut: true,
+        reason: 'BUSTED',
+        until: '2026-01-01T00:01:00.000Z',
+      },
+    ]);
+    expect(seatOf(s, 2)).toMatchObject({ sittingOut: true, bustedUntil: 1_000 + 60_000 });
+    expect(s.log.at(-1)?.text).toBe('bob is out of chips.');
+
+    s = play(s, [
+      { kind: 'PLAYER_TOPPED_UP', seat: 2, userId: BOB, amount: 400, stack: 400 },
+      { kind: 'PLAYER_SITTING_OUT', seat: 2, userId: BOB, sittingOut: false, reason: 'TOP_UP' },
+    ]);
+    expect(seatOf(s, 2)).toMatchObject({ stack: 400, sittingOut: false, bustedUntil: undefined });
+    expect(s.log.map((l) => l.text)).toContain('bob adds 400 chips.');
+
+    // The viewer's own pending top-up: set from the API, cleared when applied.
+    s = tableReducer(s, { type: 'topUp', pending: 300, autoTopUpTo: 1500 });
+    expect(s).toMatchObject({ myPendingTopUp: 300, myAutoTopUpTo: 1500 });
+    s = play(s, [{ kind: 'PLAYER_TOPPED_UP', seat: 1, userId: ALICE, amount: 300, stack: 1300 }]);
+    expect(s.myPendingTopUp).toBe(0);
+    expect(seatOf(s, 1).stack).toBe(1300);
+    // Pending chips not applied by the next hand were dropped.
+    s = tableReducer(s, { type: 'topUp', pending: 100 });
+    s = play(s, [{ ...handStarted, handNo: 2 } as TableEventPayload]);
+    expect(s.myPendingTopUp).toBe(0);
+  });
+
   it('tracks seating, sitting out and leaving', () => {
     let s = ready(
-      snapshot({ seats: [], you: { userId: ALICE, seat: 0, holeCards: [], legalActions: [] } }),
+      snapshot({
+        seats: [],
+        you: {
+          userId: ALICE,
+          seat: 0,
+          holeCards: [],
+          legalActions: [],
+          pendingTopUp: 0,
+          autoTopUpTo: 0,
+        },
+      }),
     );
     s = play(s, [{ kind: 'PLAYER_SEATED', seat: 4, userId: ALICE, username: 'alice', stack: 500 }]);
     expect(s.mySeat).toBe(4);

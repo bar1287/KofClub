@@ -102,7 +102,8 @@ resume, command re-send with the same `requestId`) and
 | ----------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------ |
 | `PLAYER_SEATED`         | seat, userId, username, stack                                                                                    |                                |
 | `PLAYER_LEFT`           | seat, userId, reason (LEFT/BUSTED/TABLE_CLOSED), cashOut                                                         |                                |
-| `PLAYER_SITTING_OUT`    | seat, userId, sittingOut, reason                                                                                 |                                |
+| `PLAYER_SITTING_OUT`    | seat, userId, sittingOut, reason (TIMEOUTS/REQUEST/LEAVING/BUSTED/TOP_UP), until (with BUSTED)                   |                                |
+| `PLAYER_TOPPED_UP`      | seat, userId, amount, stack — chips added from the club wallet (a re-buy from an empty stack)                    |                                |
 | `HAND_STARTED`          | handId, gameType, handNo, button/blind seats, blinds, deckCommitment, players (with timeBankMs after the refill) |                                |
 | `BLIND_POSTED`          | seat, blind, amount, allIn, stack, pot                                                                           |                                |
 | `HOLE_CARDS_DEALT`      | seats                                                                                                            | `cards` (own 2 or 4 cards)     |
@@ -123,6 +124,14 @@ bank starts only when the turn timer runs out (`TIME_BANK_STARTED`); acting
 keeps what is left, letting it expire uses it all and applies the default
 action. Players who are leaving or absent from a tournament never get it.
 Snapshots carry each seat's `timeBankMs` and `hand.usingTimeBank`.
+
+Re-buy and top-up (roadmap W1.3): `POST /v1/tables/{id}/top-up` adds chips at
+once between hands, or when the hand ends if the player is in one (the
+viewer's snapshot shows `you.pendingTopUp`). A player who runs out of chips
+keeps the seat, sitting out (`PLAYER_SITTING_OUT` reason BUSTED with `until`,
+snapshot `bustedUntil`), and the seat is released (`PLAYER_LEFT` BUSTED)
+unless they re-buy in time. `PUT /v1/tables/{id}/auto-top-up` sets a stack to
+top back up to after every hand (`you.autoTopUpTo`).
 
 Unrevealed cards never appear in public payloads, snapshots of other
 viewers, logs or the persisted event log (ADR-008). Spectating club members

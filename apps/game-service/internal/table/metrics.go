@@ -17,6 +17,7 @@ type Metrics struct {
 	LeaseLosses       prometheus.Counter
 	Timeouts          prometheus.Counter
 	TimeBanks         prometheus.Counter
+	TopUps            prometheus.Counter
 
 	// Tournaments (ADR-016).
 	TournamentsStarted     prometheus.Counter
@@ -46,6 +47,7 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 		LeaseLosses:     prometheus.NewCounter(prometheus.CounterOpts{Name: "game_lease_losses_total", Help: "Table leases lost (actor stopped)."}),
 		Timeouts:        prometheus.NewCounter(prometheus.CounterOpts{Name: "game_turn_timeouts_total", Help: "Server-applied timeout actions."}),
 		TimeBanks:       prometheus.NewCounter(prometheus.CounterOpts{Name: "game_time_banks_started_total", Help: "Turns that ran out of time and continued on the player's time bank."}),
+		TopUps:          prometheus.NewCounter(prometheus.CounterOpts{Name: "game_top_ups_total", Help: "Chips added to seated players' stacks (top-ups and re-buys)."}),
 
 		TournamentsStarted:     prometheus.NewCounter(prometheus.CounterOpts{Name: "game_tournaments_started_total", Help: "Tournaments started by this node."}),
 		TournamentsCancelled:   prometheus.NewCounter(prometheus.CounterOpts{Name: "game_tournaments_cancelled_total", Help: "Scheduled tournaments cancelled for lack of players (buy-ins refunded)."}),
@@ -57,7 +59,7 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 		}, []string{"op"}),
 	}
 	reg.MustRegister(m.ActiveTables, m.HandsStarted, m.HandsCompleted, m.HandsVoided, m.HandsResumed, m.Actions,
-		m.Rejections, m.DuplicateCommands, m.CommandLatency, m.PersistFailures, m.LeaseLosses, m.Timeouts, m.TimeBanks,
+		m.Rejections, m.DuplicateCommands, m.CommandLatency, m.PersistFailures, m.LeaseLosses, m.Timeouts, m.TimeBanks, m.TopUps,
 		m.TournamentsStarted, m.TournamentsCancelled, m.TournamentsFinished, m.TournamentEliminations,
 		m.TournamentMoves, m.TournamentFailures)
 	return m

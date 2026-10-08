@@ -167,6 +167,11 @@ func (a *Actor) handleLeave(userID, requestID string) (LeaveResult, error) {
 		return LeaveResult{}, err
 	}
 	delete(a.leaving, userID)
+	delete(a.autoTopUp, userID)
+	if _, ok := a.busted[userID]; ok {
+		delete(a.busted, userID)
+		a.armBustTimer()
+	}
 	a.log.Info("player_left", slog.String("user_id", userID), slog.Int("seat", seat), slog.Int64("cash_out", s.Stack))
 	return LeaveResult{Status: "LEFT", CashOut: s.Stack}, nil
 }
@@ -208,8 +213,13 @@ func (a *Actor) handleSittingOut(userID string, out bool, reason string) (int64,
 	if seat == 0 {
 		return 0, newError("PLAYER_NOT_SEATED", "not seated at this table")
 	}
-	if s, _ := a.table.SeatState(seat); s.SittingOut == out {
+	s, _ := a.table.SeatState(seat)
+	if s.SittingOut == out {
 		return a.seq, nil
+	}
+	if !out && s.Stack == 0 {
+		return 0, &Error{Code: "INVALID_BUY_IN", Message: "add chips before sitting in",
+			Details: map[string]any{"min": a.cfg.BuyInMin, "max": a.cfg.BuyInMax}}
 	}
 	next := a.table.Clone()
 	_ = next.SetSittingOut(seat, out)

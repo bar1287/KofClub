@@ -314,10 +314,35 @@ export type components = {
        * @enum {string}
        */
       kind: 'PLAYER_SITTING_OUT';
-      /** @enum {string} */
-      reason?: 'TIMEOUTS' | 'REQUEST' | 'LEAVING';
+      /**
+       * @description BUSTED - out of chips, the seat is kept until `until` for a re-buy; TOP_UP - back in after a re-buy.
+       * @enum {string}
+       */
+      reason?: 'TIMEOUTS' | 'REQUEST' | 'LEAVING' | 'BUSTED' | 'TOP_UP';
       seat: number;
       sittingOut: boolean;
+      /**
+       * Format: date-time
+       * @description With BUSTED, when the seat is released unless the player re-buys.
+       */
+      until?: string;
+      /** Format: uuid */
+      userId: string;
+    };
+    PlayerToppedUpEvent: {
+      /**
+       * Format: int64
+       * @description Chips added from the club wallet (a re-buy when the stack was empty).
+       */
+      amount: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: 'PLAYER_TOPPED_UP';
+      seat: number;
+      /** Format: int64 */
+      stack: number;
       /** Format: uuid */
       userId: string;
     };
@@ -363,6 +388,11 @@ export type components = {
     };
     SeatView: {
       allIn: boolean;
+      /**
+       * Format: date-time
+       * @description Set while the player is out of chips; the seat is released at this time unless they re-buy.
+       */
+      bustedUntil?: string;
       folded: boolean;
       inHand: boolean;
       leaving: boolean;
@@ -462,6 +492,7 @@ export type components = {
       | components['schemas']['PlayerSeatedEvent']
       | components['schemas']['PlayerLeftEvent']
       | components['schemas']['PlayerSittingOutEvent']
+      | components['schemas']['PlayerToppedUpEvent']
       | components['schemas']['HandStartedEvent']
       | components['schemas']['BlindPostedEvent']
       | components['schemas']['HoleCardsDealtEvent']
@@ -632,8 +663,18 @@ export type components = {
       seat: number;
     };
     YouView: {
+      /**
+       * Format: int64
+       * @description The viewer's automatic top-up target (0 = off).
+       */
+      autoTopUpTo: number;
       holeCards: components['schemas']['Card'][];
       legalActions: components['schemas']['LegalAction'][];
+      /**
+       * Format: int64
+       * @description Chips the viewer added during the current hand, applied when it ends.
+       */
+      pendingTopUp: number;
       /** @description 0 when the viewer is not seated. */
       seat: number;
       /** Format: uuid */

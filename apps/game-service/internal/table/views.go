@@ -28,18 +28,20 @@ type TableInfo struct {
 
 // SeatView is one seat as visible to every subscriber.
 type SeatView struct {
-	Seat       int          `json:"seat"`
-	UserID     string       `json:"userId"`
-	Username   string       `json:"username"`
-	Stack      int64        `json:"stack"`
-	SittingOut bool         `json:"sittingOut"`
-	Leaving    bool         `json:"leaving"`
-	InHand     bool         `json:"inHand"`
-	Folded     bool         `json:"folded"`
-	AllIn      bool         `json:"allIn"`
-	StreetBet  int64        `json:"streetBet"`
-	TimeBankMs int64        `json:"timeBankMs"`
-	ShownCards []poker.Card `json:"shownCards,omitempty"`
+	Seat       int    `json:"seat"`
+	UserID     string `json:"userId"`
+	Username   string `json:"username"`
+	Stack      int64  `json:"stack"`
+	SittingOut bool   `json:"sittingOut"`
+	Leaving    bool   `json:"leaving"`
+	InHand     bool   `json:"inHand"`
+	Folded     bool   `json:"folded"`
+	AllIn      bool   `json:"allIn"`
+	StreetBet  int64  `json:"streetBet"`
+	TimeBankMs int64  `json:"timeBankMs"`
+	// BustedUntil is set while the player is out of chips (seat kept to re-buy).
+	BustedUntil *time.Time   `json:"bustedUntil,omitempty"`
+	ShownCards  []poker.Card `json:"shownCards,omitempty"`
 }
 
 // HandView is the public state of the current (or just completed) hand.
@@ -67,6 +69,8 @@ type YouView struct {
 	Seat         int                 `json:"seat"`
 	HoleCards    []poker.Card        `json:"holeCards"`
 	LegalActions []poker.LegalAction `json:"legalActions"`
+	PendingTopUp int64               `json:"pendingTopUp"`
+	AutoTopUpTo  int64               `json:"autoTopUpTo"`
 }
 
 // Snapshot is a complete, viewer-sanitized table state. A client must
@@ -116,6 +120,9 @@ func (a *Actor) snapshot(viewer string) Snapshot {
 		user := string(st.Player)
 		v := SeatView{Seat: st.Seat, UserID: user, Username: a.usernames[user], Stack: st.Stack,
 			SittingOut: st.SittingOut, Leaving: a.leaving[user], TimeBankMs: a.banks.get(user).Milliseconds()}
+		if until, ok := a.busted[user]; ok {
+			v.BustedUntil = &until
+		}
 		if p, ok := inHand[st.Seat]; ok && p.Player == st.Player {
 			v.InHand, v.Folded, v.AllIn, v.StreetBet = true, p.Folded, p.AllIn, p.StreetBet
 			if revealed && !p.Folded {
@@ -143,7 +150,8 @@ func (a *Actor) snapshot(viewer string) Snapshot {
 		s.Hand = hv
 	}
 	if viewer != "" {
-		you := &YouView{UserID: viewer, HoleCards: []poker.Card{}, LegalActions: []poker.LegalAction{}}
+		you := &YouView{UserID: viewer, HoleCards: []poker.Card{}, LegalActions: []poker.LegalAction{},
+			PendingTopUp: partsTotal(a.pendingTopUps[viewer]), AutoTopUpTo: a.autoTopUp[viewer]}
 		if seat := a.table.SeatOf(poker.PlayerID(viewer)); seat != 0 {
 			you.Seat = seat
 			if p, ok := inHand[seat]; ok && p.Player == poker.PlayerID(viewer) {

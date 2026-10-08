@@ -302,6 +302,69 @@ describe('tables (integration with game-service)', () => {
     expect(violations.rows).toEqual([]);
   });
 
+  it('tops up and re-buys from the club wallet, also automatically', async () => {
+    const created = await as(ctx.app, owner)
+      .post(`/v1/clubs/${clubId}/tables`)
+      .send({ name: 'Top-ups', smallBlind: 5, bigBlind: 10, buyInMin: 200, buyInMax: 2000 })
+      .expect(201);
+    const t = created.body.id as string;
+    const before = await wallet(alice);
+    await as(ctx.app, alice)
+      .post(`/v1/tables/${t}/seat`)
+      .send({ seatNo: 1, buyIn: 500 })
+      .expect(200);
+
+    // Alone at the table (no hand): applied at once, within the limits.
+    const res = await as(ctx.app, alice)
+      .post(`/v1/tables/${t}/top-up`)
+      .set('Idempotency-Key', `top-${randomUUID()}`)
+      .send({ amount: 300 })
+      .expect(200);
+    expectSchema('TopUpResult', res.body);
+    expect(res.body).toEqual({ tableId: t, status: 'APPLIED', stack: 800, pending: 0 });
+    for (const [body, code] of [
+      [{ amount: 0 }, 'VALIDATION_FAILED'],
+      [{ amount: 1300 }, 'INVALID_BUY_IN'],
+    ] as const) {
+      const bad = await as(ctx.app, alice).post(`/v1/tables/${t}/top-up`).send(body).expect(400);
+      expect(bad.body.error.code).toBe(code);
+    }
+    const notSeated = await as(ctx.app, owner)
+      .post(`/v1/tables/${t}/top-up`)
+      .send({ amount: 100 })
+      .expect(409);
+    expect(notSeated.body.error.code).toBe('PLAYER_NOT_SEATED');
+    const outside = await as(ctx.app, outsider)
+      .post(`/v1/tables/${t}/top-up`)
+      .send({ amount: 100 })
+      .expect(403);
+    expect(outside.body.error.code).toBe('NOT_CLUB_MEMBER');
+
+    // Automatic top-up: tops up to the target now, and after every hand.
+    const auto = await as(ctx.app, alice)
+      .put(`/v1/tables/${t}/auto-top-up`)
+      .send({ to: 1000 })
+      .expect(200);
+    expectSchema('AutoTopUpResult', auto.body);
+    expect(auto.body).toEqual({ tableId: t, autoTopUpTo: 1000 });
+    const mine = (await as(ctx.app, alice).get(`/v1/tables/${t}/state`).expect(200)).body;
+    expectSchema('TableSnapshot', mine);
+    expect(mine.you).toMatchObject({ autoTopUpTo: 1000, pendingTopUp: 0 });
+    expect(mine.seats[0].stack).toBe(1000);
+    const low = await as(ctx.app, alice)
+      .put(`/v1/tables/${t}/auto-top-up`)
+      .send({ to: 100 })
+      .expect(400);
+    expect(low.body.error.code).toBe('INVALID_BUY_IN');
+    await as(ctx.app, alice).put(`/v1/tables/${t}/auto-top-up`).send({ to: 0 }).expect(200);
+    expect(await wallet(alice)).toBe(before - 1000);
+
+    await as(ctx.app, alice).post(`/v1/tables/${t}/leave`).expect(200);
+    expect(await wallet(alice)).toBe(before);
+    const violations = await ctx.db.query('SELECT * FROM ledger_invariant_violations');
+    expect(violations.rows).toEqual([]);
+  });
+
   it('banned members can still leave and recover their chips', async () => {
     await as(ctx.app, owner)
       .patch(`/v1/clubs/${clubId}/members/${bob.id}`)

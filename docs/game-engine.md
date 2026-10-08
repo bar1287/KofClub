@@ -77,13 +77,14 @@ NewHand: HAND_STARTED -> BLIND_POSTED x2 -> HOLE_CARDS_DEALT (private, per seat)
 
 ## Positions and order
 
-| Situation                 | Rule                                                                                                                         |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| 3+ players                | SB = first seat left of the button, BB = next; preflop first to act = left of BB; postflop = first active left of the button |
-| Heads-up                  | Button posts the SB and acts first preflop; the BB acts first postflop                                                       |
-| Button                    | Moves to the next dealt-in seat clockwise each hand (simplified: no dead button)                                             |
-| New players               | Dealt into the next hand without posting a missed blind (simplified)                                                         |
-| Sitting out / empty seats | Not dealt in                                                                                                                 |
+| Situation                 | Rule                                                                                                                          |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| 3+ players                | SB = first seat left of the button, BB = next; preflop first to act = left of BB; postflop = first active left of the button  |
+| Heads-up                  | Button posts the SB and acts first preflop; the BB acts first postflop                                                        |
+| Button                    | Moves to the next dealt-in seat clockwise each hand (simplified: no dead button)                                              |
+| New players               | Dealt into the next hand without posting a missed blind (simplified)                                                          |
+| Players without chips     | Keep the seat, never dealt in, until chips are added (`AddChips`) or the seat is released; `RestoreTable` restores such seats |
+| Sitting out / empty seats | Not dealt in                                                                                                                  |
 
 ## Betting rules
 

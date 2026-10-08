@@ -23,6 +23,10 @@ export class GameServiceClient {
     return this.request<T>('POST', `/internal/v1/tables/${tableId}/${action}`, body, requestId);
   }
 
+  put<T>(tableId: string, action: string, body: unknown, requestId: string): Promise<T> {
+    return this.request<T>('PUT', `/internal/v1/tables/${tableId}/${action}`, body, requestId);
+  }
+
   get<T>(
     tableId: string,
     resource: string,

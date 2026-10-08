@@ -922,6 +922,72 @@ paths:
           $ref: '#/components/responses/Error'
         '422':
           $ref: '#/components/responses/Error'
+  /v1/tables/{tableId}/top-up:
+    parameters:
+      - $ref: '#/components/parameters/TableId'
+    post:
+      tags: [tables]
+      operationId: topUp
+      summary: Add chips from the club wallet to your stack (re-buy when it is empty)
+      description: |
+        The stack after the top-up may not exceed the table's maximum buy-in;
+        a re-buy from an empty stack must reach the minimum. Applied at once
+        between hands; while the player is in a hand it waits for the hand
+        to end (PENDING) and moves no chips until then. The Idempotency-Key
+        (if given) makes retries safe. Not available at tournament tables.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TopUpRequest'
+      responses:
+        '200':
+          description: Applied or pending
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopUpResult'
+        '400':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+  /v1/tables/{tableId}/auto-top-up:
+    parameters:
+      - $ref: '#/components/parameters/TableId'
+    put:
+      tags: [tables]
+      operationId: setAutoTopUp
+      summary: Top your stack back up to an amount after every hand (0 turns it off)
+      description: |
+        After each hand the game service adds chips from the club wallet so
+        the stack is back at `to` (skipped when the wallet is short). Setting
+        it also tops up at once when no hand involves the player.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AutoTopUpRequest'
+      responses:
+        '200':
+          description: Saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AutoTopUpResult'
+        '400':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
   /v1/tables/{tableId}/leave:
     parameters:
       - $ref: '#/components/parameters/TableId'
@@ -2587,6 +2653,50 @@ components:
         seated:
           type: integer
           description: Players still seated (0 once CLOSED).
+    TopUpRequest:
+      type: object
+      additionalProperties: false
+      required: [amount]
+      properties:
+        amount:
+          $ref: '#/components/schemas/ChipAmount'
+    TopUpResult:
+      type: object
+      additionalProperties: false
+      required: [tableId, status, stack, pending]
+      properties:
+        tableId:
+          $ref: '#/components/schemas/Uuid'
+        status:
+          type: string
+          enum: [APPLIED, PENDING]
+          description: PENDING while the player is in a hand; applied when it ends.
+        stack:
+          $ref: '#/components/schemas/ChipAmount'
+        pending:
+          type: integer
+          format: int64
+          description: Chips waiting for the current hand to end (0 when APPLIED).
+    AutoTopUpRequest:
+      type: object
+      additionalProperties: false
+      required: [to]
+      properties:
+        to:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Stack to top back up to after every hand, between the table's buy-in limits; 0 turns it off.
+    AutoTopUpResult:
+      type: object
+      additionalProperties: false
+      required: [tableId, autoTopUpTo]
+      properties:
+        tableId:
+          $ref: '#/components/schemas/Uuid'
+        autoTopUpTo:
+          type: integer
+          format: int64
     LeaveResult:
       type: object
       additionalProperties: false

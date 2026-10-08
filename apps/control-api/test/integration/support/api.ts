@@ -47,6 +47,7 @@ export function as(app: INestApplication, user: Pick<TestUser, 'accessToken' | '
   return {
     get: (url: string) => wrap(request(server).get(url)),
     post: (url: string) => wrap(request(server).post(url)),
+    put: (url: string) => wrap(request(server).put(url)),
     patch: (url: string) => wrap(request(server).patch(url)),
     delete: (url: string) => wrap(request(server).delete(url)),
   };

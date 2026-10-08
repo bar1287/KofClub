@@ -32,6 +32,8 @@ export interface SeatState {
   streetBet: number;
   /** Time bank left (while it runs: the value from before it started). */
   timeBankMs: number;
+  /** Out of chips: the seat is released at this local time unless they re-buy. */
+  bustedUntil?: number;
   shownCards?: Card[];
   /** Hand description at showdown ("Two Pair, Kings and Fives"). */
   shownDescription?: string;
@@ -114,6 +116,10 @@ export interface TableState {
   lastHand: HandSummary | null;
   /** Set when the viewer's seat was removed (moved, eliminated, finished). */
   departure: Departure | null;
+  /** Chips the viewer added during the current hand (applied when it ends). */
+  myPendingTopUp: number;
+  /** The viewer's automatic top-up target (0 = off). */
+  myAutoTopUpTo: number;
   /** Presentation-only action log (not authoritative state). */
   log: LogEntry[];
 }
@@ -124,7 +130,9 @@ export type TableAction =
   | { type: 'stale' }
   /** SUBSCRIBED: the stream is continuous again (after a replay or snapshot). */
   | { type: 'live'; seq: number }
-  | { type: 'leaving'; leaving: boolean };
+  | { type: 'leaving'; leaving: boolean }
+  /** The viewer's top-up settings changed through the HTTP API. */
+  | { type: 'topUp'; pending?: number; autoTopUpTo?: number };
 
 const LOG_LIMIT = 60;
 
@@ -144,6 +152,8 @@ export function initialTableState(tableId: string, viewerId: string | null): Tab
     legalActions: [],
     lastHand: null,
     departure: null,
+    myPendingTopUp: 0,
+    myAutoTopUpTo: 0,
     log: [],
   };
 }
@@ -174,6 +184,12 @@ export function tableReducer(state: TableState, action: TableAction): TableState
         seats: { ...state.seats, [seat.seat]: { ...seat, leaving: action.leaving } },
       };
     }
+    case 'topUp':
+      return {
+        ...state,
+        myPendingTopUp: action.pending ?? state.myPendingTopUp,
+        myAutoTopUpTo: action.autoTopUpTo ?? state.myAutoTopUpTo,
+      };
   }
 }
 
@@ -197,6 +213,9 @@ export function applySnapshot(
       allIn: s.allIn,
       streetBet: s.streetBet,
       timeBankMs: s.timeBankMs,
+      bustedUntil: s.bustedUntil
+        ? toLocalTime(s.bustedUntil, snap.serverTime, receivedAt)
+        : undefined,
       shownCards: s.shownCards,
     };
   }
@@ -249,6 +268,8 @@ export function applySnapshot(
     legalActions: you?.legalActions ?? [],
     lastHand: state.lastHand,
     departure: you?.seat ? null : state.departure,
+    myPendingTopUp: you?.pendingTopUp ?? 0,
+    myAutoTopUpTo: you?.autoTopUpTo ?? 0,
     log,
   };
 }
@@ -332,6 +353,8 @@ function applyEvent(state: TableState, msg: TableEventMessage, receivedAt: numbe
         mySeat: mine ? 0 : state.mySeat,
         holeCards: mine ? [] : state.holeCards,
         legalActions: mine ? [] : state.legalActions,
+        myPendingTopUp: mine ? 0 : state.myPendingTopUp,
+        myAutoTopUpTo: mine ? 0 : state.myAutoTopUpTo,
         departure: mine
           ? { reason: ev.reason, toTableId: ev.toTableId, place: ev.place }
           : state.departure,
@@ -341,9 +364,22 @@ function applyEvent(state: TableState, msg: TableEventMessage, receivedAt: numbe
     case 'PLAYER_SITTING_OUT': {
       const patch: Partial<SeatState> = { sittingOut: ev.sittingOut };
       if (ev.reason === 'LEAVING') patch.leaving = true;
+      patch.bustedUntil =
+        ev.reason === 'BUSTED' && ev.until
+          ? toLocalTime(ev.until, msg.serverTime, receivedAt)
+          : undefined;
       return {
         ...state,
         seats: updateSeat(state, ev.seat, patch),
+        log: log(),
+      };
+    }
+    case 'PLAYER_TOPPED_UP': {
+      const mine = state.seats[ev.seat]?.userId === state.viewerId && state.viewerId !== null;
+      return {
+        ...state,
+        seats: updateSeat(state, ev.seat, { stack: ev.stack, bustedUntil: undefined }),
+        myPendingTopUp: mine ? 0 : state.myPendingTopUp,
         log: log(),
       };
     }
@@ -407,6 +443,8 @@ function applyEvent(state: TableState, msg: TableEventMessage, receivedAt: numbe
         },
         holeCards: [],
         legalActions: [],
+        // A top-up still pending at the next hand was dropped by the server.
+        myPendingTopUp: 0,
         log: log(),
       };
     }

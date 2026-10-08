@@ -16,6 +16,8 @@ export interface TableHandle {
   clearError(): void;
   send(command: CommandPayload): Promise<boolean>;
   markLeaving(leaving: boolean): void;
+  /** Records the viewer's top-up state returned by the HTTP API. */
+  noteTopUp(patch: { pending?: number; autoTopUpTo?: number }): void;
 }
 
 /** Codes after which local state must not be trusted until resynced. */
@@ -119,7 +121,11 @@ export function useTable(tableId: string): TableHandle {
   );
 
   const markLeaving = useCallback((leaving: boolean) => dispatch({ type: 'leaving', leaving }), []);
+  const noteTopUp = useCallback(
+    (patch: { pending?: number; autoTopUpTo?: number }) => dispatch({ type: 'topUp', ...patch }),
+    [],
+  );
   const clearError = useCallback(() => setError(null), []);
 
-  return { state, connection, busy, error, clearError, send, markLeaving };
+  return { state, connection, busy, error, clearError, send, markLeaving, noteTopUp };
 }

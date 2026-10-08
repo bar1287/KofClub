@@ -688,6 +688,24 @@ func (e TableDetailStatus) Valid() bool {
 	}
 }
 
+// Defines values for TopUpResultStatus.
+const (
+	TopUpResultStatusAPPLIED TopUpResultStatus = "APPLIED"
+	TopUpResultStatusPENDING TopUpResultStatus = "PENDING"
+)
+
+// Valid indicates whether the value is a known member of the TopUpResultStatus enum.
+func (e TopUpResultStatus) Valid() bool {
+	switch e {
+	case TopUpResultStatusAPPLIED:
+		return true
+	case TopUpResultStatusPENDING:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for TournamentStartMode.
 const (
 	TournamentStartModeSCHEDULED TournamentStartMode = "SCHEDULED"
@@ -975,6 +993,18 @@ type AuthResult struct {
 	RefreshTokenExpiresAt Timestamp `json:"refreshTokenExpiresAt"`
 	SessionId             Uuid      `json:"sessionId"`
 	User                  User      `json:"user"`
+}
+
+// AutoTopUpRequest defines model for AutoTopUpRequest.
+type AutoTopUpRequest struct {
+	// To Stack to top back up to after every hand, between the table's buy-in limits; 0 turns it off.
+	To int64 `json:"to"`
+}
+
+// AutoTopUpResult defines model for AutoTopUpResult.
+type AutoTopUpResult struct {
+	AutoTopUpTo int64 `json:"autoTopUpTo"`
+	TableId     Uuid  `json:"tableId"`
 }
 
 // BlindLevel defines model for BlindLevel.
@@ -1715,6 +1745,28 @@ type TableSeat struct {
 // Timestamp UTC RFC 3339 timestamp
 type Timestamp = time.Time
 
+// TopUpRequest defines model for TopUpRequest.
+type TopUpRequest struct {
+	// Amount Integer amount of virtual chips (no monetary value).
+	Amount ChipAmount `json:"amount"`
+}
+
+// TopUpResult defines model for TopUpResult.
+type TopUpResult struct {
+	// Pending Chips waiting for the current hand to end (0 when APPLIED).
+	Pending int64 `json:"pending"`
+
+	// Stack Integer amount of virtual chips (no monetary value).
+	Stack ChipAmount `json:"stack"`
+
+	// Status PENDING while the player is in a hand; applied when it ends.
+	Status  TopUpResultStatus `json:"status"`
+	TableId Uuid              `json:"tableId"`
+}
+
+// TopUpResultStatus PENDING while the player is in a hand; applied when it ends.
+type TopUpResultStatus string
+
 // TotpEnrollment defines model for TotpEnrollment.
 type TotpEnrollment struct {
 	// OtpauthUri otpauth://totp/... URI (QR code content).
@@ -2161,6 +2213,12 @@ type TakeSeatParams struct {
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
+// TopUpParams defines parameters for TopUp.
+type TopUpParams struct {
+	// IdempotencyKey Unique key making a retried state-changing request a no-op.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
 // RegisterForTournamentParams defines parameters for RegisterForTournament.
 type RegisterForTournamentParams struct {
 	// IdempotencyKey Unique key making a retried state-changing request a no-op.
@@ -2227,5 +2285,11 @@ type ConfirmTotpEnrollmentJSONRequestBody = MfaCodeRequest
 // DisableTotpJSONRequestBody defines body for DisableTotp for application/json ContentType.
 type DisableTotpJSONRequestBody = MfaCodeRequest
 
+// SetAutoTopUpJSONRequestBody defines body for SetAutoTopUp for application/json ContentType.
+type SetAutoTopUpJSONRequestBody = AutoTopUpRequest
+
 // TakeSeatJSONRequestBody defines body for TakeSeat for application/json ContentType.
 type TakeSeatJSONRequestBody = SeatRequest
+
+// TopUpJSONRequestBody defines body for TopUp for application/json ContentType.
+type TopUpJSONRequestBody = TopUpRequest

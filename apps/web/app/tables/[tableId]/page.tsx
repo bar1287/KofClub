@@ -9,6 +9,7 @@ import { RequireAuth } from '@/components/RequireAuth';
 import { ActionBar } from '@/components/table/ActionBar';
 import { ActionLog } from '@/components/table/ActionLog';
 import { BuyInDialog } from '@/components/table/BuyInDialog';
+import { TopUpDialog } from '@/components/table/TopUpDialog';
 import { ConnectionBadge } from '@/components/table/ConnectionBadge';
 import { gameLabel } from '@/lib/games';
 import { PokerTable } from '@/components/table/PokerTable';
@@ -21,8 +22,10 @@ import { useTable } from '@/lib/table/useTable';
 
 function TableRoom({ tableId }: { tableId: string }) {
   const { ep } = useSession();
-  const { state, connection, busy, error, clearError, send, markLeaving } = useTable(tableId);
+  const { state, connection, busy, error, clearError, send, markLeaving, noteTopUp } =
+    useTable(tableId);
   const [buyInSeat, setBuyInSeat] = useState<number | null>(null);
+  const [topUpOpen, setTopUpOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [httpError, setHttpError] = useState<string | null>(null);
 
@@ -127,13 +130,23 @@ function TableRoom({ tableId }: { tableId: string }) {
         <span className="spacer" />
         {me && (
           <>
+            {!tournament && (
+              <button
+                className="btn small"
+                disabled={!live || table?.status !== 'OPEN'}
+                onClick={() => setTopUpOpen(true)}
+                data-testid="add-chips"
+              >
+                {me.stack === 0 ? 'Re-buy' : 'Add chips'}
+              </button>
+            )}
             <button
               className="btn small"
-              disabled={!live || busy}
+              disabled={!live || busy || (me.sittingOut && me.stack === 0)}
               onClick={() => void send({ kind: me.sittingOut ? 'SIT_IN' : 'SIT_OUT' })}
               data-testid="sit-out-toggle"
             >
-              {me.sittingOut ? 'Sit in' : 'Sit out'}
+              {me.sittingOut ? 'Sit in' : me.inHand ? 'Sit out next hand' : 'Sit out'}
             </button>
             {!tournament && (
               <button
@@ -161,6 +174,22 @@ function TableRoom({ tableId }: { tableId: string }) {
       {departure?.reason === 'MOVED' && (
         <div className="alert info" style={{ marginBottom: 12 }}>
           You were moved to another table…
+        </div>
+      )}
+      {me?.bustedUntil && me.stack === 0 && (
+        <div className="alert info row" style={{ marginBottom: 12 }} data-testid="busted">
+          <span>
+            You are out of chips. Re-buy within {formatCountdown(Math.max(0, me.bustedUntil - now))}{' '}
+            to keep your seat.
+          </span>
+          <button className="btn small primary" onClick={() => setTopUpOpen(true)}>
+            Re-buy
+          </button>
+        </div>
+      )}
+      {state.myPendingTopUp > 0 && (
+        <div className="alert info" style={{ marginBottom: 12 }} data-testid="pending-top-up">
+          {chips(state.myPendingTopUp)} chips will be added when this hand ends.
         </div>
       )}
       {table?.status === 'CLOSED' && (
@@ -231,6 +260,18 @@ function TableRoom({ tableId }: { tableId: string }) {
         </aside>
       </div>
 
+      {topUpOpen && table && me && (
+        <TopUpDialog
+          tableId={tableId}
+          table={table}
+          stack={me.stack}
+          pending={state.myPendingTopUp}
+          autoTopUpTo={state.myAutoTopUpTo}
+          onApplied={({ pending }) => noteTopUp({ pending })}
+          onAutoTopUp={(to) => noteTopUp({ autoTopUpTo: to })}
+          onClose={() => setTopUpOpen(false)}
+        />
+      )}
       {buyInSeat !== null && table && (
         <BuyInDialog
           tableId={tableId}

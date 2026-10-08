@@ -17,6 +17,7 @@ interface Props {
 
 function statusLine(seat: SeatState, hand: HandState | null): string {
   if (seat.leaving) return 'Leaving';
+  if (seat.bustedUntil && seat.stack === 0) return 'Out of chips';
   if (seat.sittingOut) return 'Sitting out';
   if (seat.allIn && hand && hand.street !== 'COMPLETE') return 'All-in';
   if (seat.folded) return 'Folded';

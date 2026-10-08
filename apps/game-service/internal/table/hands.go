@@ -191,15 +191,8 @@ func (a *Actor) prepareHandEnd(next *poker.Table, evs []poker.Event) ([]draft, f
 			extra = append(extra, draft{kind: KindPlayerLeft, public: playerLeftPayload{
 				Kind: KindPlayerLeft, Seat: s.Seat, UserID: user, Reason: "LEFT", CashOut: s.Stack,
 			}})
-		case s.Stack == 0:
-			if _, err := next.StandUp(s.Seat); err != nil {
-				return nil, nil, fromEngine(err)
-			}
-			leavers = append(leavers, departure{user: user})
-			extra = append(extra, draft{kind: KindPlayerLeft, public: playerLeftPayload{
-				Kind: KindPlayerLeft, Seat: s.Seat, UserID: user, Reason: "BUSTED",
-			}})
 		}
+		// Players without chips keep the seat to re-buy (settleTopUps).
 	}
 	remaining := seatStacks(next)
 
@@ -308,6 +301,7 @@ func (a *Actor) onHandFinished() {
 		}
 	}
 	a.log.Info("hand_completed", slog.String("hand_id", a.handID))
+	a.settleTopUps()
 	if err := a.closeIfIdle(); err != nil {
 		a.log.Warn("table_close_failed", slog.String("error", err.Error()))
 	}
@@ -362,6 +356,12 @@ func (a *Actor) recover(ctx context.Context) error {
 		states[i] = poker.SeatState{Seat: s.SeatNo, Player: poker.PlayerID(s.UserID), Stack: s.Stack, SittingOut: s.SittingOut}
 		a.usernames[s.UserID] = s.Username
 		a.banks.load(s.UserID, s.TimeBank)
+		if s.AutoTopUpTo > 0 {
+			a.autoTopUp[s.UserID] = s.AutoTopUpTo
+		}
+		if s.Stack == 0 && a.tour == nil {
+			a.busted[s.UserID] = time.Now().Add(a.bustGrace()).UTC() // grace restarts after recovery
+		}
 	}
 	table, err := poker.RestoreTable(poker.TableConfig{Game: poker.GameType(a.cfg.GameType), MaxSeats: a.cfg.MaxSeats,
 		SmallBlind: a.cfg.SmallBlind, BigBlind: a.cfg.BigBlind, DealSittingOut: a.tour != nil},

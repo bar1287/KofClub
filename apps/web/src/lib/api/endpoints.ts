@@ -23,6 +23,8 @@ import type {
   LedgerTransaction,
   MemberPage,
   SeatResult,
+  TopUpResult,
+  AutoTopUpResult,
   MfaStatus,
   Session,
   TotpEnrollment,
@@ -94,6 +96,15 @@ export function endpoints(api: ApiClient) {
       api.request<SeatResult>('POST', `/v1/tables/${enc(tableId)}/seat`, {
         body,
         idempotencyKey: key,
+      }),
+    topUp: (tableId: string, amount: number, key = newIdempotencyKey()) =>
+      api.request<TopUpResult>('POST', `/v1/tables/${enc(tableId)}/top-up`, {
+        body: { amount },
+        idempotencyKey: key,
+      }),
+    setAutoTopUp: (tableId: string, to: number) =>
+      api.request<AutoTopUpResult>('PUT', `/v1/tables/${enc(tableId)}/auto-top-up`, {
+        body: { to },
       }),
     closeTable: (tableId: string) =>
       api.request<CloseTableResult>('POST', `/v1/tables/${enc(tableId)}/close`),

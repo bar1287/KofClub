@@ -36,15 +36,15 @@ These are the first-session essentials every serious poker client has.
 
 ## W2: Game variety
 
-| ID   | Milestone              | Scope                                                                                                                                                    |
-| ---- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| W2.1 | Antes                  | Classic antes and big-blind ante, for cash tables and tournaments.                                                                                       |
-| W2.2 | Straddle and bomb pots | Optional UTG straddle. Bomb pots as a club table setting: every N hands, everyone antes and play starts on the flop.                                     |
-| W2.3 | Run it twice           | Offered when all-in players all agree, with the second board drawn from the same committed deck. Rabbit hunt shows the unused board as information only. |
-| W2.4 | Short Deck (6+)        | A 36-card deck with Short Deck hand rankings: a flush beats a full house, and A-6-7-8-9 is a straight.                                                   |
-| W2.5 | PLO-5 and PLO-6        | Five- and six-card Pot-Limit Omaha through the existing Omaha rule module.                                                                               |
-| W2.6 | Omaha Hi-Lo            | 8-or-better split pots with odd-chip rules.                                                                                                              |
-| W2.7 | Stud games             | Seven-Card Stud and Razz, fixed-limit betting with bring-in.                                                                                             |
+| ID   | Milestone              | Scope                                                                                                                                                                                                   |
+| ---- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| W2.1 | Antes                  | Classic antes and big-blind ante, for cash tables and tournaments.                                                                                                                                      |
+| W2.2 | Straddle and bomb pots | Optional UTG straddle. Bomb pots as a club table setting: every N hands, everyone antes and play starts on the flop. Missed-blind rules and "wait for the big blind" for new players (moved from W1.3). |
+| W2.3 | Run it twice           | Offered when all-in players all agree, with the second board drawn from the same committed deck. Rabbit hunt shows the unused board as information only.                                                |
+| W2.4 | Short Deck (6+)        | A 36-card deck with Short Deck hand rankings: a flush beats a full house, and A-6-7-8-9 is a straight.                                                                                                  |
+| W2.5 | PLO-5 and PLO-6        | Five- and six-card Pot-Limit Omaha through the existing Omaha rule module.                                                                                                                              |
+| W2.6 | Omaha Hi-Lo            | 8-or-better split pots with odd-chip rules.                                                                                                                                                             |
+| W2.7 | Stud games             | Seven-Card Stud and Razz, fixed-limit betting with bring-in.                                                                                                                                            |
 
 ## W3: Tournament depth
 

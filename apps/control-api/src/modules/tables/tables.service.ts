@@ -6,7 +6,7 @@ import { Database } from '../../infra/database/database';
 import { AuditService } from '../audit/audit.service';
 import { ClubAccessService } from '../clubs/club-access.service';
 import { GameServiceClient } from './game-service.client';
-import type { CreateTableInput, SeatInput } from './tables.schemas';
+import type { AutoTopUpInput, CreateTableInput, SeatInput, TopUpInput } from './tables.schemas';
 import { SeatRow, TableRow, TablesRepository } from './tables.repository';
 
 export interface TableDetailDto extends TableRow {
@@ -24,6 +24,18 @@ export interface CloseResultDto {
   tableId: string;
   status: 'CLOSED' | 'CLOSING';
   seated: number;
+}
+
+export interface TopUpResultDto {
+  tableId: string;
+  status: 'APPLIED' | 'PENDING';
+  stack: number;
+  pending: number;
+}
+
+export interface AutoTopUpResultDto {
+  tableId: string;
+  autoTopUpTo: number;
 }
 
 export interface LeaveResultDto {
@@ -123,6 +135,60 @@ export class TablesService {
       ctx.requestId,
     );
     return { tableId, seatNo: res.seatNo, stack: res.stack, seq: res.seq };
+  }
+
+  /** Adds chips from the club wallet (the game service applies the limits). */
+  async topUp(
+    auth: AuthContext,
+    tableId: string,
+    input: TopUpInput,
+    idempotencyKey: string | undefined,
+    ctx: RequestContext,
+  ): Promise<TopUpResultDto> {
+    const table = await this.playableTable(auth, tableId);
+    const res = await this.game.post<{
+      status: 'APPLIED' | 'PENDING';
+      stack: number;
+      pending: number;
+    }>(
+      table.id,
+      'top-up',
+      { userId: auth.userId, amount: input.amount, requestId: idempotencyKey ?? uuidv7() },
+      ctx.requestId,
+    );
+    return { tableId, status: res.status, stack: res.stack, pending: res.pending };
+  }
+
+  /** Sets the stack to top back up to after every hand (0 = off). */
+  async setAutoTopUp(
+    auth: AuthContext,
+    tableId: string,
+    input: AutoTopUpInput,
+    ctx: RequestContext,
+  ): Promise<AutoTopUpResultDto> {
+    const table =
+      input.to === 0
+        ? await this.requireTable(auth, tableId)
+        : await this.playableTable(auth, tableId);
+    if (table.tournamentId) throw tournamentSeating();
+    const res = await this.game.put<{ autoTopUpTo: number }>(
+      table.id,
+      'auto-top-up',
+      { userId: auth.userId, to: input.to },
+      ctx.requestId,
+    );
+    return { tableId, autoTopUpTo: res.autoTopUpTo };
+  }
+
+  /** A cash table the caller may put chips on (member of an active club). */
+  private async playableTable(auth: AuthContext, tableId: string): Promise<TableRow> {
+    const table = await this.repo.find(tableId);
+    if (!table) throw new AppError('TABLE_NOT_FOUND', 'Table not found');
+    const { club } = await this.access.require(table.clubId, auth, 'CLUB_VIEW');
+    if (club.status !== 'ACTIVE') throw new AppError('FORBIDDEN', 'Club is suspended');
+    if (table.status !== 'OPEN') throw new AppError('TABLE_CLOSED', 'Table is closed');
+    if (table.tournamentId) throw tournamentSeating();
+    return table;
   }
 
   async leave(

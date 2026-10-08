@@ -42,6 +42,8 @@ func (s *Server) Register(mux *http.ServeMux) {
 	mux.Handle("POST /internal/v1/tables/{tableId}/seat", s.auth(s.seat))
 	mux.Handle("POST /internal/v1/tables/{tableId}/leave", s.auth(s.leave))
 	mux.Handle("POST /internal/v1/tables/{tableId}/sitting-out", s.auth(s.sittingOut))
+	mux.Handle("POST /internal/v1/tables/{tableId}/top-up", s.auth(s.topUp))
+	mux.Handle("PUT /internal/v1/tables/{tableId}/auto-top-up", s.auth(s.autoTopUp))
 	mux.Handle("POST /internal/v1/tables/{tableId}/commands", s.auth(s.command))
 	mux.Handle("POST /internal/v1/tables/{tableId}/close", s.auth(s.close))
 	mux.Handle("GET /internal/v1/tables/{tableId}/snapshot", s.auth(s.snapshot))
@@ -76,6 +78,17 @@ type seatBody struct {
 type leaveBody struct {
 	UserID    string `json:"userId"`
 	RequestID string `json:"requestId"`
+}
+
+type topUpBody struct {
+	UserID    string `json:"userId"`
+	Amount    int64  `json:"amount"`
+	RequestID string `json:"requestId"`
+}
+
+type autoTopUpBody struct {
+	UserID string `json:"userId"`
+	To     int64  `json:"to"`
 }
 
 type sittingOutBody struct {
@@ -171,6 +184,40 @@ func (s *Server) leave(w http.ResponseWriter, r *http.Request) {
 	}
 	res, err := a.Leave(r.Context(), b.UserID, b.RequestID)
 	respond(w, r, http.StatusOK, res, err)
+}
+
+func (s *Server) topUp(w http.ResponseWriter, r *http.Request) {
+	var b topUpBody
+	if !decode(w, r, &b) || !validID(w, r, "userId", b.UserID) {
+		return
+	}
+	if b.RequestID == "" || len(b.RequestID) > 128 || b.Amount <= 0 {
+		writeError(w, r, http.StatusBadRequest, "VALIDATION_FAILED", "requestId and positive amount are required", nil)
+		return
+	}
+	a, ok := s.actor(w, r)
+	if !ok {
+		return
+	}
+	res, err := a.TopUp(r.Context(), table.TopUpRequest{UserID: b.UserID, Amount: b.Amount, RequestID: b.RequestID})
+	respond(w, r, http.StatusOK, res, err)
+}
+
+func (s *Server) autoTopUp(w http.ResponseWriter, r *http.Request) {
+	var b autoTopUpBody
+	if !decode(w, r, &b) || !validID(w, r, "userId", b.UserID) {
+		return
+	}
+	if b.To < 0 {
+		writeError(w, r, http.StatusBadRequest, "VALIDATION_FAILED", "to must be 0 or positive", nil)
+		return
+	}
+	a, ok := s.actor(w, r)
+	if !ok {
+		return
+	}
+	to, err := a.SetAutoTopUp(r.Context(), b.UserID, b.To)
+	respond(w, r, http.StatusOK, map[string]any{"autoTopUpTo": to}, err)
 }
 
 func (s *Server) sittingOut(w http.ResponseWriter, r *http.Request) {

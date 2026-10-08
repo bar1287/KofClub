@@ -1,16 +1,27 @@
-import { Body, Controller, Get, Headers, HttpCode, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Headers, HttpCode, Param, Post, Put } from '@nestjs/common';
 import { RateLimit } from '../../common/rate-limit/rate-limit.decorator';
 import { AuthContext, Ctx, CurrentAuth, RequestContext } from '../../common/request-context';
 import { uuidSchema } from '../../common/validation/schemas';
 import { ZodPipe } from '../../common/validation/zod.pipe';
 import type { TableRow } from './tables.repository';
-import { CreateTableInput, createTableSchema, SeatInput, seatSchema } from './tables.schemas';
 import {
+  AutoTopUpInput,
+  autoTopUpSchema,
+  CreateTableInput,
+  createTableSchema,
+  SeatInput,
+  seatSchema,
+  TopUpInput,
+  topUpSchema,
+} from './tables.schemas';
+import {
+  AutoTopUpResultDto,
   CloseResultDto,
   LeaveResultDto,
   SeatResultDto,
   TableDetailDto,
   TablesService,
+  TopUpResultDto,
 } from './tables.service';
 
 @Controller()
@@ -54,6 +65,30 @@ export class TablesController {
     @Ctx() ctx: RequestContext,
   ): Promise<SeatResultDto> {
     return this.tables.seat(auth, tableId, body, key, ctx);
+  }
+
+  @Post('tables/:tableId/top-up')
+  @HttpCode(200)
+  @RateLimit({ name: 'tables:topup:user', by: 'user', limit: 30, windowSec: 60 })
+  topUp(
+    @CurrentAuth() auth: AuthContext,
+    @Param('tableId', new ZodPipe(uuidSchema)) tableId: string,
+    @Body(new ZodPipe(topUpSchema)) body: TopUpInput,
+    @Headers('idempotency-key') key: string | undefined,
+    @Ctx() ctx: RequestContext,
+  ): Promise<TopUpResultDto> {
+    return this.tables.topUp(auth, tableId, body, key, ctx);
+  }
+
+  @Put('tables/:tableId/auto-top-up')
+  @RateLimit({ name: 'tables:auto-topup:user', by: 'user', limit: 30, windowSec: 60 })
+  autoTopUp(
+    @CurrentAuth() auth: AuthContext,
+    @Param('tableId', new ZodPipe(uuidSchema)) tableId: string,
+    @Body(new ZodPipe(autoTopUpSchema)) body: AutoTopUpInput,
+    @Ctx() ctx: RequestContext,
+  ): Promise<AutoTopUpResultDto> {
+    return this.tables.setAutoTopUp(auth, tableId, body, ctx);
   }
 
   @Post('tables/:tableId/leave')

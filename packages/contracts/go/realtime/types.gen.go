@@ -461,19 +461,40 @@ func (e PlayerSittingOutEventKind) Valid() bool {
 
 // Defines values for PlayerSittingOutEventReason.
 const (
+	PlayerSittingOutEventReasonBUSTED   PlayerSittingOutEventReason = "BUSTED"
 	PlayerSittingOutEventReasonLEAVING  PlayerSittingOutEventReason = "LEAVING"
 	PlayerSittingOutEventReasonREQUEST  PlayerSittingOutEventReason = "REQUEST"
 	PlayerSittingOutEventReasonTIMEOUTS PlayerSittingOutEventReason = "TIMEOUTS"
+	PlayerSittingOutEventReasonTOPUP    PlayerSittingOutEventReason = "TOP_UP"
 )
 
 // Valid indicates whether the value is a known member of the PlayerSittingOutEventReason enum.
 func (e PlayerSittingOutEventReason) Valid() bool {
 	switch e {
+	case PlayerSittingOutEventReasonBUSTED:
+		return true
 	case PlayerSittingOutEventReasonLEAVING:
 		return true
 	case PlayerSittingOutEventReasonREQUEST:
 		return true
 	case PlayerSittingOutEventReasonTIMEOUTS:
+		return true
+	case PlayerSittingOutEventReasonTOPUP:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PlayerToppedUpEventKind.
+const (
+	PlayerToppedUpEventKindPLAYERTOPPEDUP PlayerToppedUpEventKind = "PLAYER_TOPPED_UP"
+)
+
+// Valid indicates whether the value is a known member of the PlayerToppedUpEventKind enum.
+func (e PlayerToppedUpEventKind) Valid() bool {
+	switch e {
+	case PlayerToppedUpEventKindPLAYERTOPPEDUP:
 		return true
 	default:
 		return false
@@ -1190,18 +1211,36 @@ type PlayerSeatedEventKind string
 
 // PlayerSittingOutEvent defines model for PlayerSittingOutEvent.
 type PlayerSittingOutEvent struct {
-	Kind       PlayerSittingOutEventKind    `json:"kind"`
+	Kind PlayerSittingOutEventKind `json:"kind"`
+
+	// Reason BUSTED - out of chips, the seat is kept until `until` for a re-buy; TOP_UP - back in after a re-buy.
 	Reason     *PlayerSittingOutEventReason `json:"reason,omitempty"`
 	Seat       int                          `json:"seat"`
 	SittingOut bool                         `json:"sittingOut"`
-	UserId     openapi_types.UUID           `json:"userId"`
+
+	// Until With BUSTED, when the seat is released unless the player re-buys.
+	Until  *time.Time         `json:"until,omitempty"`
+	UserId openapi_types.UUID `json:"userId"`
 }
 
 // PlayerSittingOutEventKind defines model for PlayerSittingOutEvent.Kind.
 type PlayerSittingOutEventKind string
 
-// PlayerSittingOutEventReason defines model for PlayerSittingOutEvent.Reason.
+// PlayerSittingOutEventReason BUSTED - out of chips, the seat is kept until `until` for a re-buy; TOP_UP - back in after a re-buy.
 type PlayerSittingOutEventReason string
+
+// PlayerToppedUpEvent defines model for PlayerToppedUpEvent.
+type PlayerToppedUpEvent struct {
+	// Amount Chips added from the club wallet (a re-buy when the stack was empty).
+	Amount int64                   `json:"amount"`
+	Kind   PlayerToppedUpEventKind `json:"kind"`
+	Seat   int                     `json:"seat"`
+	Stack  int64                   `json:"stack"`
+	UserId openapi_types.UUID      `json:"userId"`
+}
+
+// PlayerToppedUpEventKind defines model for PlayerToppedUpEvent.Kind.
+type PlayerToppedUpEventKind string
 
 // Pong defines model for Pong.
 type Pong struct {
@@ -1254,11 +1293,14 @@ type ResyncRequiredType string
 
 // SeatView defines model for SeatView.
 type SeatView struct {
-	AllIn   bool `json:"allIn"`
-	Folded  bool `json:"folded"`
-	InHand  bool `json:"inHand"`
-	Leaving bool `json:"leaving"`
-	Seat    int  `json:"seat"`
+	AllIn bool `json:"allIn"`
+
+	// BustedUntil Set while the player is out of chips; the seat is released at this time unless they re-buy.
+	BustedUntil *time.Time `json:"bustedUntil,omitempty"`
+	Folded      bool       `json:"folded"`
+	InHand      bool       `json:"inHand"`
+	Leaving     bool       `json:"leaving"`
+	Seat        int        `json:"seat"`
 
 	// ShownCards Cards revealed at showdown (public).
 	ShownCards *[]Card `json:"shownCards,omitempty"`
@@ -1504,8 +1546,13 @@ type WinnerShare struct {
 
 // YouView defines model for YouView.
 type YouView struct {
+	// AutoTopUpTo The viewer's automatic top-up target (0 = off).
+	AutoTopUpTo  int64         `json:"autoTopUpTo"`
 	HoleCards    []Card        `json:"holeCards"`
 	LegalActions []LegalAction `json:"legalActions"`
+
+	// PendingTopUp Chips the viewer added during the current hand, applied when it ends.
+	PendingTopUp int64 `json:"pendingTopUp"`
 
 	// Seat 0 when the viewer is not seated.
 	Seat   int                `json:"seat"`
@@ -1605,6 +1652,40 @@ func (t *TableEventPayload) MergePlayerSittingOutEvent(v PlayerSittingOutEvent) 
 		return err
 	}
 	b, err = runtime.JSONMerge(b, []byte(`{"kind":"PLAYER_SITTING_OUT"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsPlayerToppedUpEvent returns the union data inside the TableEventPayload as a PlayerToppedUpEvent
+func (t TableEventPayload) AsPlayerToppedUpEvent() (PlayerToppedUpEvent, error) {
+	var body PlayerToppedUpEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPlayerToppedUpEvent overwrites any union data inside the TableEventPayload as the provided PlayerToppedUpEvent
+func (t *TableEventPayload) FromPlayerToppedUpEvent(v PlayerToppedUpEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"PLAYER_TOPPED_UP"}`))
+	t.union = b
+	return err
+}
+
+// MergePlayerToppedUpEvent performs a merge with any union data inside the TableEventPayload, using the provided PlayerToppedUpEvent
+func (t *TableEventPayload) MergePlayerToppedUpEvent(v PlayerToppedUpEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"PLAYER_TOPPED_UP"}`))
 	if err != nil {
 		return err
 	}
@@ -2090,6 +2171,8 @@ func (t TableEventPayload) ValueByDiscriminator() (interface{}, error) {
 		return t.AsPlayerSeatedEvent()
 	case "PLAYER_SITTING_OUT":
 		return t.AsPlayerSittingOutEvent()
+	case "PLAYER_TOPPED_UP":
+		return t.AsPlayerToppedUpEvent()
 	case "POT_AWARDED":
 		return t.AsPotAwardedEvent()
 	case "STREET_DEALT":

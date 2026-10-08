@@ -880,6 +880,30 @@ export type paths = {
     patch?: never;
     trace?: never;
   };
+  '/v1/tables/{tableId}/auto-top-up': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tableId: components['parameters']['TableId'];
+      };
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Top your stack back up to an amount after every hand (0 turns it off)
+     * @description After each hand the game service adds chips from the club wallet so
+     *     the stack is back at `to` (skipped when the wallet is short). Setting
+     *     it also tops up at once when no hand involves the player.
+     */
+    put: operations['setAutoTopUp'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/tables/{tableId}/close': {
     parameters: {
       query?: never;
@@ -958,6 +982,32 @@ export type paths = {
     get: operations['getTableState'];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/tables/{tableId}/top-up': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tableId: components['parameters']['TableId'];
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Add chips from the club wallet to your stack (re-buy when it is empty)
+     * @description The stack after the top-up may not exceed the table's maximum buy-in;
+     *     a re-buy from an empty stack must reach the minimum. Applied at once
+     *     between hands; while the player is in a hand it waits for the hand
+     *     to end (PENDING) and moves no chips until then. The Idempotency-Key
+     *     (if given) makes retries safe. Not available at tournament tables.
+     */
+    post: operations['topUp'];
     delete?: never;
     options?: never;
     head?: never;
@@ -1126,6 +1176,18 @@ export type components = {
       refreshTokenExpiresAt: components['schemas']['Timestamp'];
       sessionId: components['schemas']['Uuid'];
       user: components['schemas']['User'];
+    };
+    AutoTopUpRequest: {
+      /**
+       * Format: int64
+       * @description Stack to top back up to after every hand, between the table's buy-in limits; 0 turns it off.
+       */
+      to: number;
+    };
+    AutoTopUpResult: {
+      /** Format: int64 */
+      autoTopUpTo: number;
+      tableId: components['schemas']['Uuid'];
     };
     BlindLevel: {
       bigBlind: components['schemas']['ChipAmount'];
@@ -1810,10 +1872,35 @@ export type components = {
        * @enum {string}
        */
       kind: 'PLAYER_SITTING_OUT';
-      /** @enum {string} */
-      reason?: 'TIMEOUTS' | 'REQUEST' | 'LEAVING';
+      /**
+       * @description BUSTED - out of chips, the seat is kept until `until` for a re-buy; TOP_UP - back in after a re-buy.
+       * @enum {string}
+       */
+      reason?: 'TIMEOUTS' | 'REQUEST' | 'LEAVING' | 'BUSTED' | 'TOP_UP';
       seat: number;
       sittingOut: boolean;
+      /**
+       * Format: date-time
+       * @description With BUSTED, when the seat is released unless the player re-buys.
+       */
+      until?: string;
+      /** Format: uuid */
+      userId: string;
+    };
+    PlayerToppedUpEvent: {
+      /**
+       * Format: int64
+       * @description Chips added from the club wallet (a re-buy when the stack was empty).
+       */
+      amount: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: 'PLAYER_TOPPED_UP';
+      seat: number;
+      /** Format: int64 */
+      stack: number;
       /** Format: uuid */
       userId: string;
     };
@@ -1891,6 +1978,11 @@ export type components = {
     };
     SeatView: {
       allIn: boolean;
+      /**
+       * Format: date-time
+       * @description Set while the player is out of chips; the seat is released at this time unless they re-buy.
+       */
+      bustedUntil?: string;
       folded: boolean;
       inHand: boolean;
       leaving: boolean;
@@ -1980,6 +2072,7 @@ export type components = {
       | components['schemas']['PlayerSeatedEvent']
       | components['schemas']['PlayerLeftEvent']
       | components['schemas']['PlayerSittingOutEvent']
+      | components['schemas']['PlayerToppedUpEvent']
       | components['schemas']['HandStartedEvent']
       | components['schemas']['BlindPostedEvent']
       | components['schemas']['HoleCardsDealtEvent']
@@ -2071,6 +2164,23 @@ export type components = {
      * @description UTC RFC 3339 timestamp
      */
     Timestamp: string;
+    TopUpRequest: {
+      amount: components['schemas']['ChipAmount'];
+    };
+    TopUpResult: {
+      /**
+       * Format: int64
+       * @description Chips waiting for the current hand to end (0 when APPLIED).
+       */
+      pending: number;
+      stack: components['schemas']['ChipAmount'];
+      /**
+       * @description PENDING while the player is in a hand; applied when it ends.
+       * @enum {string}
+       */
+      status: 'APPLIED' | 'PENDING';
+      tableId: components['schemas']['Uuid'];
+    };
     TotpEnrollment: {
       /** @description otpauth://totp/... URI (QR code content). */
       otpauthUri: string;
@@ -2276,8 +2386,18 @@ export type components = {
       seat: number;
     };
     YouView: {
+      /**
+       * Format: int64
+       * @description The viewer's automatic top-up target (0 = off).
+       */
+      autoTopUpTo: number;
       holeCards: components['schemas']['Card'][];
       legalActions: components['schemas']['LegalAction'][];
+      /**
+       * Format: int64
+       * @description Chips the viewer added during the current hand, applied when it ends.
+       */
+      pendingTopUp: number;
       /** @description 0 when the viewer is not seated. */
       seat: number;
       /** Format: uuid */
@@ -3674,6 +3794,34 @@ export interface operations {
       404: components['responses']['Error'];
     };
   };
+  setAutoTopUp: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tableId: components['parameters']['TableId'];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AutoTopUpRequest'];
+      };
+    };
+    responses: {
+      /** @description Saved */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AutoTopUpResult'];
+        };
+      };
+      400: components['responses']['Error'];
+      409: components['responses']['Error'];
+    };
+  };
   closeTable: {
     parameters: {
       query?: never;
@@ -3778,6 +3926,38 @@ export interface operations {
         };
       };
       403: components['responses']['Error'];
+    };
+  };
+  topUp: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Unique key making a retried state-changing request a no-op. */
+        'Idempotency-Key'?: components['parameters']['IdempotencyKey'];
+      };
+      path: {
+        tableId: components['parameters']['TableId'];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['TopUpRequest'];
+      };
+    };
+    responses: {
+      /** @description Applied or pending */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TopUpResult'];
+        };
+      };
+      400: components['responses']['Error'];
+      409: components['responses']['Error'];
+      422: components['responses']['Error'];
     };
   };
   getTournament: {

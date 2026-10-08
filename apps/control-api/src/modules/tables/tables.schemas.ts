@@ -35,3 +35,11 @@ export const seatSchema = z
   })
   .strict();
 export type SeatInput = z.infer<typeof seatSchema>;
+
+export const topUpSchema = z.object({ amount: chips }).strict();
+export type TopUpInput = z.infer<typeof topUpSchema>;
+
+export const autoTopUpSchema = z
+  .object({ to: z.number().int().min(0).max(1_000_000_000_000) })
+  .strict();
+export type AutoTopUpInput = z.infer<typeof autoTopUpSchema>;

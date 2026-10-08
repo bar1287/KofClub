@@ -16,7 +16,7 @@ tracing, failover/load/restore drills and a security review.
 **Now: the W roadmap ([docs/roadmap.md](docs/roadmap.md))**, the plan from a
 working platform to a world-class one (table essentials, game variety,
 tournament depth, social, trust and safety, experience, production scale).
-Current milestone: **W1.3 Re-buy and top-up** (W1.1 pre-actions and W1.2 time bank are done).
+Current milestone: **W1.4 Table chat and reactions** (W1.1–W1.3 are done).
 
 ## Milestones (spec §16)
 
@@ -87,7 +87,7 @@ make screenshots   # screenshot tour of the real stack into docs/screenshots
 - Club _closure_ (terminal status CLOSED) has no endpoint yet; suspension and reinstatement do.
 - Demo seed passwords are fixed for local convenience (seed refuses `APP_ENV=production`).
 - Players who leave mid-hand are auto-checked/folded and removed after the hand; there is no "stand up after folding" yet.
-- Busted players (stack 0) are unseated automatically after the hand (no re-buy flow yet).
+- Re-buy and top-up (W1.3): a top-up asked for during a hand is kept in the game service's memory until the hand ends (no chips move before then), so a restart in between drops it; the player asks again. Leaving and re-sitting refills the time bank.
 - Tables cannot be reopened or edited after creation (close and create a new one).
 - Engine simplifications (documented in docs/game-engine.md): no antes/straddles, no dead button or missed-blind tracking, no mucking at showdown, no hi/lo split games.
 - A table's game type is fixed at creation (by design; hands record their own game).
@@ -127,7 +127,7 @@ Canonical contract: `packages/contracts/openapi/control-api.yaml`
 ## Next tasks
 
 Follow [docs/roadmap.md](docs/roadmap.md) in its order of work, one milestone
-at a time: W1.3 re-buy and top-up, W1.4
+at a time: W1.4
 table chat and reactions, W1.5 showdown choices, W1.6 sounds, animations and
 themes; then W2.1–W2.3 (antes, straddle and bomb pots, run it twice) and W7.1
 (single origin). Earlier suggestions (tournament structures, late
