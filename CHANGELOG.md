@@ -5,6 +5,15 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed — Realtime feed swept while a subscriber joined
+
+- The gateway's idle sweep could stop a table's event stream just as a new
+  subscriber was handed it (the feed had no listeners yet): that subscriber
+  got a snapshot and then no events. Handing out a feed now restarts its
+  idle clock under the sweep's lock.
+- CI prints Playwright's page snapshots and the services' warnings and
+  errors when a browser test fails (artifacts are not always reachable).
+
 ### Added — Time bank (roadmap W1.2)
 
 - Each seat has a time bank that starts only when the turn timer runs out.

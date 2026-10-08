@@ -132,6 +132,7 @@ func (h *Hub) feedFor(tableID string) *feed.Feed {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if f, ok := h.feeds[tableID]; ok {
+		f.Touch() // the idle sweep (Run) holds h.mu too
 		return f
 	}
 	f := feed.New(tableID, h.game, h.log, h.cfg.FeedRing)

@@ -127,6 +127,17 @@ func (f *Feed) Detach(l Listener) {
 	}
 }
 
+// Touch restarts the idle clock of a feed without listeners. The hub calls
+// it when handing the feed to a new subscriber, under the same lock as its
+// idle sweep, so the sweep cannot stop a feed that is about to be attached.
+func (f *Feed) Touch() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if len(f.listeners) == 0 {
+		f.idleSince = time.Now()
+	}
+}
+
 // IdleFor reports how long the feed has had no listeners (0 if it has some).
 func (f *Feed) IdleFor() time.Duration {
 	f.mu.Lock()

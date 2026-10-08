@@ -3,6 +3,7 @@ package feed
 import (
 	"log/slog"
 	"testing"
+	"time"
 )
 
 func closed(ch <-chan struct{}) bool {
@@ -44,5 +45,19 @@ func TestStartedClosesWhenTheStreamStartsAndReopensOnReset(t *testing.T) {
 	f.mu.Unlock()
 	if !closed(second) {
 		t.Fatal("restart did not release waiters")
+	}
+}
+
+func TestTouchRestartsTheIdleClock(t *testing.T) {
+	f := New("table", nil, slog.New(slog.DiscardHandler), 8)
+	f.mu.Lock()
+	f.idleSince = time.Now().Add(-time.Hour)
+	f.mu.Unlock()
+	if f.IdleFor() < time.Hour {
+		t.Fatal("setup")
+	}
+	f.Touch()
+	if idle := f.IdleFor(); idle > time.Second {
+		t.Fatalf("still idle for %v after Touch", idle)
 	}
 }
