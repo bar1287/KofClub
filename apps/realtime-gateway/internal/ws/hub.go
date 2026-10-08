@@ -16,6 +16,7 @@ import (
 
 	"github.com/bar1287/kofclub/apps/realtime-gateway/internal/access"
 	"github.com/bar1287/kofclub/apps/realtime-gateway/internal/auth"
+	"github.com/bar1287/kofclub/apps/realtime-gateway/internal/chat"
 	"github.com/bar1287/kofclub/apps/realtime-gateway/internal/feed"
 	"github.com/bar1287/kofclub/apps/realtime-gateway/internal/gamesvc"
 	"github.com/bar1287/kofclub/apps/realtime-gateway/internal/protocol"
@@ -55,6 +56,7 @@ type Metrics struct {
 	SlowConsumers prometheus.Counter
 	CommandRTT    prometheus.Histogram
 	Subscriptions prometheus.Gauge
+	ChatSends     *prometheus.CounterVec
 }
 
 // NewMetrics registers gateway metrics.
@@ -70,8 +72,9 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 		CommandRTT: prometheus.NewHistogram(prometheus.HistogramOpts{Name: "ws_command_latency_seconds", Help: "Command receipt to COMMAND_RESULT.",
 			Buckets: []float64{.001, .0025, .005, .01, .025, .05, .1, .25, .5, 1}}),
 		Subscriptions: prometheus.NewGauge(prometheus.GaugeOpts{Name: "ws_table_subscriptions", Help: "Active table subscriptions."}),
+		ChatSends:     prometheus.NewCounterVec(prometheus.CounterOpts{Name: "ws_chat_sends_total", Help: "CHAT_SEND frames by result (accepted, rejected, error)."}, []string{"result"}),
 	}
-	reg.MustRegister(m.Connections, m.Feeds, m.FramesIn, m.FramesOut, m.Resyncs, m.AuthFailures, m.SlowConsumers, m.CommandRTT, m.Subscriptions)
+	reg.MustRegister(m.Connections, m.Feeds, m.FramesIn, m.FramesOut, m.Resyncs, m.AuthFailures, m.SlowConsumers, m.CommandRTT, m.Subscriptions, m.ChatSends)
 	return m
 }
 
@@ -85,6 +88,7 @@ type Hub struct {
 	log      *slog.Logger
 	metrics  *Metrics
 	ctx      context.Context
+	chat     chat.Sender
 
 	mu       sync.Mutex
 	feeds    map[string]*feed.Feed
@@ -97,6 +101,20 @@ func NewHub(ctx context.Context, cfg Config, verifier *auth.Verifier, revoker Re
 	game *gamesvc.Client, log *slog.Logger, metrics *Metrics) *Hub {
 	return &Hub{ctx: ctx, cfg: cfg, verifier: verifier, revoker: revoker, access: checker, game: game, log: log,
 		metrics: metrics, feeds: map[string]*feed.Feed{}, conns: map[*Conn]struct{}{}}
+}
+
+// SetChat enables CHAT_SEND (call before serving). Without a sender,
+// chat frames are answered with SERVICE_UNAVAILABLE.
+func (h *Hub) SetChat(s chat.Sender) { h.chat = s }
+
+// DeliverChat sends a chat frame (CHAT_MESSAGE or CHAT_HIDDEN) to every
+// connection of this gateway subscribed to the table.
+func (h *Hub) DeliverChat(tableID, frameType string, frame []byte) {
+	for _, c := range h.connections() {
+		if c.subscribedTo(tableID) {
+			c.enqueueRaw(frameType, frame)
+		}
+	}
 }
 
 // ServeHTTP upgrades a client connection.

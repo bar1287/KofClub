@@ -20,6 +20,8 @@ client                                   gateway
   |<-- TABLE_EVENT {seq, event} ...          ordered, per-viewer
   | -- COMMAND {requestId, tableId, expectedSeq?, command} -->
   |<-- COMMAND_RESULT {requestId, accepted, duplicate, seq, error?}
+  | -- CHAT_SEND {requestId, tableId, text | emoji} -->  checked by control-api
+  |<-- CHAT_MESSAGE {tableId, message} | CHAT_HIDDEN {tableId, messageId}
   | -- AUTH {accessToken} (before expiry) -->|
   |<-- WELCOME (refreshed tokenExpiresAt)
 ```
@@ -96,6 +98,41 @@ resume, command re-send with the same `requestId`) and
   clients reconcile by `seq`.
 - Commands are rate limited per connection (10/s, burst 20 → `RATE_LIMITED`).
 
+## Chat (roadmap W1.4)
+
+```json
+{ "type": "CHAT_SEND", "requestId": "<uuid>", "tableId": "<uuid>", "text": "nice hand" }
+```
+
+- Exactly one of `text` (a message, 1–200 characters after control
+  characters and direction overrides are replaced and whitespace collapsed)
+  or `emoji` (a reaction from the `ChatEmoji` list). The connection must be
+  subscribed to the table.
+- control-api decides and stores (`POST /internal/v1/tables/{id}/chat`):
+  active club members only (not platform-admin oversight), the club's
+  `tableChat` setting (`CHAT_DISABLED`), 5 messages and 10 reactions per 10 s
+  per player (`RATE_LIMITED`). A resent `requestId` stores and delivers the
+  message once. Messages are kept 7 days (worker `purge-chat-messages`);
+  reactions are never stored.
+- Everyone watching the table, the sender included, receives
+  `CHAT_MESSAGE {tableId, message: {id, kind MESSAGE|REACTION, userId,
+username, text|emoji, sentAt}}`. Club staff hiding a reported message sends
+  `CHAT_HIDDEN {tableId, messageId}`. A rejected send is answered with
+  `ERROR {code, message, requestId, tableId}`.
+- History for late joiners: `GET /v1/tables/{id}/chat` (latest 50, oldest
+  first, `enabled` and `canSend` for the viewer). Clients refetch it after
+  every reconnect; chat is not replayed by `lastSeenSeq`.
+- Fan-out: control-api publishes each frame on the Redis channel
+  `table:chat` as `{tableId, frame}`; every gateway delivers it to its
+  connections subscribed to the table. When Redis is down, control-api
+  reports `published: false` and the sender's gateway delivers the message
+  to its own connections.
+- Muting is per viewer and stays in the browser. Reports
+  (`POST /v1/tables/{id}/chat/reports`) go to club staff
+  (`GET /v1/clubs/{id}/chat-reports`, `POST …/chat-reports/{reportId}/resolve`
+  with `HIDE` or `DISMISS`, both audited).
+- Message text is user content: no service logs it.
+
 ## Table events (`TABLE_EVENT.event.kind`)
 
 | Kind                    | Public fields                                                                                                    | Private (recipient only)       |
@@ -169,4 +206,4 @@ catalogue (e.g. `NOT_CLUB_MEMBER`, `CLUB_BANNED`, `TABLE_NOT_FOUND`,
 - Metrics: `ws_connections`, `ws_table_subscriptions`, `gateway_table_feeds`,
   `ws_frames_in_total`, `ws_frames_out_total`, `ws_resyncs_total`,
   `ws_auth_failures_total`, `ws_slow_consumer_disconnects_total`,
-  `ws_command_latency_seconds`.
+  `ws_command_latency_seconds`, `ws_chat_sends_total{result}`.

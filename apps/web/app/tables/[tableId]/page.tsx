@@ -9,6 +9,7 @@ import { RequireAuth } from '@/components/RequireAuth';
 import { ActionBar } from '@/components/table/ActionBar';
 import { ActionLog } from '@/components/table/ActionLog';
 import { BuyInDialog } from '@/components/table/BuyInDialog';
+import { TableChat } from '@/components/table/TableChat';
 import { TopUpDialog } from '@/components/table/TopUpDialog';
 import { ConnectionBadge } from '@/components/table/ConnectionBadge';
 import { gameLabel } from '@/lib/games';
@@ -19,11 +20,13 @@ import { formatCountdown, useNow } from '@/lib/time';
 import { useSession } from '@/lib/session';
 import { FOLLOW_INTERVAL_MS, followDecision } from '@/lib/table/follow';
 import { useTable } from '@/lib/table/useTable';
+import { useTableChat } from '@/lib/table/useTableChat';
 
 function TableRoom({ tableId }: { tableId: string }) {
-  const { ep } = useSession();
+  const { ep, user } = useSession();
   const { state, connection, busy, error, clearError, send, markLeaving, noteTopUp } =
     useTable(tableId);
+  const chat = useTableChat(tableId, connection);
   const [buyInSeat, setBuyInSeat] = useState<number | null>(null);
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -205,6 +208,7 @@ function TableRoom({ tableId }: { tableId: string }) {
             onSit={
               !me && !tournament && live && table?.status === 'OPEN' ? setBuyInSeat : undefined
             }
+            reactions={chat.reactions}
           />
           {me && <ActionBar state={state} enabled={live} busy={busy} send={send} />}
           <div className="stack" style={{ marginTop: 12 }}>
@@ -248,6 +252,7 @@ function TableRoom({ tableId }: { tableId: string }) {
               </table>
             </div>
           )}
+          <TableChat chat={chat} myUserId={user?.id ?? null} live={connection === 'open'} />
           <div className="panel">
             <h3>Table log</h3>
             <ActionLog entries={state.log} />

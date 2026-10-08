@@ -10,6 +10,27 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for ChatReportStatus.
+const (
+	ChatReportStatusDISMISSED ChatReportStatus = "DISMISSED"
+	ChatReportStatusHIDDEN    ChatReportStatus = "HIDDEN"
+	ChatReportStatusOPEN      ChatReportStatus = "OPEN"
+)
+
+// Valid indicates whether the value is a known member of the ChatReportStatus enum.
+func (e ChatReportStatus) Valid() bool {
+	switch e {
+	case ChatReportStatusDISMISSED:
+		return true
+	case ChatReportStatusHIDDEN:
+		return true
+	case ChatReportStatusOPEN:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CloseTableResultStatus.
 const (
 	CloseTableResultStatusCLOSED  CloseTableResultStatus = "CLOSED"
@@ -168,6 +189,7 @@ const (
 	ErrorCodeAUTHSESSIONREVOKED       ErrorCode = "AUTH_SESSION_REVOKED"
 	ErrorCodeAUTHTOKENEXPIRED         ErrorCode = "AUTH_TOKEN_EXPIRED"
 	ErrorCodeAUTHTOKENINVALID         ErrorCode = "AUTH_TOKEN_INVALID"
+	ErrorCodeCHATDISABLED             ErrorCode = "CHAT_DISABLED"
 	ErrorCodeCLUBBANNED               ErrorCode = "CLUB_BANNED"
 	ErrorCodeCLUBNOTFOUND             ErrorCode = "CLUB_NOT_FOUND"
 	ErrorCodeCONFLICT                 ErrorCode = "CONFLICT"
@@ -235,6 +257,8 @@ func (e ErrorCode) Valid() bool {
 	case ErrorCodeAUTHTOKENEXPIRED:
 		return true
 	case ErrorCodeAUTHTOKENINVALID:
+		return true
+	case ErrorCodeCHATDISABLED:
 		return true
 	case ErrorCodeCLUBBANNED:
 		return true
@@ -580,6 +604,24 @@ func (e PlatformRole) Valid() bool {
 	case PlatformRolePLATFORMADMIN:
 		return true
 	case PlatformRoleUSER:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ResolveChatReportRequestAction.
+const (
+	ResolveChatReportRequestActionDISMISS ResolveChatReportRequestAction = "DISMISS"
+	ResolveChatReportRequestActionHIDE    ResolveChatReportRequestAction = "HIDE"
+)
+
+// Valid indicates whether the value is a known member of the ResolveChatReportRequestAction enum.
+func (e ResolveChatReportRequestAction) Valid() bool {
+	switch e {
+	case ResolveChatReportRequestActionDISMISS:
+		return true
+	case ResolveChatReportRequestActionHIDE:
 		return true
 	default:
 		return false
@@ -1017,6 +1059,47 @@ type BlindLevel struct {
 	SmallBlind ChipAmount `json:"smallBlind"`
 }
 
+// ChatHistory defines model for ChatHistory.
+type ChatHistory struct {
+	// CanSend Whether the viewer may send messages and reactions here.
+	CanSend bool `json:"canSend"`
+
+	// Enabled False when the club has turned table chat off.
+	Enabled bool                       `json:"enabled"`
+	Items   []externalRef0.ChatMessage `json:"items"`
+	TableId Uuid                       `json:"tableId"`
+}
+
+// ChatReport defines model for ChatReport.
+type ChatReport struct {
+	ClubId Uuid `json:"clubId"`
+
+	// CreatedAt UTC RFC 3339 timestamp
+	CreatedAt        Timestamp        `json:"createdAt"`
+	Id               Uuid             `json:"id"`
+	MessageId        Uuid             `json:"messageId"`
+	Reason           *string          `json:"reason"`
+	ReportedUserId   Uuid             `json:"reportedUserId"`
+	ReportedUsername string           `json:"reportedUsername"`
+	ReporterUserId   Uuid             `json:"reporterUserId"`
+	ReporterUsername string           `json:"reporterUsername"`
+	ResolvedAt       *time.Time       `json:"resolvedAt"`
+	Status           ChatReportStatus `json:"status"`
+	TableId          Uuid             `json:"tableId"`
+
+	// Text The reported message as it was sent.
+	Text string `json:"text"`
+}
+
+// ChatReportPage defines model for ChatReportPage.
+type ChatReportPage struct {
+	Items      []ChatReport `json:"items"`
+	NextCursor *string      `json:"nextCursor"`
+}
+
+// ChatReportStatus defines model for ChatReportStatus.
+type ChatReportStatus string
+
 // ChipAmount Integer amount of virtual chips (no monetary value).
 type ChipAmount = int64
 
@@ -1056,6 +1139,9 @@ type Club struct {
 	Name        string      `json:"name"`
 	OwnerUserId Uuid        `json:"ownerUserId"`
 	Status      ClubStatus  `json:"status"`
+
+	// TableChat Whether players can chat and send reactions at the club's tables.
+	TableChat *bool `json:"tableChat,omitempty"`
 }
 
 // ClubMyRole Null when viewed through platform-admin oversight.
@@ -1550,6 +1636,20 @@ type RegisterRequest struct {
 	Username string              `json:"username"`
 }
 
+// ReportChatMessageRequest defines model for ReportChatMessageRequest.
+type ReportChatMessageRequest struct {
+	MessageId Uuid    `json:"messageId"`
+	Reason    *string `json:"reason,omitempty"`
+}
+
+// ResolveChatReportRequest defines model for ResolveChatReportRequest.
+type ResolveChatReportRequest struct {
+	Action ResolveChatReportRequestAction `json:"action"`
+}
+
+// ResolveChatReportRequestAction defines model for ResolveChatReportRequest.Action.
+type ResolveChatReportRequestAction string
+
 // ReversalRequest defines model for ReversalRequest.
 type ReversalRequest struct {
 	Note string `json:"note"`
@@ -1934,6 +2034,7 @@ type UpdateAccountStatusRequestStatus string
 type UpdateClubRequest struct {
 	Description *string `json:"description,omitempty"`
 	Name        *string `json:"name,omitempty"`
+	TableChat   *bool   `json:"tableChat,omitempty"`
 }
 
 // UpdateMemberRequest defines model for UpdateMemberRequest.
@@ -2113,6 +2214,15 @@ type ListClubAuditLogParams struct {
 	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
 }
 
+// ListChatReportsParams defines parameters for ListChatReports.
+type ListChatReportsParams struct {
+	Status *ChatReportStatus `form:"status,omitempty" json:"status,omitempty"`
+	Limit  *Limit            `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Cursor Opaque cursor from a previous page's `nextCursor`.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+}
+
 // DeductChipsParams defines parameters for DeductChips.
 type DeductChipsParams struct {
 	// IdempotencyKey Required for chip movements; retries with the same key never move chips twice.
@@ -2252,6 +2362,9 @@ type JoinClubByCodeJSONRequestBody = JoinClubRequest
 // UpdateClubJSONRequestBody defines body for UpdateClub for application/json ContentType.
 type UpdateClubJSONRequestBody = UpdateClubRequest
 
+// ResolveChatReportJSONRequestBody defines body for ResolveChatReport for application/json ContentType.
+type ResolveChatReportJSONRequestBody = ResolveChatReportRequest
+
 // DeductChipsJSONRequestBody defines body for DeductChips for application/json ContentType.
 type DeductChipsJSONRequestBody = ChipMovementRequest
 
@@ -2287,6 +2400,9 @@ type DisableTotpJSONRequestBody = MfaCodeRequest
 
 // SetAutoTopUpJSONRequestBody defines body for SetAutoTopUp for application/json ContentType.
 type SetAutoTopUpJSONRequestBody = AutoTopUpRequest
+
+// ReportChatMessageJSONRequestBody defines body for ReportChatMessage for application/json ContentType.
+type ReportChatMessageJSONRequestBody = ReportChatMessageRequest
 
 // TakeSeatJSONRequestBody defines body for TakeSeat for application/json ContentType.
 type TakeSeatJSONRequestBody = SeatRequest

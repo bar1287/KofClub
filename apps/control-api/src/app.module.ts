@@ -10,6 +10,7 @@ import { DatabaseModule } from './infra/database/database.module';
 import { RedisModule } from './infra/redis/redis.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { AuditModule } from './modules/audit/audit.module';
+import { ChatModule } from './modules/chat/chat.module';
 import { ClubsModule } from './modules/clubs/clubs.module';
 import { IdentityModule } from './modules/identity/identity.module';
 import { AdminModule } from './modules/admin/admin.module';
@@ -39,6 +40,7 @@ export class AppModule {
         ClubsModule,
         LedgerModule,
         TablesModule,
+        ChatModule,
         TournamentsModule,
         HistoryModule,
         AdminModule,

@@ -41,8 +41,69 @@ export type components = {
       seat: number;
     };
     /** @enum {string} */
+    ChatEmoji: '👍' | '👏' | '😂' | '😮' | '😢' | '😡' | '🔥' | '🎉' | '🤝' | '😎' | '🙏' | '💪';
+    /** @description Club staff hid a message after a report; clients remove it. */
+    ChatHiddenFrame: {
+      /** Format: uuid */
+      messageId: string;
+      /** Format: uuid */
+      tableId: string;
+      /** @enum {string} */
+      type: 'CHAT_HIDDEN';
+    };
+    ChatMessage: {
+      emoji?: components['schemas']['ChatEmoji'];
+      /** Format: uuid */
+      id: string;
+      /**
+       * @description REACTION carries an emoji and is not kept in the history.
+       * @enum {string}
+       */
+      kind: 'MESSAGE' | 'REACTION';
+      /** Format: date-time */
+      sentAt: string;
+      /** Format: uuid */
+      tableId: string;
+      text?: string;
+      /** Format: uuid */
+      userId: string;
+      username: string;
+    };
+    ChatMessageFrame: {
+      message: components['schemas']['ChatMessage'];
+      /** Format: uuid */
+      tableId: string;
+      /** @enum {string} */
+      type: 'CHAT_MESSAGE';
+    };
+    /**
+     * @description A chat message (text) or an emoji reaction (emoji) at a table the
+     *     connection is subscribed to; exactly one of the two. requestId is the
+     *     idempotency key: a resent message is stored and delivered once.
+     *     Everyone watching the table, the sender included, receives it as
+     *     CHAT_MESSAGE; a rejected send is answered with ERROR (CHAT_DISABLED,
+     *     RATE_LIMITED, VALIDATION_FAILED, ...) carrying the requestId.
+     */
+    ChatSend: {
+      emoji?: components['schemas']['ChatEmoji'];
+      /** Format: uuid */
+      requestId: string;
+      /** Format: uuid */
+      tableId: string;
+      text?: string;
+      /** @enum {string} */
+      type: 'CHAT_SEND';
+    };
+    /** @enum {string} */
     ClientMessageType:
-      'HELLO' | 'AUTH' | 'SUBSCRIBE_TABLE' | 'UNSUBSCRIBE_TABLE' | 'COMMAND' | 'PING' | 'PONG';
+      | 'HELLO'
+      | 'AUTH'
+      | 'SUBSCRIBE_TABLE'
+      | 'UNSUBSCRIBE_TABLE'
+      | 'COMMAND'
+      | 'CHAT_SEND'
+      | 'PING'
+      | 'PONG';
     /**
      * @description Player intent. requestId (UUID) is the command's idempotency key
      *     (EventID): resending it never applies the action twice.
@@ -421,6 +482,8 @@ export type components = {
       | 'TABLE_EVENT'
       | 'COMMAND_RESULT'
       | 'RESYNC_REQUIRED'
+      | 'CHAT_MESSAGE'
+      | 'CHAT_HIDDEN'
       | 'ERROR'
       | 'PING'
       | 'PONG';

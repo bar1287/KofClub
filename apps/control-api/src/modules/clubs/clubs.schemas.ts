@@ -12,10 +12,11 @@ export const updateClubSchema = z
   .object({
     name: z.string().trim().min(3).max(64).optional(),
     description: z.string().trim().max(500).nullable().optional(),
+    tableChat: z.boolean().optional(),
   })
   .strict()
-  .refine((v) => v.name !== undefined || v.description !== undefined, {
-    message: 'name or description required',
+  .refine((v) => v.name !== undefined || v.description !== undefined || v.tableChat !== undefined, {
+    message: 'name, description or tableChat required',
   });
 export type UpdateClubInput = z.infer<typeof updateClubSchema>;
 

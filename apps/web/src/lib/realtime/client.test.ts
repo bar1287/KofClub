@@ -268,6 +268,84 @@ describe('RealtimeClient', () => {
   });
 });
 
+describe('RealtimeClient chat', () => {
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  async function live() {
+    const { client, sockets } = setup();
+    client.subscribe(
+      TABLE,
+      listener(() => -1),
+    );
+    client.connect();
+    await flush();
+    const s = nth(sockets, 0);
+    s.open();
+    s.receive(welcome());
+    return { client, s };
+  }
+  const message = (userId: string, text: string): ServerFrame => ({
+    type: 'CHAT_MESSAGE',
+    tableId: TABLE,
+    message: {
+      id: `m-${text}`,
+      tableId: TABLE,
+      kind: 'MESSAGE',
+      userId,
+      username: userId,
+      text,
+      sentAt: new Date().toISOString(),
+    },
+  });
+
+  it('sends CHAT_SEND, settles on the echo and routes chat frames to listeners', async () => {
+    const { client, s } = await live();
+    const frames: string[] = [];
+    const stop = client.onChat(TABLE, (f) => frames.push(f.type));
+    const sent = client.sendChat(TABLE, { text: 'gl' });
+    const frame = s.sent.at(-1) as Extract<ClientFrame, { type: 'CHAT_SEND' }>;
+    expect(frame).toMatchObject({ type: 'CHAT_SEND', tableId: TABLE, text: 'gl' });
+    expect(frame.requestId).toMatch(/^[0-9a-f-]{36}$/);
+
+    s.receive(message('u2', 'hello')); // someone else's: does not settle ours
+    s.receive(message('u1', 'gl'));
+    await expect(sent).resolves.toBeUndefined();
+    s.receive({ type: 'CHAT_HIDDEN', tableId: TABLE, messageId: 'm-hello' });
+    expect(frames).toEqual(['CHAT_MESSAGE', 'CHAT_MESSAGE', 'CHAT_HIDDEN']);
+    stop();
+    s.receive(message('u2', 'later'));
+    expect(frames).toHaveLength(3);
+    client.close();
+  });
+
+  it('rejects with the server error code without disturbing the table', async () => {
+    const { client, s } = await live();
+    const sent = client.sendChat(TABLE, { emoji: '🔥' });
+    const { requestId } = s.sent.at(-1) as Extract<ClientFrame, { type: 'CHAT_SEND' }>;
+    s.receive({
+      type: 'ERROR',
+      code: 'CHAT_DISABLED',
+      message: 'Chat is turned off in this club',
+      requestId,
+      tableId: TABLE,
+    });
+    await expect(sent).rejects.toMatchObject({ code: 'CHAT_DISABLED' });
+    client.close();
+  });
+
+  it('does not queue chat while offline and fails sends cut off by a disconnect', async () => {
+    const { client, s } = await live();
+    const sent = client.sendChat(TABLE, { text: 'are you there?' });
+    s.drop(1006);
+    await expect(sent).rejects.toMatchObject({ code: 'CONNECTION_CLOSED' });
+    await expect(client.sendChat(TABLE, { text: 'hello?' })).rejects.toMatchObject({
+      code: 'CONNECTION_CLOSED',
+    });
+    client.close();
+  });
+});
+
 describe('backoffDelay', () => {
   it('grows exponentially, caps and jitters', () => {
     expect(backoffDelay(0, 500, 10_000, () => 0)).toBe(250);

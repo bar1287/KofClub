@@ -126,6 +126,36 @@ test('two players play a complete hand of Hold’em', async ({ browser }) => {
   await expect(alice.page.getByTestId('action-log')).toContainText('Hand #1 complete.');
   await snap(alice.page, '04-hand-complete');
 
+  // --- table chat: a message, a reaction, a report the owner acts on ----------
+  await alice.page.getByLabel('Chat message').fill('good luck');
+  await alice.page.getByRole('button', { name: 'Send', exact: true }).click();
+  for (const p of [alice, bob]) {
+    await expect(p.page.getByTestId('chat-log')).toContainText(`${alice.username} good luck`);
+  }
+  await expect(alice.page.getByLabel('Chat message')).toHaveValue('');
+  await bob.page.getByTestId('react-🔥').click();
+  await expect(alice.page.getByTestId('seat-2').getByTestId('seat-reaction')).toHaveText('🔥');
+
+  const line = bob.page.getByTestId('chat-message').filter({ hasText: 'good luck' });
+  await line.hover();
+  await line.getByRole('button', { name: `Report message from ${alice.username}` }).click();
+  await bob.page.getByLabel('Reason (optional)').fill('e2e report');
+  await bob.page.getByRole('button', { name: 'Report', exact: true }).click();
+  await expect(bob.page.getByText('Club staff will review it.')).toBeVisible();
+  await bob.page.getByRole('button', { name: 'Close', exact: true }).click();
+
+  const admin = await aliceCtx.newPage();
+  await admin.goto(`${clubUrl}/admin`);
+  await admin.getByRole('tab', { name: 'Chat reports' }).click();
+  await expect(admin.getByTestId('chat-reports')).toContainText('e2e report');
+  await admin.getByRole('button', { name: 'Hide message' }).click();
+  await expect(admin.getByText(`The message from ${alice.username} was hidden.`)).toBeVisible();
+  await admin.close();
+  // Hidden for everyone, live.
+  for (const p of [alice, bob]) {
+    await expect(p.page.getByTestId('chat-log')).not.toContainText('good luck');
+  }
+
   // --- hand history: own cards, public record ---------------------------------
   const history = await aliceCtx.newPage();
   await history.goto('/hands');

@@ -7,6 +7,10 @@ import type {
   RiskEvent,
   RiskEventPage,
   AuditPage,
+  ChatHistory,
+  ChatReport,
+  ChatReportPage,
+  ChatReportStatus,
   CloseTableResult,
   CreateInviteRequest,
   Invite,
@@ -106,6 +110,12 @@ export function endpoints(api: ApiClient) {
       api.request<AutoTopUpResult>('PUT', `/v1/tables/${enc(tableId)}/auto-top-up`, {
         body: { to },
       }),
+    tableChat: (tableId: string) =>
+      api.request<ChatHistory>('GET', `/v1/tables/${enc(tableId)}/chat`),
+    reportChat: (tableId: string, messageId: string, reason?: string) =>
+      api.request<ChatReport>('POST', `/v1/tables/${enc(tableId)}/chat/reports`, {
+        body: reason ? { messageId, reason } : { messageId },
+      }),
     closeTable: (tableId: string) =>
       api.request<CloseTableResult>('POST', `/v1/tables/${enc(tableId)}/close`),
 
@@ -131,8 +141,21 @@ export function endpoints(api: ApiClient) {
       api.request<TournamentDetail>('POST', `/v1/tournaments/${enc(id)}/cancel`),
 
     // --- club administration (the API enforces every permission) -------------
-    updateClub: (clubId: string, body: { name?: string; description?: string | null }) =>
-      api.request<Club>('PATCH', `/v1/clubs/${enc(clubId)}`, { body }),
+    updateClub: (
+      clubId: string,
+      body: { name?: string; description?: string | null; tableChat?: boolean },
+    ) => api.request<Club>('PATCH', `/v1/clubs/${enc(clubId)}`, { body }),
+    chatReports: (clubId: string, status: ChatReportStatus, cursor?: string | null) =>
+      api.request<ChatReportPage>(
+        'GET',
+        `/v1/clubs/${enc(clubId)}/chat-reports?limit=50&status=${status}${cursorParam(cursor)}`,
+      ),
+    resolveChatReport: (clubId: string, reportId: string, action: 'DISMISS' | 'HIDE') =>
+      api.request<ChatReport>(
+        'POST',
+        `/v1/clubs/${enc(clubId)}/chat-reports/${enc(reportId)}/resolve`,
+        { body: { action } },
+      ),
     transferOwnership: (clubId: string, userId: string) =>
       api.request<Club>('POST', `/v1/clubs/${enc(clubId)}/transfer-ownership`, {
         body: { userId },

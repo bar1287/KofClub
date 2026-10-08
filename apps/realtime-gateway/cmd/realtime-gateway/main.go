@@ -15,6 +15,7 @@ import (
 
 	"github.com/bar1287/kofclub/apps/realtime-gateway/internal/access"
 	"github.com/bar1287/kofclub/apps/realtime-gateway/internal/auth"
+	"github.com/bar1287/kofclub/apps/realtime-gateway/internal/chat"
 	"github.com/bar1287/kofclub/apps/realtime-gateway/internal/config"
 	"github.com/bar1287/kofclub/apps/realtime-gateway/internal/gamesvc"
 	"github.com/bar1287/kofclub/apps/realtime-gateway/internal/ws"
@@ -67,12 +68,14 @@ func run() error {
 	wsCfg.HeartbeatInterval = cfg.HeartbeatInterval
 	wsCfg.OriginPatterns = cfg.OriginPatterns
 	hub := ws.NewHub(ctx, wsCfg, verifier, revocations, checker, game, logger, ws.NewMetrics(reg))
+	hub.SetChat(chat.NewHTTPSender(cfg.ControlAPIURL, cfg.InternalServiceToken))
 	go hub.Run(ctx)
 	go revocations.Watch(ctx, func(sid string) { hub.RevokeSession(sid) })
+	go chat.Watch(ctx, rdb, logger, hub.DeliverChat)
 
 	gameHealth := &http.Client{Timeout: 2 * time.Second}
 	health := observability.NewHealth(serviceName, 2*time.Second,
-		// Redis is degradable (revocation cache); readiness depends on the game plane.
+		// Redis is degradable (revocation cache, chat fan-out); readiness depends on the game plane.
 		observability.Check{Name: "game-service", Fn: func(ctx context.Context) error {
 			req, _ := http.NewRequestWithContext(ctx, http.MethodGet, cfg.GameServiceURL+"/health/live", nil)
 			res, err := gameHealth.Do(req)

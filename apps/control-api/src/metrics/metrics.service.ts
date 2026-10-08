@@ -24,6 +24,19 @@ export class MetricsService {
     registers: [this.registry],
   });
 
+  /** Table chat: messages and reactions sent, reports filed. */
+  readonly chatMessages = new Counter({
+    name: 'chat_messages_total',
+    help: 'Table chat messages and reactions sent, by kind.',
+    labelNames: ['kind'] as const,
+    registers: [this.registry],
+  });
+  readonly chatReports = new Counter({
+    name: 'chat_reports_total',
+    help: 'Chat messages reported to club staff.',
+    registers: [this.registry],
+  });
+
   constructor() {
     this.registry.setDefaultLabels({ service: 'control-api' });
     collectDefaultMetrics({ register: this.registry });

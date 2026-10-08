@@ -5,7 +5,7 @@ import { collectDefaultMetrics, Registry } from 'prom-client';
 import { loadConfig } from './config';
 import { Job, runJobs } from './jobs';
 import { ledgerInvariantCheck } from './ledger-jobs';
-import { purgeIdempotencyKeys } from './purge-jobs';
+import { purgeChatMessages, purgeIdempotencyKeys } from './purge-jobs';
 import { tournamentHealthCheck } from './tournament-jobs';
 
 async function main(): Promise<void> {
@@ -28,6 +28,7 @@ async function main(): Promise<void> {
   collectDefaultMetrics({ register: registry });
   const jobs: Job[] = [
     purgeIdempotencyKeys(pool),
+    purgeChatMessages(pool),
     ledgerInvariantCheck(pool, logger, registry),
     tournamentHealthCheck(pool, logger, registry),
   ];

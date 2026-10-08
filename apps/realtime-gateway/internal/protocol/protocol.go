@@ -52,6 +52,15 @@ type Command struct {
 	Command     CommandPayload `json:"command"`
 }
 
+// ChatSend is a chat message (Text) or an emoji reaction (Emoji).
+type ChatSend struct {
+	Type      string `json:"type"`
+	RequestID string `json:"requestId"`
+	TableID   string `json:"tableId"`
+	Text      string `json:"text,omitempty"`
+	Emoji     string `json:"emoji,omitempty"`
+}
+
 type Ping struct {
 	Type  string `json:"type"`
 	Nonce string `json:"nonce,omitempty"`
@@ -136,6 +145,7 @@ const (
 	TypeSubscribe      = "SUBSCRIBE_TABLE"
 	TypeUnsubscribe    = "UNSUBSCRIBE_TABLE"
 	TypeCommand        = "COMMAND"
+	TypeChatSend       = "CHAT_SEND"
 	TypePing           = "PING"
 	TypePong           = "PONG"
 	TypeWelcome        = "WELCOME"
@@ -145,6 +155,8 @@ const (
 	TypeCommandResult  = "COMMAND_RESULT"
 	TypeResyncRequired = "RESYNC_REQUIRED"
 	TypeError          = "ERROR"
+	TypeChatMessage    = "CHAT_MESSAGE"
+	TypeChatHidden     = "CHAT_HIDDEN"
 )
 
 // WebSocket close codes used by the gateway (documented in

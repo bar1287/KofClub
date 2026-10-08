@@ -13,6 +13,8 @@ interface Props {
   /** Hole cards per player in this game (card backs for opponents). */
   holeCards: number;
   position: { left: number; top: number };
+  /** A chat reaction to show above the seat. */
+  reaction?: string;
 }
 
 function statusLine(seat: SeatState, hand: HandState | null): string {
@@ -25,7 +27,7 @@ function statusLine(seat: SeatState, hand: HandState | null): string {
   return '';
 }
 
-export function SeatView({ seat, hand, isMe, myCards, holeCards, position }: Props) {
+export function SeatView({ seat, hand, isMe, myCards, holeCards, position, reaction }: Props) {
   const acting = hand?.toActSeat === seat.seat;
   const handLive = hand !== null && hand.street !== 'COMPLETE';
   const won = hand?.awards
@@ -56,6 +58,15 @@ export function SeatView({ seat, hand, isMe, myCards, holeCards, position }: Pro
       data-username={seat.username}
       data-acting={acting ? 'true' : 'false'}
     >
+      {reaction && (
+        <div
+          className="seat-reaction"
+          data-testid="seat-reaction"
+          aria-label={`${seat.username} reacts ${reaction}`}
+        >
+          {reaction}
+        </div>
+      )}
       <div className="seat-cards" data-testid={isMe ? 'my-cards' : undefined}>
         {cards}
       </div>

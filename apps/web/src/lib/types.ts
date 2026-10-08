@@ -46,6 +46,10 @@ export type Tournament = Api['Tournament'];
 export type TournamentDetail = Api['TournamentDetail'];
 export type TournamentStatus = Api['TournamentStatus'];
 export type CreateTournamentRequest = Api['CreateTournamentRequest'];
+export type ChatHistory = Api['ChatHistory'];
+export type ChatReport = Api['ChatReport'];
+export type ChatReportPage = Api['ChatReportPage'];
+export type ChatReportStatus = Api['ChatReportStatus'];
 
 /** Realtime (WebSocket) types, generated from realtime.yaml. */
 type Rt = Realtime.components['schemas'];
@@ -70,6 +74,11 @@ export type Welcome = Rt['Welcome'];
 export type Subscribed = Rt['Subscribed'];
 export type ResyncRequired = Rt['ResyncRequired'];
 export type ProtocolError = Rt['ProtocolError'];
+export type ChatMessage = Rt['ChatMessage'];
+export type ChatEmoji = Rt['ChatEmoji'];
+export type ChatMessageFrame = Rt['ChatMessageFrame'];
+export type ChatHiddenFrame = Rt['ChatHiddenFrame'];
+export type ChatFrame = ChatMessageFrame | ChatHiddenFrame;
 
 /** Every frame the gateway can send. */
 export type ServerFrame =
@@ -80,6 +89,8 @@ export type ServerFrame =
   | CommandResult
   | ResyncRequired
   | ProtocolError
+  | ChatMessageFrame
+  | ChatHiddenFrame
   | Rt['Ping']
   | Rt['Pong'];
 
@@ -90,6 +101,7 @@ export type ClientFrame =
   | Rt['SubscribeTable']
   | Rt['UnsubscribeTable']
   | Rt['Command']
+  | Rt['ChatSend']
   | Rt['Ping']
   | Rt['Pong'];
 

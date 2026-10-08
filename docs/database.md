@@ -33,22 +33,23 @@ ephemeral data.
 
 ## Schema overview
 
-| Migration                     | Tables                                                                                                                                                        |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 000001_foundation             | extensions (`citext`, `pgcrypto`), helper functions                                                                                                           |
-| 000002_identity               | `users`, `sessions`, `session_refresh_tokens`                                                                                                                 |
-| 000003_audit_risk_idempotency | `audit_log` (append-only), `risk_events` (evidence immutable), `idempotency_keys`                                                                             |
-| 000004_clubs                  | `clubs`, `club_members` (one OWNER per club), `club_invites` (hashed codes)                                                                                   |
-| 000005_ledger                 | `ledger_accounts`, `ledger_transactions`, `ledger_entries`, `ledger_post()`, invariant view                                                                   |
-| 000006_tables                 | `tables`, `table_leases`, `table_runtime`, `table_seats`, `hands`, `hand_players`, `game_events`, `table_commands`                                            |
-| 000007_history_admin          | club hand-history index, `risk_events.review_note`, admin prefix-search indexes                                                                               |
-| 000008_omaha                  | `tables.game_type` allows `PLO`; `hands.game_type` records each hand's game (down refuses while PLO tables exist)                                             |
-| 000009_tournaments            | tournaments, registrations, runtime, entries, transfers, tournament tables; `TOURNAMENT_POOL` + tournament ledger kinds (down refuses once tournaments exist) |
-| 000010_tournament_health      | views `tournament_invariant_violations` (chips, pools, results) and `tournament_health` (running, transfers, overdue starts) for monitoring                   |
-| 000011_seal_key_ids           | `hands.seal_key_id`: keyring key that sealed the deck and hole cards (existing hands: 1); deck-key rotation                                                   |
-| 000012_mfa                    | `user_mfa` (encrypted TOTP secret, last used step), `user_mfa_recovery_codes` (hashes), `sessions.mfa_at` (ADR-017)                                           |
-| 000013_time_bank              | `tables.time_bank_ms`, `tables.time_bank_refill_ms` (W1.2 time bank settings), `table_seats.time_bank_ms` (each seat's remaining bank)                        |
-| 000014_auto_top_up            | `table_seats.auto_top_up_to` (W1.3: stack to top back up to after every hand; 0 = off)                                                                        |
+| Migration                     | Tables                                                                                                                                                            |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 000001_foundation             | extensions (`citext`, `pgcrypto`), helper functions                                                                                                               |
+| 000002_identity               | `users`, `sessions`, `session_refresh_tokens`                                                                                                                     |
+| 000003_audit_risk_idempotency | `audit_log` (append-only), `risk_events` (evidence immutable), `idempotency_keys`                                                                                 |
+| 000004_clubs                  | `clubs`, `club_members` (one OWNER per club), `club_invites` (hashed codes)                                                                                       |
+| 000005_ledger                 | `ledger_accounts`, `ledger_transactions`, `ledger_entries`, `ledger_post()`, invariant view                                                                       |
+| 000006_tables                 | `tables`, `table_leases`, `table_runtime`, `table_seats`, `hands`, `hand_players`, `game_events`, `table_commands`                                                |
+| 000007_history_admin          | club hand-history index, `risk_events.review_note`, admin prefix-search indexes                                                                                   |
+| 000008_omaha                  | `tables.game_type` allows `PLO`; `hands.game_type` records each hand's game (down refuses while PLO tables exist)                                                 |
+| 000009_tournaments            | tournaments, registrations, runtime, entries, transfers, tournament tables; `TOURNAMENT_POOL` + tournament ledger kinds (down refuses once tournaments exist)     |
+| 000010_tournament_health      | views `tournament_invariant_violations` (chips, pools, results) and `tournament_health` (running, transfers, overdue starts) for monitoring                       |
+| 000011_seal_key_ids           | `hands.seal_key_id`: keyring key that sealed the deck and hole cards (existing hands: 1); deck-key rotation                                                       |
+| 000012_mfa                    | `user_mfa` (encrypted TOTP secret, last used step), `user_mfa_recovery_codes` (hashes), `sessions.mfa_at` (ADR-017)                                               |
+| 000013_time_bank              | `tables.time_bank_ms`, `tables.time_bank_refill_ms` (W1.2 time bank settings), `table_seats.time_bank_ms` (each seat's remaining bank)                            |
+| 000014_auto_top_up            | `table_seats.auto_top_up_to` (W1.3: stack to top back up to after every hand; 0 = off)                                                                            |
+| 000015_table_chat             | `clubs.table_chat`, `chat_messages` (W1.4: kept 7 days, unique per sender `request_id`, `hidden_at`), `chat_reports` (copy of the message, OPEN/DISMISSED/HIDDEN) |
 
 (The table is extended by each milestone; see the migration files for
 authoritative definitions.)

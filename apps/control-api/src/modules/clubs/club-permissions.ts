@@ -15,6 +15,8 @@ export type ClubPermission =
   | 'LEDGER_VIEW'
   | 'AUDIT_VIEW'
   | 'HANDS_VIEW'
+  | 'CHAT_SEND'
+  | 'CHAT_MODERATE'
   | 'CLUB_MANAGE';
 
 /** Minimum club role required for each permission (spec §9 RBAC). */
@@ -29,6 +31,9 @@ const MINIMUM_ROLE: Record<ClubPermission, ClubRole> = {
   AUDIT_VIEW: 'ADMIN',
   // Club-wide hand history (public record only, ADR-008).
   HANDS_VIEW: 'ADMIN',
+  // Table chat: members talk (and report); staff review reports.
+  CHAT_SEND: 'MEMBER',
+  CHAT_MODERATE: 'ADMIN',
   CLUB_MANAGE: 'OWNER',
 };
 

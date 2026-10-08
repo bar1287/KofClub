@@ -10,12 +10,17 @@ export function SettingsPanel({ club, onClubChanged }: { club: Club; onClubChang
   const { ep } = useSession();
   const [name, setName] = useState(club.name);
   const [description, setDescription] = useState(club.description ?? '');
+  const [tableChat, setTableChat] = useState(club.tableChat ?? true);
   const { busy, error, notice, run } = useAction();
 
   async function save(e: FormEvent) {
     e.preventDefault();
     await run(async () => {
-      await ep.updateClub(club.id, { name: name.trim(), description: description.trim() || null });
+      await ep.updateClub(club.id, {
+        name: name.trim(),
+        description: description.trim() || null,
+        tableChat,
+      });
       onClubChanged();
       return 'Club settings saved.';
     });
@@ -42,6 +47,15 @@ export function SettingsPanel({ club, onClubChanged }: { club: Club; onClubChang
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
+      </label>
+      <label className="row small">
+        <input
+          type="checkbox"
+          name="tableChat"
+          checked={tableChat}
+          onChange={(e) => setTableChat(e.target.checked)}
+        />
+        Players can chat and send reactions at the club&apos;s tables
       </label>
       <Feedback error={error} notice={notice} />
       <button className="btn primary" type="submit" disabled={busy}>

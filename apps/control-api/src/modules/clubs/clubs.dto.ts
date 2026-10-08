@@ -9,6 +9,7 @@ export interface ClubDto {
   ownerUserId: string;
   createdAt: string;
   myRole: ClubRole | null;
+  tableChat: boolean;
   memberCount?: number;
   /** Only visible to roles that can invite (AGENT and above). */
   joinCode?: string;
@@ -47,6 +48,7 @@ export function toClubDto(
     ownerUserId: c.ownerUserId,
     createdAt: c.createdAt.toISOString(),
     myRole,
+    tableChat: c.tableChat,
   };
   if (opts.memberCount !== undefined) dto.memberCount = opts.memberCount;
   if (opts.showJoinCode) dto.joinCode = c.joinCode;

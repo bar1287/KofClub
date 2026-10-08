@@ -14,3 +14,20 @@ export function purgeIdempotencyKeys(pool: Pool, retentionHours = 24): Job {
     },
   };
 }
+
+/**
+ * Table chat is kept for a week (roadmap W1.4). Reports keep their own copy
+ * of a reported message, so purging never loses moderation evidence.
+ */
+export function purgeChatMessages(pool: Pool, retentionDays = 7): Job {
+  return {
+    name: 'purge-chat-messages',
+    async run() {
+      const res = await pool.query(
+        `DELETE FROM chat_messages WHERE created_at < now() - make_interval(days => $1)`,
+        [retentionDays],
+      );
+      return { affected: res.rowCount ?? 0 };
+    },
+  };
+}

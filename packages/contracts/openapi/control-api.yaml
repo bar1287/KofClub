@@ -36,6 +36,8 @@ tags:
     description: Table directory, seating (buy-in) and leaving (cash-out)
   - name: history
     description: Hand history with the ADR-008 visibility policy
+  - name: chat
+    description: Table chat history, reports and moderation (live messages use the realtime connection)
   - name: tournaments
     description: Virtual-chip tournaments (registration, blind levels, balancing, prize payouts)
   - name: admin
@@ -389,7 +391,7 @@ paths:
     patch:
       tags: [clubs]
       operationId: updateClub
-      summary: Rename the club or edit its description (OWNER)
+      summary: Rename the club, edit its description or turn table chat on and off (OWNER)
       security:
         - bearerAuth: []
       requestBody:
@@ -1052,6 +1054,61 @@ paths:
                 $ref: './realtime.yaml#/components/schemas/TableSnapshot'
         '403':
           $ref: '#/components/responses/Error'
+  /v1/tables/{tableId}/chat:
+    parameters:
+      - $ref: '#/components/parameters/TableId'
+    get:
+      tags: [chat]
+      operationId: getTableChat
+      summary: Recent chat messages at a table (oldest first)
+      description: |
+        The latest messages (up to 50, kept for 7 days) for players who open
+        the table; new messages and reactions arrive over the realtime
+        connection (CHAT_MESSAGE). Messages hidden by club staff are left out.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Chat history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatHistory'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+  /v1/tables/{tableId}/chat/reports:
+    parameters:
+      - $ref: '#/components/parameters/TableId'
+    post:
+      tags: [chat]
+      operationId: reportChatMessage
+      summary: Report a chat message to the club's staff
+      description: |
+        Reporting the same message again returns the first report. Players
+        cannot report their own messages.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportChatMessageRequest'
+      responses:
+        '200':
+          description: Report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatReport'
+        '400':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
   /v1/me/hands:
     get:
       tags: [history]
@@ -1119,6 +1176,69 @@ paths:
               schema:
                 $ref: '#/components/schemas/HandSummaryPage'
         '403':
+          $ref: '#/components/responses/Error'
+  /v1/clubs/{clubId}/chat-reports:
+    parameters:
+      - $ref: '#/components/parameters/ClubId'
+    get:
+      tags: [chat]
+      operationId: listChatReports
+      summary: Reported chat messages (ADMIN+, newest first)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ChatReportStatus'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Page of reports
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatReportPage'
+        '403':
+          $ref: '#/components/responses/Error'
+  /v1/clubs/{clubId}/chat-reports/{reportId}/resolve:
+    parameters:
+      - $ref: '#/components/parameters/ClubId'
+      - name: reportId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+    post:
+      tags: [chat]
+      operationId: resolveChatReport
+      summary: Dismiss a report or hide the reported message (ADMIN+)
+      description: |
+        HIDE removes the message from the table's chat for everyone (open
+        clients receive CHAT_HIDDEN) and resolves every open report of it.
+        Both actions are audited.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolveChatReportRequest'
+      responses:
+        '200':
+          description: Resolved report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatReport'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
           $ref: '#/components/responses/Error'
   /v1/clubs/{clubId}/tournaments:
     parameters:
@@ -1798,6 +1918,9 @@ components:
         joinCode:
           type: string
           description: Visible to AGENT and above only.
+        tableChat:
+          type: boolean
+          description: Whether players can chat and send reactions at the club's tables.
     ClubList:
       type: object
       additionalProperties: false
@@ -1832,6 +1955,8 @@ components:
           type: string
           nullable: true
           maxLength: 500
+        tableChat:
+          type: boolean
     TransferOwnershipRequest:
       type: object
       additionalProperties: false
@@ -2709,6 +2834,106 @@ components:
           enum: [LEFT, LEAVING_AFTER_HAND]
         cashOut:
           $ref: '#/components/schemas/ChipAmount'
+    ChatHistory:
+      type: object
+      additionalProperties: false
+      required: [tableId, enabled, canSend, items]
+      properties:
+        tableId:
+          $ref: '#/components/schemas/Uuid'
+        enabled:
+          type: boolean
+          description: False when the club has turned table chat off.
+        canSend:
+          type: boolean
+          description: Whether the viewer may send messages and reactions here.
+        items:
+          type: array
+          items:
+            $ref: './realtime.yaml#/components/schemas/ChatMessage'
+    ReportChatMessageRequest:
+      type: object
+      additionalProperties: false
+      required: [messageId]
+      properties:
+        messageId:
+          $ref: '#/components/schemas/Uuid'
+        reason:
+          type: string
+          maxLength: 200
+    ChatReportStatus:
+      type: string
+      enum: [OPEN, DISMISSED, HIDDEN]
+    ChatReport:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          id,
+          clubId,
+          tableId,
+          messageId,
+          reportedUserId,
+          reportedUsername,
+          reporterUserId,
+          reporterUsername,
+          text,
+          reason,
+          status,
+          resolvedAt,
+          createdAt,
+        ]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        clubId:
+          $ref: '#/components/schemas/Uuid'
+        tableId:
+          $ref: '#/components/schemas/Uuid'
+        messageId:
+          $ref: '#/components/schemas/Uuid'
+        reportedUserId:
+          $ref: '#/components/schemas/Uuid'
+        reportedUsername:
+          type: string
+        reporterUserId:
+          $ref: '#/components/schemas/Uuid'
+        reporterUsername:
+          type: string
+        text:
+          type: string
+          description: The reported message as it was sent.
+        reason:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/ChatReportStatus'
+        resolvedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+    ChatReportPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatReport'
+        nextCursor:
+          type: string
+          nullable: true
+    ResolveChatReportRequest:
+      type: object
+      additionalProperties: false
+      required: [action]
+      properties:
+        action:
+          type: string
+          enum: [DISMISS, HIDE]
     HandSummary:
       type: object
       description: No additionalProperties restriction because HandDetail extends it (allOf).
@@ -3190,6 +3415,8 @@ components:
         - ALREADY_REGISTERED
         - NOT_REGISTERED
         - NOT_ENOUGH_PLAYERS
+        # chat
+        - CHAT_DISABLED
     ErrorBody:
       type: object
       required: [code, message, requestId]

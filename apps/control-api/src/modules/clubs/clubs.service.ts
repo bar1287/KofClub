@@ -199,7 +199,7 @@ export class ClubsService {
     }
   }
 
-  /** Renames the club or edits its description (OWNER). */
+  /** Renames the club, edits its description or turns table chat on/off (OWNER). */
   async update(
     auth: AuthContext,
     clubId: string,
@@ -211,14 +211,19 @@ export class ClubsService {
       const updated = await this.repo.updateClub(q, clubId, {
         name: input.name,
         description: input.description,
+        tableChat: input.tableChat,
       });
       await this.audit.record(q, ctx, {
         action: 'CLUB_UPDATED',
         objectType: 'club',
         objectId: clubId,
         clubId,
-        before: { name: club.name, description: club.description },
-        after: { name: updated.name, description: updated.description },
+        before: { name: club.name, description: club.description, tableChat: club.tableChat },
+        after: {
+          name: updated.name,
+          description: updated.description,
+          tableChat: updated.tableChat,
+        },
       });
       return toClubDto(updated, membership?.role ?? null, {
         showJoinCode: true,

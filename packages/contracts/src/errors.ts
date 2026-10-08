@@ -61,6 +61,7 @@ export const ErrorCodes = {
   ALREADY_REGISTERED: 'ALREADY_REGISTERED',
   NOT_REGISTERED: 'NOT_REGISTERED',
   NOT_ENOUGH_PLAYERS: 'NOT_ENOUGH_PLAYERS',
+  CHAT_DISABLED: 'CHAT_DISABLED',
 } as const satisfies { [K in ErrorCode]: K };
 
 export const ALL_ERROR_CODES: readonly ErrorCode[] = Object.values(ErrorCodes);

@@ -1,4 +1,6 @@
 import type {
+  ChatEmoji,
+  ChatFrame,
   ClientFrame,
   CommandPayload,
   CommandResult,
@@ -39,6 +41,9 @@ export interface SocketLike {
 
 export type SocketFactory = (url: string) => SocketLike;
 
+/** Receives a table's chat frames (CHAT_MESSAGE, CHAT_HIDDEN). */
+export type ChatListener = (frame: ChatFrame) => void;
+
 export class CommandError extends Error {
   constructor(
     readonly code: string,
@@ -69,6 +74,13 @@ export interface RealtimeOptions {
 interface PendingCommand {
   frame: Extract<ClientFrame, { type: 'COMMAND' }>;
   resolve: (r: CommandResult) => void;
+  reject: (e: Error) => void;
+  timer: ReturnType<typeof setTimeout>;
+}
+
+interface PendingChat {
+  tableId: string;
+  resolve: () => void;
   reject: (e: Error) => void;
   timer: ReturnType<typeof setTimeout>;
 }
@@ -105,6 +117,8 @@ export class RealtimeClient {
   private readonly statusListeners = new Set<(s: ConnectionStatus) => void>();
   private readonly tables = new Map<string, TableListener>();
   private readonly pending = new Map<string, PendingCommand>();
+  private readonly chatListeners = new Map<string, Set<ChatListener>>();
+  private readonly pendingChat = new Map<string, PendingChat>();
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private authTimer: ReturnType<typeof setTimeout> | null = null;
   private pingTimer: ReturnType<typeof setInterval> | null = null;
@@ -159,6 +173,7 @@ export class RealtimeClient {
       p.reject(new CommandError('CONNECTION_CLOSED', 'Connection closed.'));
       this.pending.delete(id);
     }
+    this.failPendingChat();
     this.setStatus('closed');
   }
 
@@ -210,6 +225,59 @@ export class RealtimeClient {
       this.pending.set(requestId, { frame, resolve, reject, timer });
       if (this.isLive()) this.send(frame);
     });
+  }
+
+  /**
+   * Listens to a table's chat. Frames only arrive while the table is
+   * subscribed (subscribe()); returns a function that stops listening.
+   */
+  onChat(tableId: string, listener: ChatListener): () => void {
+    let set = this.chatListeners.get(tableId);
+    if (!set) {
+      set = new Set();
+      this.chatListeners.set(tableId, set);
+    }
+    set.add(listener);
+    return () => {
+      set.delete(listener);
+      if (set.size === 0 && this.chatListeners.get(tableId) === set) {
+        this.chatListeners.delete(tableId);
+      }
+    };
+  }
+
+  /**
+   * Sends a chat message or reaction at a subscribed table. Resolves when
+   * the server echoes it (or after the command timeout); rejects with the
+   * server's ERROR code (CHAT_DISABLED, RATE_LIMITED, ...) or when the
+   * connection is not open. Chat is not queued across reconnects.
+   */
+  sendChat(tableId: string, body: { text: string } | { emoji: ChatEmoji }): Promise<void> {
+    if (!this.isLive()) {
+      return Promise.reject(new CommandError('CONNECTION_CLOSED', 'Not connected.'));
+    }
+    const requestId = crypto.randomUUID();
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this.pendingChat.delete(requestId);
+        resolve();
+      }, this.opts.commandTimeoutMs);
+      this.pendingChat.set(requestId, { tableId, resolve, reject, timer });
+      this.send({ type: 'CHAT_SEND', requestId, tableId, ...body });
+    });
+  }
+
+  private failPendingChat(): void {
+    for (const [id, p] of this.pendingChat) {
+      clearTimeout(p.timer);
+      p.reject(
+        new CommandError(
+          'CONNECTION_CLOSED',
+          'Connection lost; the message may not have been sent.',
+        ),
+      );
+      this.pendingChat.delete(id);
+    }
   }
 
   private isLive(): boolean {
@@ -295,9 +363,32 @@ export class RealtimeClient {
         }
         break;
       }
-      case 'ERROR':
+      case 'CHAT_MESSAGE':
+      case 'CHAT_HIDDEN': {
+        if (frame.type === 'CHAT_MESSAGE' && frame.message.userId === this.userId) {
+          // The echo of our own send: settle the oldest pending one there.
+          for (const [id, p] of this.pendingChat) {
+            if (p.tableId !== frame.tableId) continue;
+            clearTimeout(p.timer);
+            this.pendingChat.delete(id);
+            p.resolve();
+            break;
+          }
+        }
+        for (const l of this.chatListeners.get(frame.tableId) ?? []) l(frame);
+        break;
+      }
+      case 'ERROR': {
+        const chat = frame.requestId ? this.pendingChat.get(frame.requestId) : undefined;
+        if (chat && frame.requestId) {
+          clearTimeout(chat.timer);
+          this.pendingChat.delete(frame.requestId);
+          chat.reject(new CommandError(frame.code, frame.message));
+          break;
+        }
         if (frame.tableId) this.tables.get(frame.tableId)?.onError?.(frame);
         break;
+      }
       case 'PING':
         this.send({ type: 'PONG', nonce: frame.nonce });
         break;
@@ -313,6 +404,7 @@ export class RealtimeClient {
     if (socket !== this.socket) return; // superseded
     this.detach();
     this.clearTimers();
+    this.failPendingChat();
     if (this.stopped) return;
     if (code === CLOSE_AUTH) {
       void this.recoverAuth();

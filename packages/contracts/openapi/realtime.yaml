@@ -18,7 +18,7 @@ components:
   schemas:
     ClientMessageType:
       type: string
-      enum: [HELLO, AUTH, SUBSCRIBE_TABLE, UNSUBSCRIBE_TABLE, COMMAND, PING, PONG]
+      enum: [HELLO, AUTH, SUBSCRIBE_TABLE, UNSUBSCRIBE_TABLE, COMMAND, CHAT_SEND, PING, PONG]
     ServerMessageType:
       type: string
       enum:
@@ -29,6 +29,8 @@ components:
           TABLE_EVENT,
           COMMAND_RESULT,
           RESYNC_REQUIRED,
+          CHAT_MESSAGE,
+          CHAT_HIDDEN,
           ERROR,
           PING,
           PONG,
@@ -306,6 +308,92 @@ components:
         tableId:
           type: string
           format: uuid
+    ChatSend:
+      type: object
+      description: |
+        A chat message (text) or an emoji reaction (emoji) at a table the
+        connection is subscribed to; exactly one of the two. requestId is the
+        idempotency key: a resent message is stored and delivered once.
+        Everyone watching the table, the sender included, receives it as
+        CHAT_MESSAGE; a rejected send is answered with ERROR (CHAT_DISABLED,
+        RATE_LIMITED, VALIDATION_FAILED, ...) carrying the requestId.
+      additionalProperties: false
+      required: [type, requestId, tableId]
+      properties:
+        type:
+          type: string
+          enum: [CHAT_SEND]
+        requestId:
+          type: string
+          format: uuid
+        tableId:
+          type: string
+          format: uuid
+        text:
+          type: string
+          minLength: 1
+          maxLength: 200
+        emoji:
+          $ref: '#/components/schemas/ChatEmoji'
+    ChatMessageFrame:
+      type: object
+      additionalProperties: false
+      required: [type, tableId, message]
+      properties:
+        type:
+          type: string
+          enum: [CHAT_MESSAGE]
+        tableId:
+          type: string
+          format: uuid
+        message:
+          $ref: '#/components/schemas/ChatMessage'
+    ChatHiddenFrame:
+      type: object
+      description: Club staff hid a message after a report; clients remove it.
+      additionalProperties: false
+      required: [type, tableId, messageId]
+      properties:
+        type:
+          type: string
+          enum: [CHAT_HIDDEN]
+        tableId:
+          type: string
+          format: uuid
+        messageId:
+          type: string
+          format: uuid
+    ChatMessage:
+      type: object
+      additionalProperties: false
+      required: [id, tableId, kind, userId, username, sentAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        tableId:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum: [MESSAGE, REACTION]
+          description: REACTION carries an emoji and is not kept in the history.
+        userId:
+          type: string
+          format: uuid
+        username:
+          type: string
+        text:
+          type: string
+          maxLength: 200
+        emoji:
+          $ref: '#/components/schemas/ChatEmoji'
+        sentAt:
+          type: string
+          format: date-time
+    ChatEmoji:
+      type: string
+      enum: ['👍', '👏', '😂', '😮', '😢', '😡', '🔥', '🎉', '🤝', '😎', '🙏', '💪']
     TableEventPayload:
       description: Ordered table event (discriminated by kind). Private fields only appear in the recipient's copy.
       oneOf:

@@ -284,7 +284,7 @@ export type paths = {
     delete?: never;
     options?: never;
     head?: never;
-    /** Rename the club or edit its description (OWNER) */
+    /** Rename the club, edit its description or turn table chat on and off (OWNER) */
     patch: operations['updateClub'];
     trace?: never;
   };
@@ -301,6 +301,50 @@ export type paths = {
     get: operations['listClubAuditLog'];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/clubs/{clubId}/chat-reports': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        clubId: components['parameters']['ClubId'];
+      };
+      cookie?: never;
+    };
+    /** Reported chat messages (ADMIN+, newest first) */
+    get: operations['listChatReports'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/clubs/{clubId}/chat-reports/{reportId}/resolve': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        clubId: components['parameters']['ClubId'];
+        reportId: components['schemas']['Uuid'];
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Dismiss a report or hide the reported message (ADMIN+)
+     * @description HIDE removes the message from the table's chat for everyone (open
+     *     clients receive CHAT_HIDDEN) and resolves every open report of it.
+     *     Both actions are audited.
+     */
+    post: operations['resolveChatReport'];
     delete?: never;
     options?: never;
     head?: never;
@@ -904,6 +948,53 @@ export type paths = {
     patch?: never;
     trace?: never;
   };
+  '/v1/tables/{tableId}/chat': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tableId: components['parameters']['TableId'];
+      };
+      cookie?: never;
+    };
+    /**
+     * Recent chat messages at a table (oldest first)
+     * @description The latest messages (up to 50, kept for 7 days) for players who open
+     *     the table; new messages and reactions arrive over the realtime
+     *     connection (CHAT_MESSAGE). Messages hidden by club staff are left out.
+     */
+    get: operations['getTableChat'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/tables/{tableId}/chat/reports': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tableId: components['parameters']['TableId'];
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Report a chat message to the club's staff
+     * @description Reporting the same message again returns the first report. Players
+     *     cannot report their own messages.
+     */
+    post: operations['reportChatMessage'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/tables/{tableId}/close': {
     parameters: {
       query?: never;
@@ -1224,6 +1315,57 @@ export type components = {
       kind: 'CARDS_REVEALED';
       seat: number;
     };
+    /** @enum {string} */
+    ChatEmoji: '👍' | '👏' | '😂' | '😮' | '😢' | '😡' | '🔥' | '🎉' | '🤝' | '😎' | '🙏' | '💪';
+    ChatHistory: {
+      /** @description Whether the viewer may send messages and reactions here. */
+      canSend: boolean;
+      /** @description False when the club has turned table chat off. */
+      enabled: boolean;
+      items: components['schemas']['ChatMessage'][];
+      tableId: components['schemas']['Uuid'];
+    };
+    ChatMessage: {
+      emoji?: components['schemas']['ChatEmoji'];
+      /** Format: uuid */
+      id: string;
+      /**
+       * @description REACTION carries an emoji and is not kept in the history.
+       * @enum {string}
+       */
+      kind: 'MESSAGE' | 'REACTION';
+      /** Format: date-time */
+      sentAt: string;
+      /** Format: uuid */
+      tableId: string;
+      text?: string;
+      /** Format: uuid */
+      userId: string;
+      username: string;
+    };
+    ChatReport: {
+      clubId: components['schemas']['Uuid'];
+      createdAt: components['schemas']['Timestamp'];
+      id: components['schemas']['Uuid'];
+      messageId: components['schemas']['Uuid'];
+      reason: string | null;
+      reportedUserId: components['schemas']['Uuid'];
+      reportedUsername: string;
+      reporterUserId: components['schemas']['Uuid'];
+      reporterUsername: string;
+      /** Format: date-time */
+      resolvedAt: string | null;
+      status: components['schemas']['ChatReportStatus'];
+      tableId: components['schemas']['Uuid'];
+      /** @description The reported message as it was sent. */
+      text: string;
+    };
+    ChatReportPage: {
+      items: components['schemas']['ChatReport'][];
+      nextCursor: string | null;
+    };
+    /** @enum {string} */
+    ChatReportStatus: 'OPEN' | 'DISMISSED' | 'HIDDEN';
     /**
      * Format: int64
      * @description Integer amount of virtual chips (no monetary value).
@@ -1260,6 +1402,8 @@ export type components = {
       name: string;
       ownerUserId: components['schemas']['Uuid'];
       status: components['schemas']['ClubStatus'];
+      /** @description Whether players can chat and send reactions at the club's tables. */
+      tableChat?: boolean;
     };
     ClubList: {
       items: components['schemas']['Club'][];
@@ -1414,7 +1558,8 @@ export type components = {
       | 'TOURNAMENT_FULL'
       | 'ALREADY_REGISTERED'
       | 'NOT_REGISTERED'
-      | 'NOT_ENOUGH_PLAYERS';
+      | 'NOT_ENOUGH_PLAYERS'
+      | 'CHAT_DISABLED';
     ErrorEnvelope: {
       error: components['schemas']['ErrorBody'];
     };
@@ -1927,6 +2072,14 @@ export type components = {
       password: string;
       username: string;
     };
+    ReportChatMessageRequest: {
+      messageId: components['schemas']['Uuid'];
+      reason?: string;
+    };
+    ResolveChatReportRequest: {
+      /** @enum {string} */
+      action: 'DISMISS' | 'HIDE';
+    };
     ReversalRequest: {
       note: string;
     };
@@ -2341,6 +2494,7 @@ export type components = {
     UpdateClubRequest: {
       description?: string | null;
       name?: string;
+      tableChat?: boolean;
     };
     UpdateMemberRequest: {
       /** @enum {string} */
@@ -2950,6 +3104,64 @@ export interface operations {
         };
       };
       403: components['responses']['Error'];
+    };
+  };
+  listChatReports: {
+    parameters: {
+      query?: {
+        /** @description Opaque cursor from a previous page's `nextCursor`. */
+        cursor?: components['parameters']['Cursor'];
+        limit?: components['parameters']['Limit'];
+        status?: components['schemas']['ChatReportStatus'];
+      };
+      header?: never;
+      path: {
+        clubId: components['parameters']['ClubId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Page of reports */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ChatReportPage'];
+        };
+      };
+      403: components['responses']['Error'];
+    };
+  };
+  resolveChatReport: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        clubId: components['parameters']['ClubId'];
+        reportId: components['schemas']['Uuid'];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ResolveChatReportRequest'];
+      };
+    };
+    responses: {
+      /** @description Resolved report */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ChatReport'];
+        };
+      };
+      403: components['responses']['Error'];
+      404: components['responses']['Error'];
+      409: components['responses']['Error'];
     };
   };
   deductChips: {
@@ -3820,6 +4032,59 @@ export interface operations {
       };
       400: components['responses']['Error'];
       409: components['responses']['Error'];
+    };
+  };
+  getTableChat: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tableId: components['parameters']['TableId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Chat history */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ChatHistory'];
+        };
+      };
+      403: components['responses']['Error'];
+      404: components['responses']['Error'];
+    };
+  };
+  reportChatMessage: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tableId: components['parameters']['TableId'];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ReportChatMessageRequest'];
+      };
+    };
+    responses: {
+      /** @description Report */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ChatReport'];
+        };
+      };
+      400: components['responses']['Error'];
+      403: components['responses']['Error'];
+      404: components['responses']['Error'];
     };
   };
   closeTable: {

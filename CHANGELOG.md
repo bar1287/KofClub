@@ -5,6 +5,31 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added — Table chat and reactions (roadmap W1.4)
+
+- Players chat at the table and send emoji reactions (shown as a bubble
+  above their seat for a few seconds). Late joiners see the latest 50
+  messages; the history is refetched after every reconnect.
+- control-api owns chat: only active club members can talk, 5 messages and
+  10 reactions per 10 seconds per player, messages of 1–200 characters
+  (control and direction-override characters removed, whitespace
+  collapsed). A resent message is stored once. Messages are kept for 7 days
+  (worker job `purge-chat-messages`); reactions are not stored. Chat text is
+  never logged.
+- The realtime gateway forwards `CHAT_SEND` to control-api, which publishes
+  `CHAT_MESSAGE`/`CHAT_HIDDEN` frames on the Redis channel `table:chat` for
+  every gateway to deliver; with Redis down, the sender's gateway delivers
+  them to its own connections.
+- Moderation: mute a player (per viewer, kept in the browser), report a
+  message to club staff, a "Chat reports" tab in the club console to hide a
+  message (removed live for everyone) or dismiss the report (both audited),
+  and a club setting to turn chat off (`tableChat`, error `CHAT_DISABLED`).
+- API: `GET /v1/tables/{id}/chat`, `POST /v1/tables/{id}/chat/reports`,
+  `GET /v1/clubs/{id}/chat-reports`,
+  `POST /v1/clubs/{id}/chat-reports/{reportId}/resolve`; `Club.tableChat`.
+  Migration 000015; metrics `chat_messages_total`, `chat_reports_total`,
+  `ws_chat_sends_total`.
+
 ### Added — Re-buy and top-up (roadmap W1.3)
 
 - Seated cash-table players add chips from the club wallet ("Add chips").

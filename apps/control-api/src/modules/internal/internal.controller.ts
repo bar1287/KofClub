@@ -1,10 +1,12 @@
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import { Public } from '../../common/auth/public.decorator';
 import { AppError } from '../../common/errors/app-error';
 import { NoRateLimit } from '../../common/rate-limit/no-rate-limit.decorator';
 import { uuidSchema } from '../../common/validation/schemas';
 import { ZodPipe } from '../../common/validation/zod.pipe';
+import { InternalChatInput, internalChatSchema } from '../chat/chat.schemas';
+import { ChatSendResult, ChatService } from '../chat/chat.service';
 import { ClubAccessService } from '../clubs/club-access.service';
 import { SessionsRepository } from '../identity/sessions.repository';
 import { UsersRepository } from '../identity/users.repository';
@@ -38,6 +40,7 @@ export class InternalController {
     private readonly users: UsersRepository,
     private readonly sessions: SessionsRepository,
     private readonly access: ClubAccessService,
+    private readonly chat: ChatService,
   ) {}
 
   @Get('tables/:tableId/access')
@@ -70,5 +73,18 @@ export class InternalController {
       if (err instanceof AppError) return { allowed: false, clubId: table.clubId, code: err.code };
       throw err;
     }
+  }
+
+  /**
+   * CHAT_SEND from a gateway connection. Errors use the standard envelope;
+   * the gateway answers the client with an ERROR frame carrying the code.
+   */
+  @Post('tables/:tableId/chat')
+  @HttpCode(200)
+  sendChat(
+    @Param('tableId', new ZodPipe(uuidSchema)) tableId: string,
+    @Body(new ZodPipe(internalChatSchema)) body: InternalChatInput,
+  ): Promise<ChatSendResult> {
+    return this.chat.send(tableId, body);
   }
 }

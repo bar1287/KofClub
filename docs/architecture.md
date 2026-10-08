@@ -8,9 +8,9 @@ in [`docs/adr`](adr/).
 
 | Deployable              | Tech                   | Responsibility                                                                                                                                          |
 | ----------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/control-api`      | NestJS 11 / TypeScript | Identity, sessions, clubs, memberships, invites, RBAC, table configuration, ledger grants, hand history, admin, audit log                               |
+| `apps/control-api`      | NestJS 11 / TypeScript | Identity, sessions, clubs, memberships, invites, RBAC, table configuration, ledger grants, hand history, table chat, admin, audit log                   |
 | `apps/game-service`     | Go                     | Table ownership (leases + fencing), one serialized actor per table, poker engine, turn timers, seating/buy-in/cash-out, hand persistence and settlement |
-| `apps/realtime-gateway` | Go                     | WebSocket lifecycle, token auth, table subscriptions, per-viewer fan-out, sequence/resync, command forwarding, heartbeats                               |
+| `apps/realtime-gateway` | Go                     | WebSocket lifecycle, token auth, table subscriptions, per-viewer fan-out, sequence/resync, command and chat forwarding, heartbeats                      |
 | `apps/web`              | Next.js / React        | Auth, home, club lobby, poker table, hand history, club & platform admin                                                                                |
 | `apps/worker`           | TypeScript             | Background jobs (cleanup, exports, reports)                                                                                                             |
 | `go/cmd/migrate`        | Go                     | Applies `db/migrations` (one-shot job)                                                                                                                  |
@@ -31,6 +31,7 @@ tables) and Redis (ephemeral only).
 | Audit           | control-api `audit`                                                                | `audit_log` (append-only)                                              |
 | Risk            | shared `risk_events` writer API                                                    | `risk_events` (append-only)                                            |
 | History         | control-api `history` (read-only)                                                  | reads `hands`, `hand_players`, `game_events`                           |
+| Chat            | control-api `chat` (the gateway carries frames via Redis `table:chat`)             | `chat_messages`, `chat_reports`                                        |
 | Tournament      | control-api `tournaments` (directory)                                              | `tournaments`, `tournament_registrations`, tournament rows of `tables` |
 | Tournament      | game-service runtime (`internal/tournaments`, tournament mode of `internal/table`) | `tournament_runtime`, `tournament_entries`, `tournament_transfers`     |
 

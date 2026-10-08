@@ -11,6 +11,8 @@ export interface ClubRow {
   description: string | null;
   joinCode: string;
   status: ClubStatus;
+  /** Players can chat and send reactions at the club's tables. */
+  tableChat: boolean;
   createdAt: Date;
 }
 
@@ -41,7 +43,7 @@ export interface InviteRow {
 }
 
 const CLUB_COLS =
-  'c.id, c.owner_user_id, c.name, c.description, c.join_code, c.status, c.created_at';
+  'c.id, c.owner_user_id, c.name, c.description, c.join_code, c.status, c.table_chat, c.created_at';
 const INVITE_COLS =
   'id, club_id, created_by, role, max_uses, use_count, expires_at, revoked_at, created_at';
 
@@ -53,6 +55,7 @@ const mapClub = (r: any): ClubRow => ({
   description: r.description,
   joinCode: r.join_code,
   status: r.status,
+  tableChat: r.table_chat,
   createdAt: r.created_at,
 });
 const mapMembership = (r: any): MembershipRow => ({
@@ -114,13 +117,19 @@ export class ClubsRepository {
   async updateClub(
     q: Queryable,
     clubId: string,
-    patch: { name?: string; description?: string | null; ownerUserId?: string },
+    patch: {
+      name?: string;
+      description?: string | null;
+      ownerUserId?: string;
+      tableChat?: boolean;
+    },
   ): Promise<ClubRow> {
     const res = await q.query(
       `UPDATE clubs AS c
           SET name = COALESCE($2, c.name),
               description = CASE WHEN $3::boolean THEN $4 ELSE c.description END,
               owner_user_id = COALESCE($5, c.owner_user_id),
+              table_chat = COALESCE($6, c.table_chat),
               updated_at = now()
         WHERE c.id = $1
         RETURNING ${CLUB_COLS}`,
@@ -130,6 +139,7 @@ export class ClubsRepository {
         patch.description !== undefined,
         patch.description ?? null,
         patch.ownerUserId ?? null,
+        patch.tableChat ?? null,
       ],
     );
     return mapClub(res.rows[0]);

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { AuditPanel } from '@/components/club-admin/AuditPanel';
+import { ChatReportsPanel } from '@/components/club-admin/ChatReportsPanel';
 import { ChipsPanel } from '@/components/club-admin/ChipsPanel';
 import { HandsPanel } from '@/components/club-admin/HandsPanel';
 import { InvitesPanel } from '@/components/club-admin/InvitesPanel';
@@ -17,7 +18,7 @@ import { atLeast } from '@/lib/roles';
 import { useSession } from '@/lib/session';
 import type { Club, ClubRole } from '@/lib/types';
 
-type Tab = 'members' | 'invites' | 'chips' | 'tables' | 'hands' | 'audit' | 'settings';
+type Tab = 'members' | 'invites' | 'chips' | 'tables' | 'hands' | 'chat' | 'audit' | 'settings';
 
 /** Minimum club role per tab (mirrors the API's permission matrix). */
 const TABS: Array<{ id: Tab; label: string; min: ClubRole }> = [
@@ -26,6 +27,7 @@ const TABS: Array<{ id: Tab; label: string; min: ClubRole }> = [
   { id: 'chips', label: 'Chips & ledger', min: 'ADMIN' },
   { id: 'tables', label: 'Tables', min: 'ADMIN' },
   { id: 'hands', label: 'Hands', min: 'ADMIN' },
+  { id: 'chat', label: 'Chat reports', min: 'ADMIN' },
   { id: 'audit', label: 'Audit log', min: 'ADMIN' },
   { id: 'settings', label: 'Settings', min: 'OWNER' },
 ];
@@ -85,6 +87,7 @@ function ClubAdmin({ clubId }: { clubId: string }) {
         {active === 'chips' && <ChipsPanel club={club} />}
         {active === 'tables' && <TablesPanel club={club} />}
         {active === 'hands' && <HandsPanel club={club} />}
+        {active === 'chat' && <ChatReportsPanel club={club} />}
         {active === 'audit' && <AuditPanel club={club} />}
         {active === 'settings' && <SettingsPanel club={club} onClubChanged={reload} />}
       </div>

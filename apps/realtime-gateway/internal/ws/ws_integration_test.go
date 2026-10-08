@@ -36,6 +36,7 @@ import (
 
 	"github.com/bar1287/kofclub/apps/realtime-gateway/internal/access"
 	"github.com/bar1287/kofclub/apps/realtime-gateway/internal/auth"
+	"github.com/bar1287/kofclub/apps/realtime-gateway/internal/chat"
 	"github.com/bar1287/kofclub/apps/realtime-gateway/internal/gamesvc"
 	"github.com/bar1287/kofclub/apps/realtime-gateway/internal/ws"
 	ledger "github.com/bar1287/kofclub/go/ledger-client"
@@ -286,6 +287,7 @@ type client struct {
 var frameSchemas = map[string]string{
 	"WELCOME": "Welcome", "SUBSCRIBED": "Subscribed", "TABLE_SNAPSHOT": "TableSnapshotMessage", "TABLE_EVENT": "TableEventMessage",
 	"COMMAND_RESULT": "CommandResult", "RESYNC_REQUIRED": "ResyncRequired", "ERROR": "ProtocolError", "PONG": "Pong",
+	"CHAT_MESSAGE": "ChatMessageFrame", "CHAT_HIDDEN": "ChatHiddenFrame",
 }
 
 func (s *stack) dial(user string) *client {
@@ -719,5 +721,112 @@ func TestUnauthorizedSubscriptionAndAuthenticationFailures(t *testing.T) {
 	carol.send(map[string]any{"type": "PING", "nonce": "n1"})
 	if p := carol.next("PONG", 5*time.Second); p["nonce"] != "n1" {
 		t.Fatalf("pong: %v", p)
+	}
+}
+
+// fakeChat stands in for control-api's chat endpoint (covered by its own
+// integration tests): it accepts everything except the text "closed", and
+// reports the chat bus as down so the gateway delivers messages itself.
+type fakeChat struct {
+	mu   sync.Mutex
+	reqs []chat.SendRequest
+}
+
+func (f *fakeChat) Send(_ context.Context, tableID string, req chat.SendRequest) (chat.SendResult, error) {
+	f.mu.Lock()
+	f.reqs = append(f.reqs, req)
+	f.mu.Unlock()
+	if req.Text == "closed" {
+		return chat.SendResult{}, &chat.APIError{Status: 403, Code: "CHAT_DISABLED", Message: "Chat is turned off in this club"}
+	}
+	msg := map[string]any{"id": uuid.NewString(), "tableId": tableID, "userId": req.UserID, "username": "someone",
+		"sentAt": time.Now().UTC().Format(time.RFC3339Nano), "kind": "MESSAGE", "text": req.Text}
+	if req.Emoji != "" {
+		msg["kind"], msg["emoji"] = "REACTION", req.Emoji
+		delete(msg, "text")
+	}
+	b, _ := json.Marshal(msg)
+	return chat.SendResult{Message: b, Published: false}, nil
+}
+
+func (f *fakeChat) last() chat.SendRequest {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.reqs[len(f.reqs)-1]
+}
+
+// Chat (roadmap W1.4): messages and reactions reach every connection
+// watching the table, the sender included, and nobody else; the sender's
+// identity comes from the connection; rejections carry the requestId.
+func TestChatReachesEveryoneWatchingTheTable(t *testing.T) {
+	s := newStack(t, ws.DefaultConfig, nil)
+	fake := &fakeChat{}
+	s.hub.SetChat(fake)
+	alice, bob, carol := s.dial("alice"), s.dial("bob"), s.dial("carol")
+	for _, c := range []*client{alice, bob, carol} {
+		c.hello()
+	}
+	alice.subscribe(nil)
+	bob.subscribe(nil)
+	chatSend := func(c *client, body map[string]any) string {
+		id := uuid.NewString()
+		frame := map[string]any{"type": "CHAT_SEND", "requestId": id, "tableId": s.tableID}
+		for k, v := range body {
+			frame[k] = v
+		}
+		c.send(frame)
+		return id
+	}
+	expectError := func(c *client, requestID, code string) {
+		t.Helper()
+		if e := c.next("ERROR", 5*time.Second); e["code"] != code || e["requestId"] != requestID || e["tableId"] != s.tableID {
+			t.Fatalf("%s: want ERROR %s for %s, got %v", c.user, code, requestID, e)
+		}
+	}
+
+	// Only connections watching the table can talk there.
+	expectError(carol, chatSend(carol, map[string]any{"text": "hi"}), "VALIDATION_FAILED")
+
+	chatSend(alice, map[string]any{"text": "good luck"})
+	for _, c := range []*client{alice, bob} {
+		m := c.next("CHAT_MESSAGE", 5*time.Second)
+		msg := m["message"].(map[string]any)
+		if m["tableId"] != s.tableID || msg["text"] != "good luck" || msg["userId"] != s.users["alice"] {
+			t.Fatalf("%s: chat message %v", c.user, m)
+		}
+	}
+	if req := fake.last(); req.UserID != s.users["alice"] || req.SessionID != "sess-alice" {
+		t.Fatalf("the sender must be the connection's user: %+v", req)
+	}
+
+	chatSend(bob, map[string]any{"emoji": "🔥"})
+	if m := alice.next("CHAT_MESSAGE", 5*time.Second)["message"].(map[string]any); m["kind"] != "REACTION" || m["emoji"] != "🔥" {
+		t.Fatalf("reaction: %v", m)
+	}
+	bob.next("CHAT_MESSAGE", 5*time.Second)
+
+	expectError(alice, chatSend(alice, map[string]any{"text": "hi", "emoji": "🔥"}), "VALIDATION_FAILED")
+	expectError(alice, chatSend(alice, map[string]any{}), "VALIDATION_FAILED")
+	expectError(alice, chatSend(alice, map[string]any{"text": "closed"}), "CHAT_DISABLED")
+
+	// Frames from the chat bus go to the table's watchers only.
+	messageID := uuid.NewString()
+	hidden := fmt.Sprintf(`{"type":"CHAT_HIDDEN","tableId":%q,"messageId":%q}`, s.tableID, messageID)
+	s.hub.DeliverChat(s.tableID, "CHAT_HIDDEN", []byte(hidden))
+	s.hub.DeliverChat(uuid.NewString(), "CHAT_HIDDEN", []byte(hidden))
+	for _, c := range []*client{alice, bob} {
+		if f := c.next("CHAT_HIDDEN", 5*time.Second); f["messageId"] != messageID || f["tableId"] != s.tableID {
+			t.Fatalf("%s: hidden frame %v", c.user, f)
+		}
+	}
+	carol.send(map[string]any{"type": "PING", "nonce": "after-chat"})
+	for {
+		f := <-carol.frames
+		if f["type"] == "CHAT_MESSAGE" || f["type"] == "CHAT_HIDDEN" {
+			t.Fatalf("carol is not watching the table: %v", f)
+		}
+		if f["type"] == "PONG" {
+			break
+		}
 	}
 }

@@ -75,9 +75,121 @@ func (e CardsRevealedEventKind) Valid() bool {
 	}
 }
 
+// Defines values for ChatEmoji.
+const (
+	ChatEmojiEmpty ChatEmoji = "👍"
+	ChatEmojiN1    ChatEmoji = "👏"
+	ChatEmojiN10   ChatEmoji = "🙏"
+	ChatEmojiN11   ChatEmoji = "💪"
+	ChatEmojiN2    ChatEmoji = "😂"
+	ChatEmojiN3    ChatEmoji = "😮"
+	ChatEmojiN4    ChatEmoji = "😢"
+	ChatEmojiN5    ChatEmoji = "😡"
+	ChatEmojiN6    ChatEmoji = "🔥"
+	ChatEmojiN7    ChatEmoji = "🎉"
+	ChatEmojiN8    ChatEmoji = "🤝"
+	ChatEmojiN9    ChatEmoji = "😎"
+)
+
+// Valid indicates whether the value is a known member of the ChatEmoji enum.
+func (e ChatEmoji) Valid() bool {
+	switch e {
+	case ChatEmojiEmpty:
+		return true
+	case ChatEmojiN1:
+		return true
+	case ChatEmojiN10:
+		return true
+	case ChatEmojiN11:
+		return true
+	case ChatEmojiN2:
+		return true
+	case ChatEmojiN3:
+		return true
+	case ChatEmojiN4:
+		return true
+	case ChatEmojiN5:
+		return true
+	case ChatEmojiN6:
+		return true
+	case ChatEmojiN7:
+		return true
+	case ChatEmojiN8:
+		return true
+	case ChatEmojiN9:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ChatHiddenFrameType.
+const (
+	ChatHiddenFrameTypeCHATHIDDEN ChatHiddenFrameType = "CHAT_HIDDEN"
+)
+
+// Valid indicates whether the value is a known member of the ChatHiddenFrameType enum.
+func (e ChatHiddenFrameType) Valid() bool {
+	switch e {
+	case ChatHiddenFrameTypeCHATHIDDEN:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ChatMessageKind.
+const (
+	ChatMessageKindMESSAGE  ChatMessageKind = "MESSAGE"
+	ChatMessageKindREACTION ChatMessageKind = "REACTION"
+)
+
+// Valid indicates whether the value is a known member of the ChatMessageKind enum.
+func (e ChatMessageKind) Valid() bool {
+	switch e {
+	case ChatMessageKindMESSAGE:
+		return true
+	case ChatMessageKindREACTION:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ChatMessageFrameType.
+const (
+	ChatMessageFrameTypeCHATMESSAGE ChatMessageFrameType = "CHAT_MESSAGE"
+)
+
+// Valid indicates whether the value is a known member of the ChatMessageFrameType enum.
+func (e ChatMessageFrameType) Valid() bool {
+	switch e {
+	case ChatMessageFrameTypeCHATMESSAGE:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ChatSendType.
+const (
+	ChatSendTypeCHATSEND ChatSendType = "CHAT_SEND"
+)
+
+// Valid indicates whether the value is a known member of the ChatSendType enum.
+func (e ChatSendType) Valid() bool {
+	switch e {
+	case ChatSendTypeCHATSEND:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ClientMessageType.
 const (
 	ClientMessageTypeAUTH             ClientMessageType = "AUTH"
+	ClientMessageTypeCHATSEND         ClientMessageType = "CHAT_SEND"
 	ClientMessageTypeCOMMAND          ClientMessageType = "COMMAND"
 	ClientMessageTypeHELLO            ClientMessageType = "HELLO"
 	ClientMessageTypePING             ClientMessageType = "PING"
@@ -90,6 +202,8 @@ const (
 func (e ClientMessageType) Valid() bool {
 	switch e {
 	case ClientMessageTypeAUTH:
+		return true
+	case ClientMessageTypeCHATSEND:
 		return true
 	case ClientMessageTypeCOMMAND:
 		return true
@@ -584,6 +698,8 @@ func (e ResyncRequiredType) Valid() bool {
 
 // Defines values for ServerMessageType.
 const (
+	ServerMessageTypeCHATHIDDEN     ServerMessageType = "CHAT_HIDDEN"
+	ServerMessageTypeCHATMESSAGE    ServerMessageType = "CHAT_MESSAGE"
 	ServerMessageTypeCOMMANDRESULT  ServerMessageType = "COMMAND_RESULT"
 	ServerMessageTypeERROR          ServerMessageType = "ERROR"
 	ServerMessageTypePING           ServerMessageType = "PING"
@@ -598,6 +714,10 @@ const (
 // Valid indicates whether the value is a known member of the ServerMessageType enum.
 func (e ServerMessageType) Valid() bool {
 	switch e {
+	case ServerMessageTypeCHATHIDDEN:
+		return true
+	case ServerMessageTypeCHATMESSAGE:
+		return true
 	case ServerMessageTypeCOMMANDRESULT:
 		return true
 	case ServerMessageTypeERROR:
@@ -946,6 +1066,63 @@ type CardsRevealedEvent struct {
 
 // CardsRevealedEventKind defines model for CardsRevealedEvent.Kind.
 type CardsRevealedEventKind string
+
+// ChatEmoji defines model for ChatEmoji.
+type ChatEmoji string
+
+// ChatHiddenFrame Club staff hid a message after a report; clients remove it.
+type ChatHiddenFrame struct {
+	MessageId openapi_types.UUID  `json:"messageId"`
+	TableId   openapi_types.UUID  `json:"tableId"`
+	Type      ChatHiddenFrameType `json:"type"`
+}
+
+// ChatHiddenFrameType defines model for ChatHiddenFrame.Type.
+type ChatHiddenFrameType string
+
+// ChatMessage defines model for ChatMessage.
+type ChatMessage struct {
+	Emoji *ChatEmoji         `json:"emoji,omitempty"`
+	Id    openapi_types.UUID `json:"id"`
+
+	// Kind REACTION carries an emoji and is not kept in the history.
+	Kind     ChatMessageKind    `json:"kind"`
+	SentAt   time.Time          `json:"sentAt"`
+	TableId  openapi_types.UUID `json:"tableId"`
+	Text     *string            `json:"text,omitempty"`
+	UserId   openapi_types.UUID `json:"userId"`
+	Username string             `json:"username"`
+}
+
+// ChatMessageKind REACTION carries an emoji and is not kept in the history.
+type ChatMessageKind string
+
+// ChatMessageFrame defines model for ChatMessageFrame.
+type ChatMessageFrame struct {
+	Message ChatMessage          `json:"message"`
+	TableId openapi_types.UUID   `json:"tableId"`
+	Type    ChatMessageFrameType `json:"type"`
+}
+
+// ChatMessageFrameType defines model for ChatMessageFrame.Type.
+type ChatMessageFrameType string
+
+// ChatSend A chat message (text) or an emoji reaction (emoji) at a table the
+// connection is subscribed to; exactly one of the two. requestId is the
+// idempotency key: a resent message is stored and delivered once.
+// Everyone watching the table, the sender included, receives it as
+// CHAT_MESSAGE; a rejected send is answered with ERROR (CHAT_DISABLED,
+// RATE_LIMITED, VALIDATION_FAILED, ...) carrying the requestId.
+type ChatSend struct {
+	Emoji     *ChatEmoji         `json:"emoji,omitempty"`
+	RequestId openapi_types.UUID `json:"requestId"`
+	TableId   openapi_types.UUID `json:"tableId"`
+	Text      *string            `json:"text,omitempty"`
+	Type      ChatSendType       `json:"type"`
+}
+
+// ChatSendType defines model for ChatSend.Type.
+type ChatSendType string
 
 // ClientMessageType defines model for ClientMessageType.
 type ClientMessageType string

@@ -634,6 +634,96 @@ table.list th.num {
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
+.chat-log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  font-size: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.chat-line {
+  overflow-wrap: anywhere;
+}
+.chat-tools {
+  margin-left: 6px;
+  display: inline-flex;
+  gap: 6px;
+  opacity: 0;
+}
+.chat-line:hover .chat-tools,
+.chat-line:focus-within .chat-tools {
+  opacity: 1;
+}
+@media (hover: none) {
+  .chat-tools {
+    opacity: 1;
+  }
+}
+.chat-form {
+  display: flex;
+  gap: 6px;
+}
+.chat-form input {
+  flex: 1;
+  min-width: 0;
+}
+.chat-quote {
+  margin: 0;
+  padding: 8px 10px;
+  border-left: 3px solid var(--border);
+  overflow-wrap: anywhere;
+}
+.reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+.reaction {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 4px;
+  cursor: pointer;
+}
+.reaction:hover:not(:disabled) {
+  border-color: var(--border);
+}
+.reaction:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.seat-reaction {
+  position: absolute;
+  top: -34px;
+  z-index: 3;
+  font-size: 1.7rem;
+  line-height: 1;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+  animation: reaction-pop 0.25s ease-out;
+  pointer-events: none;
+}
+@keyframes reaction-pop {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .seat-reaction {
+    animation: none;
+  }
+}
+
 .dialog-backdrop {
   position: fixed;
   inset: 0;

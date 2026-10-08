@@ -1,6 +1,6 @@
 # Project status
 
-_Last updated: 2026-10-07_
+_Last updated: 2026-10-08_
 
 This file is the hand-off record for humans and AI agents. Keep it in sync
 with the repository at the end of every task.
@@ -16,7 +16,7 @@ tracing, failover/load/restore drills and a security review.
 **Now: the W roadmap ([docs/roadmap.md](docs/roadmap.md))**, the plan from a
 working platform to a world-class one (table essentials, game variety,
 tournament depth, social, trust and safety, experience, production scale).
-Current milestone: **W1.4 Table chat and reactions** (W1.1–W1.3 are done).
+Current milestone: **W1.5 Showdown choices** (W1.1–W1.4 are done).
 
 ## Milestones (spec §16)
 
@@ -88,6 +88,7 @@ make screenshots   # screenshot tour of the real stack into docs/screenshots
 - Demo seed passwords are fixed for local convenience (seed refuses `APP_ENV=production`).
 - Players who leave mid-hand are auto-checked/folded and removed after the hand; there is no "stand up after folding" yet.
 - Re-buy and top-up (W1.3): a top-up asked for during a hand is kept in the game service's memory until the hand ends (no chips move before then), so a restart in between drops it; the player asks again. Leaving and re-sitting refills the time bank.
+- Table chat (W1.4): live delivery across gateways depends on Redis (frames published while a gateway is disconnected from Redis are lost; the history endpoint has the stored messages). There is no word filter, no per-member chat ban (staff ban the member or turn chat off) and no chat in the tournament lobby.
 - Tables cannot be reopened or edited after creation (close and create a new one).
 - Engine simplifications (documented in docs/game-engine.md): no antes/straddles, no dead button or missed-blind tracking, no mucking at showdown, no hi/lo split games.
 - A table's game type is fixed at creation (by design; hands record their own game).
@@ -114,8 +115,10 @@ Auth: `POST /auth/register|login|refresh|logout` (login takes `mfaCode`). Me: `G
 Ledger: `GET /clubs/{id}/wallet`, `GET /clubs/{id}/wallet/entries`,
 `POST /clubs/{id}/chips/grants|deductions`, `GET /clubs/{id}/ledger/summary|balances|transactions`,
 `POST /clubs/{id}/ledger/transactions/{txId}/reversal`.
-Tables: `POST|GET /clubs/{id}/tables`, `GET /tables/{id}`, `POST /tables/{id}/seat|leave|close`,
-`GET /tables/{id}/state`. Club admin: `PATCH /clubs/{id}`, `POST /clubs/{id}/transfer-ownership`.
+Tables: `POST|GET /clubs/{id}/tables`, `GET /tables/{id}`, `POST /tables/{id}/seat|top-up|leave|close`,
+`PUT /tables/{id}/auto-top-up`, `GET /tables/{id}/state`. Chat: `GET /tables/{id}/chat`,
+`POST /tables/{id}/chat/reports`, `GET /clubs/{id}/chat-reports`,
+`POST /clubs/{id}/chat-reports/{reportId}/resolve`. Club admin: `PATCH /clubs/{id}`, `POST /clubs/{id}/transfer-ownership`.
 History: `GET /me/hands`, `GET /hands/{id}`, `GET /clubs/{id}/hands`.
 Tournaments: `POST|GET /clubs/{id}/tournaments`, `GET /tournaments/{id}`,
 `POST /tournaments/{id}/register|unregister|start|cancel`.
@@ -127,9 +130,9 @@ Canonical contract: `packages/contracts/openapi/control-api.yaml`
 ## Next tasks
 
 Follow [docs/roadmap.md](docs/roadmap.md) in its order of work, one milestone
-at a time: W1.4
-table chat and reactions, W1.5 showdown choices, W1.6 sounds, animations and
-themes; then W2.1–W2.3 (antes, straddle and bomb pots, run it twice) and W7.1
+at a time: W1.5
+showdown choices (show or muck, show after an uncontested win), W1.6 sounds,
+animations and themes; then W2.1–W2.3 (antes, straddle and bomb pots, run it twice) and W7.1
 (single origin). Earlier suggestions (tournament structures, late
 registration, realtime tournament channel, passkeys, a keyring for
 `MFA_ENCRYPTION_KEY_B64`, a native client) are part of that plan.

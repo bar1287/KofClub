@@ -15,6 +15,7 @@ import (
 	"github.com/coder/websocket"
 
 	"github.com/bar1287/kofclub/apps/realtime-gateway/internal/auth"
+	"github.com/bar1287/kofclub/apps/realtime-gateway/internal/chat"
 	"github.com/bar1287/kofclub/apps/realtime-gateway/internal/gamesvc"
 	"github.com/bar1287/kofclub/apps/realtime-gateway/internal/protocol"
 )
@@ -68,6 +69,13 @@ func (c *Conn) sessionID() string {
 	return c.claims.SessionID
 }
 
+func (c *Conn) subscribedTo(tableID string) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	_, ok := c.subs[tableID]
+	return ok
+}
+
 // enqueue queues a frame without blocking; a full queue means the client
 // cannot keep up, so it is disconnected and must resume/resync later.
 func (c *Conn) enqueue(frameType string, v any) {
@@ -76,6 +84,11 @@ func (c *Conn) enqueue(frameType string, v any) {
 		c.log.Error("frame_marshal_failed", slog.String("error", err.Error()))
 		return
 	}
+	c.enqueueRaw(frameType, b)
+}
+
+// enqueueRaw queues an already encoded frame (see enqueue).
+func (c *Conn) enqueueRaw(frameType string, b []byte) {
 	select {
 	case <-c.closed:
 		return
@@ -217,6 +230,8 @@ func (c *Conn) readLoop(ctx context.Context) {
 			c.handleUnsubscribe(data)
 		case protocol.TypeCommand:
 			c.handleCommand(ctx, data)
+		case protocol.TypeChatSend:
+			c.handleChat(ctx, data)
 		case protocol.TypePing:
 			var p protocol.Ping
 			_ = json.Unmarshal(data, &p)
@@ -230,7 +245,7 @@ func (c *Conn) readLoop(ctx context.Context) {
 
 func frameLabel(t string) string {
 	switch t {
-	case protocol.TypeHello, protocol.TypeAuth, protocol.TypeSubscribe, protocol.TypeUnsubscribe, protocol.TypeCommand, protocol.TypePing, protocol.TypePong:
+	case protocol.TypeHello, protocol.TypeAuth, protocol.TypeSubscribe, protocol.TypeUnsubscribe, protocol.TypeCommand, protocol.TypeChatSend, protocol.TypePing, protocol.TypePong:
 		return t
 	}
 	return "UNKNOWN"
@@ -441,4 +456,62 @@ func (c *Conn) handleCommand(ctx context.Context, data []byte) {
 		return
 	}
 	result(protocol.CommandResult{Accepted: res.Accepted, Duplicate: res.Duplicate, Seq: res.Seq})
+}
+
+// maxChatTextBytes bounds what is forwarded; control-api applies the exact
+// rules (at most 200 characters after cleaning).
+const maxChatTextBytes = 2000
+
+// handleChat forwards a chat message or reaction to control-api, which
+// checks and stores it and publishes it to every gateway. Errors are
+// answered with ERROR frames carrying the requestId. Message text is never
+// logged.
+func (c *Conn) handleChat(ctx context.Context, data []byte) {
+	var m protocol.ChatSend
+	if json.Unmarshal(data, &m) != nil || !uuidRe.MatchString(m.RequestID) || !uuidRe.MatchString(m.TableID) ||
+		(m.Text == "") == (m.Emoji == "") || len(m.Text) > maxChatTextBytes || len(m.Emoji) > 64 {
+		c.hub.metrics.ChatSends.WithLabelValues("rejected").Inc()
+		c.sendError("VALIDATION_FAILED", "CHAT_SEND requires requestId/tableId UUIDs and either text or emoji", m.RequestID, m.TableID)
+		return
+	}
+	reject := func(code, msg string) {
+		c.hub.metrics.ChatSends.WithLabelValues("rejected").Inc()
+		c.sendError(code, msg, m.RequestID, m.TableID)
+	}
+	if !c.subscribedTo(m.TableID) {
+		reject("VALIDATION_FAILED", "subscribe to the table before chatting")
+		return
+	}
+	if !c.allowCommand() {
+		reject("RATE_LIMITED", "too many messages")
+		return
+	}
+	if c.hub.chat == nil {
+		reject("SERVICE_UNAVAILABLE", "chat is unavailable")
+		return
+	}
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	res, err := c.hub.chat.Send(cctx, m.TableID, chat.SendRequest{
+		UserID: c.userID(), SessionID: c.sessionID(), RequestID: m.RequestID, Text: m.Text, Emoji: m.Emoji,
+	})
+	if err != nil {
+		var apiErr *chat.APIError
+		if errors.As(err, &apiErr) {
+			reject(apiErr.Code, apiErr.Message)
+			return
+		}
+		c.hub.metrics.ChatSends.WithLabelValues("error").Inc()
+		c.log.Warn("chat_send_failed", slog.String("table_id", m.TableID), slog.String("error", err.Error()))
+		c.sendError("SERVICE_UNAVAILABLE", "chat is unavailable; retry", m.RequestID, m.TableID)
+		return
+	}
+	c.hub.metrics.ChatSends.WithLabelValues("accepted").Inc()
+	if !res.Published {
+		// The chat bus is down: at least this gateway's watchers get it.
+		frame, err := chat.MessageFrame(m.TableID, res.Message)
+		if err == nil {
+			c.hub.DeliverChat(m.TableID, protocol.TypeChatMessage, frame)
+		}
+	}
 }

@@ -9,6 +9,8 @@ interface Props {
   state: TableState;
   /** Shown on empty seats when the viewer may sit down. */
   onSit?: (seatNo: number) => void;
+  /** Current chat reaction per player (userId → emoji). */
+  reactions?: Readonly<Record<string, string>>;
 }
 
 function centerMessage(state: TableState): string | null {
@@ -22,7 +24,7 @@ function centerMessage(state: TableState): string | null {
   return 'Next hand starting soon…';
 }
 
-export function PokerTable({ state, onSit }: Props) {
+export function PokerTable({ state, onSit, reactions }: Props) {
   const maxSeats = state.table?.maxSeats ?? 6;
   const anchor = state.mySeat || 1;
   const hand = state.hand;
@@ -63,6 +65,7 @@ export function PokerTable({ state, onSit }: Props) {
               myCards={state.holeCards}
               holeCards={holeCardCount(state.table?.gameType)}
               position={pos}
+              reaction={reactions?.[seat.userId]}
             />
           );
         }
