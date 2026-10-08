@@ -11,8 +11,12 @@ with the repository at the end of every task.
 tables and multi-table sit-and-go/scheduled tournaments are playable end to
 end in the browser (native and Docker Compose stacks), with hand history,
 club and platform administration, dashboards, alerts, runbooks, distributed
-tracing, failover/load/restore drills and a security review. Next work is
-post-roadmap hardening and product depth (see Next tasks).
+tracing, failover/load/restore drills and a security review.
+
+**Now: the W roadmap ([docs/roadmap.md](docs/roadmap.md))**, the plan from a
+working platform to a world-class one (table essentials, game variety,
+tournament depth, social, trust and safety, experience, production scale).
+Current milestone: **W1.1 Pre-actions**.
 
 ## Milestones (spec §16)
 
@@ -122,17 +126,13 @@ Canonical contract: `packages/contracts/openapi/control-api.yaml`
 
 ## Next tasks
 
-The spec §16 roadmap is complete. Suggested next steps, in priority order:
-
-1. Product depth: antes and configurable blind/payout structures,
-   re-entry/late registration, a realtime tournament channel instead of
-   polling (would also replace the unseated player's `myTableId` re-check),
-   re-buy at cash tables.
-2. Security depth: WebAuthn/passkeys as a phishing-resistant second factor,
-   an optional MFA policy for club staff, a keyring for
-   `MFA_ENCRYPTION_KEY_B64` (like the deck keys).
-3. Mobile/native client on the same protocol (ADR-010) once the web client
-   is validated.
+Follow [docs/roadmap.md](docs/roadmap.md) in its order of work, one milestone
+at a time: W1.1 pre-actions, W1.2 time bank, W1.3 re-buy and top-up, W1.4
+table chat and reactions, W1.5 showdown choices, W1.6 sounds, animations and
+themes; then W2.1–W2.3 (antes, straddle and bomb pots, run it twice) and W7.1
+(single origin). Earlier suggestions (tournament structures, late
+registration, realtime tournament channel, passkeys, a keyring for
+`MFA_ENCRYPTION_KEY_B64`, a native client) are part of that plan.
 
 Done after the roadmap (see CHANGELOG): tournament operations (metrics,
 health views, alerts, runbook, chaos and load drills); security follow-ups
