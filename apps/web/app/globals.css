@@ -13,6 +13,11 @@
   --danger: #f85149;
   --felt: #145a32;
   --felt-edge: #0b3d22;
+  --felt-center: #1d7a45;
+  --card-back-a: #2a4f8f;
+  --card-back-b: #213f73;
+  --diamond: var(--red-suit);
+  --club: var(--black-suit);
   --rail: #3b2a1a;
   --card: #fbfbf8;
   --red-suit: #d0312d;
@@ -356,7 +361,7 @@ table.list th.num {
   border-radius: 999px;
   background: radial-gradient(
     ellipse at center,
-    #1d7a45 0%,
+    var(--felt-center) 0%,
     var(--felt) 55%,
     var(--felt-edge) 100%
   );
@@ -432,6 +437,14 @@ table.list th.num {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+.avatar {
+  flex: none;
+  border-radius: 4px;
 }
 .seat-stack {
   font-variant-numeric: tabular-nums;
@@ -546,6 +559,12 @@ table.list th.num {
 .playing-card.red {
   color: var(--red-suit);
 }
+.playing-card.suit-d {
+  color: var(--diamond);
+}
+.playing-card.suit-c {
+  color: var(--club);
+}
 .playing-card.small {
   width: 32px;
   height: 44px;
@@ -555,7 +574,13 @@ table.list th.num {
   font-size: 0.85rem;
 }
 .playing-card.back {
-  background: repeating-linear-gradient(45deg, #2a4f8f, #2a4f8f 4px, #213f73 4px, #213f73 8px);
+  background: repeating-linear-gradient(
+    45deg,
+    var(--card-back-a),
+    var(--card-back-a) 4px,
+    var(--card-back-b) 4px,
+    var(--card-back-b) 8px
+  );
   border: 2px solid #f5f5f5;
 }
 .playing-card.placeholder {
@@ -655,6 +680,9 @@ table.list th.num {
 }
 .chat-line {
   overflow-wrap: anywhere;
+}
+.chat-line .avatar {
+  vertical-align: -2px;
 }
 .chat-tools {
   margin-left: 6px;
@@ -850,4 +878,101 @@ table.list th.num {
     overflow-x: auto;
     white-space: nowrap;
   }
+}
+
+/* ---------- look and feel (roadmap W1.6, preferences on <html>) ---------- */
+
+html[data-felt='blue'] {
+  --felt: #134a6e;
+  --felt-edge: #0a2c44;
+  --felt-center: #1f6a99;
+}
+html[data-felt='red'] {
+  --felt: #6e1a1f;
+  --felt-edge: #440f12;
+  --felt-center: #93272d;
+}
+html[data-felt='purple'] {
+  --felt: #45246b;
+  --felt-edge: #2a1543;
+  --felt-center: #613597;
+}
+html[data-felt='gray'] {
+  --felt: #3a4148;
+  --felt-edge: #22272c;
+  --felt-center: #545d66;
+}
+html[data-card-back='red'] {
+  --card-back-a: #9a2b2b;
+  --card-back-b: #7c2121;
+}
+html[data-card-back='black'] {
+  --card-back-a: #2c2f33;
+  --card-back-b: #1b1d20;
+}
+html[data-four-color='true'] {
+  --diamond: #2f6fdb;
+  --club: #2b8a3e;
+}
+
+@keyframes deal-in {
+  from {
+    transform: translateY(-16px) scale(0.85);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes chip-pop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes win-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 6px rgba(240, 211, 107, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 22px rgba(240, 211, 107, 0.85);
+  }
+}
+.board .playing-card[data-card],
+.seat-cards .playing-card {
+  animation: deal-in 0.25s ease-out both;
+}
+.seat-bet,
+.pot {
+  animation: chip-pop 0.22s ease-out;
+}
+.seat.winner .seat-box {
+  border-color: #f0d36b;
+  animation: win-glow 1.2s ease-in-out 2;
+}
+
+/* Reduced motion: the system setting (unless the player chose otherwise)
+   or the player's choice. */
+@media (prefers-reduced-motion: reduce) {
+  html:not([data-motion='full']) *,
+  html:not([data-motion='full']) *::before,
+  html:not([data-motion='full']) *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+html[data-motion='reduced'] *,
+html[data-motion='reduced'] *::before,
+html[data-motion='reduced'] *::after {
+  animation: none !important;
+  transition: none !important;
 }

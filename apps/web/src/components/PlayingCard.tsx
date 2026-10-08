@@ -23,7 +23,7 @@ export function PlayingCard({ card, back, small, highlight }: Props) {
   const p = cardParts(card);
   return (
     <div
-      className={`playing-card${p.red ? ' red' : ''}${size}${highlight ? ' best' : ''}`}
+      className={`playing-card suit-${card.slice(-1)}${p.red ? ' red' : ''}${size}${highlight ? ' best' : ''}`}
       aria-label={p.label}
       data-card={card}
     >

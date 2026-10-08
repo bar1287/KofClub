@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Avatar } from '@/components/Avatar';
 import { PlayingCard } from '@/components/PlayingCard';
 import { chips } from '@/lib/format';
 import type { HandState, SeatState } from '@/lib/table/state';
@@ -50,6 +51,7 @@ export function SeatView({ seat, hand, isMe, myCards, holeCards, position, react
   if (isMe) classes.push('me');
   if (seat.folded && handLive) classes.push('folded');
   if (seat.sittingOut) classes.push('sitting-out');
+  if (won) classes.push('winner');
 
   return (
     <div
@@ -79,7 +81,10 @@ export function SeatView({ seat, hand, isMe, myCards, holeCards, position, react
         {hand && handLive && hand.bigBlindSeat === seat.seat && (
           <span className="marker bb">BB</span>
         )}
-        <div className="seat-name">{seat.username}</div>
+        <div className="seat-name">
+          <Avatar seed={seat.userId} size={18} />
+          <span>{seat.username}</span>
+        </div>
         <div className="seat-stack" data-testid="seat-stack">
           {chips(seat.stack)}
         </div>
@@ -100,7 +105,7 @@ export function SeatView({ seat, hand, isMe, myCards, holeCards, position, react
         )}
       </div>
       {seat.streetBet > 0 && handLive && (
-        <div className="seat-bet" data-testid="seat-bet">
+        <div className="seat-bet" data-testid="seat-bet" key={seat.streetBet}>
           {chips(seat.streetBet)}
         </div>
       )}

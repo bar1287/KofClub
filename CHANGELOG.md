@@ -5,6 +5,18 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added — Look and feel (roadmap W1.6)
+
+- Sounds for your turn, dealing, chips, checks, folds and wins, synthesized
+  in the browser (no audio files); on by default with a volume setting.
+- Animations: cards slide in when dealt, bets and the pot pop, winners'
+  seats glow. Off with the system's reduced-motion setting or by choice.
+- Four-color deck, felt colors (green, blue, red, purple, gray) and card
+  backs (blue, red, black).
+- Generated avatars from the user id on seats, in chat and in member lists.
+- A settings dialog at the table (⚙) and a "Table preferences" section on
+  the profile page; the choices are kept in this browser.
+
 ### Security — Go 1.26.9
 
 - Go toolchain and images move to 1.26.9 for standard-library fixes

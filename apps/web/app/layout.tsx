@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
+import { PrefsProvider } from '@/lib/prefs-context';
 import { SessionProvider } from '@/lib/session';
 import './globals.css';
 
@@ -24,7 +25,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en">
       <body>
         <SessionProvider>
-          <AppShell>{children}</AppShell>
+          <PrefsProvider>
+            <AppShell>{children}</AppShell>
+          </PrefsProvider>
         </SessionProvider>
       </body>
     </html>

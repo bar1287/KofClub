@@ -11,6 +11,7 @@ import { ActionLog } from '@/components/table/ActionLog';
 import { BuyInDialog } from '@/components/table/BuyInDialog';
 import { ShowCards } from '@/components/table/ShowCards';
 import { TableChat } from '@/components/table/TableChat';
+import { TableSettingsDialog } from '@/components/table/TableSettingsDialog';
 import { TopUpDialog } from '@/components/table/TopUpDialog';
 import { ConnectionBadge } from '@/components/table/ConnectionBadge';
 import { gameLabel } from '@/lib/games';
@@ -23,12 +24,15 @@ import { FOLLOW_INTERVAL_MS, followDecision } from '@/lib/table/follow';
 import { cardsToShow } from '@/lib/table/showdown';
 import { useTable } from '@/lib/table/useTable';
 import { useTableChat } from '@/lib/table/useTableChat';
+import { useTableSounds } from '@/lib/table/useTableSounds';
 
 function TableRoom({ tableId }: { tableId: string }) {
   const { ep, user } = useSession();
   const { state, connection, busy, error, clearError, send, markLeaving, noteTopUp, noteMuck } =
     useTable(tableId);
   const chat = useTableChat(tableId, connection);
+  useTableSounds(state);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [buyInSeat, setBuyInSeat] = useState<number | null>(null);
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -143,6 +147,14 @@ function TableRoom({ tableId }: { tableId: string }) {
           </span>
         )}
         <ConnectionBadge status={connection} syncing={state.stale} />
+        <button
+          className="btn small"
+          onClick={() => setSettingsOpen(true)}
+          aria-label="Table settings"
+          data-testid="table-settings"
+        >
+          ⚙
+        </button>
         <span className="spacer" />
         {me && (
           <>
@@ -304,6 +316,7 @@ function TableRoom({ tableId }: { tableId: string }) {
           onClose={() => setTopUpOpen(false)}
         />
       )}
+      {settingsOpen && <TableSettingsDialog onClose={() => setSettingsOpen(false)} />}
       {buyInSeat !== null && table && (
         <BuyInDialog
           tableId={tableId}

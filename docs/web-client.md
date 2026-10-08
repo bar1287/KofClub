@@ -58,6 +58,30 @@ control API enforces every permission.
 - Leaving mid-hand returns `LEAVING_AFTER_HAND`; the stack is cashed out to
   the club wallet when the hand ends.
 - The hand's deck commitment (SHA-256) is shown for audit.
+- Chat (`TableChat`, `useTableChat`): history over HTTP after every
+  reconnect, live messages and reactions over the socket, per-viewer mute in
+  browser storage, reports to club staff.
+- Showdown choices: "Muck losing hands" (server preference) and show-card
+  buttons after the hand until the next one starts (`cardsToShow`).
+
+## Look and feel (roadmap W1.6)
+
+- Preferences (`src/lib/prefs.ts`, `PrefsProvider`): sounds and volume,
+  four-color deck, felt and card-back colors, and reduced animations. They
+  stay in this browser (`localStorage`, validated on load, synced across
+  tabs) and are applied as `data-*` attributes on `<html>`, which the
+  stylesheet themes by. They are edited from the table (⚙) and the profile
+  page.
+- Sounds (`src/lib/sound.ts`) are synthesized with the Web Audio API (no
+  audio files, nothing for the CSP to allow). `soundsFor(prev, next)` picks
+  them from table changes: deal, chips, check, fold, the viewer's turn and a
+  win. Snapshots (joining, resyncing) are silent.
+- Animations: dealt cards slide in, bets and the pot pop when they change,
+  and winners' seats glow. The system's reduced-motion setting, or the
+  player's choice, turns every animation off.
+- Avatars (`src/lib/avatar.ts`): a symmetric 5×5 pattern and hue derived
+  from the user id, shown on seats, in chat and in member lists. Nothing is
+  uploaded.
 
 ## Testing
 

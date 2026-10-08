@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { Avatar } from '@/components/Avatar';
 import { ErrorAlert } from '@/components/ErrorAlert';
 import { errorMessage } from '@/lib/api/client';
 import { CHAT_EMOJI, CHAT_TEXT_MAX } from '@/lib/table/chat';
@@ -53,7 +54,8 @@ export function TableChat({ chat, myUserId, live }: Props) {
             {chat.loaded && count === 0 && <li className="muted small">No messages yet.</li>}
             {chat.messages.map((m) => (
               <li key={m.id} className="chat-line" data-testid="chat-message">
-                <strong>{m.username}</strong> <span className="chat-text">{m.text}</span>
+                <Avatar seed={m.userId} size={14} /> <strong>{m.username}</strong>{' '}
+                <span className="chat-text">{m.text}</span>
                 {m.userId !== myUserId && (
                   <span className="chat-tools">
                     <button

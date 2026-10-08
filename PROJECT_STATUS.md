@@ -16,7 +16,7 @@ tracing, failover/load/restore drills and a security review.
 **Now: the W roadmap ([docs/roadmap.md](docs/roadmap.md))**, the plan from a
 working platform to a world-class one (table essentials, game variety,
 tournament depth, social, trust and safety, experience, production scale).
-Current milestone: **W1.6 Feel: sounds, animations, themes, avatars** (W1.1–W1.5 are done).
+Current milestone: **W2.1 Antes** (W1 is done: pre-actions, time bank, re-buy and top-up, chat, showdown choices, look and feel).
 
 ## Milestones (spec §16)
 
@@ -131,8 +131,7 @@ Canonical contract: `packages/contracts/openapi/control-api.yaml`
 ## Next tasks
 
 Follow [docs/roadmap.md](docs/roadmap.md) in its order of work, one milestone
-at a time: W1.6
-sounds, animations, themes and avatars; then W2.1–W2.3 (antes, straddle and bomb pots, run it twice) and W7.1
+at a time: W2.1–W2.3 (antes, straddle and bomb pots, run it twice), then W7.1
 (single origin). Earlier suggestions (tournament structures, late
 registration, realtime tournament channel, passkeys, a keyring for
 `MFA_ENCRYPTION_KEY_B64`, a native client) are part of that plan.

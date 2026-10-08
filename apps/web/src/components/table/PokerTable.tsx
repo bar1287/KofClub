@@ -47,7 +47,7 @@ export function PokerTable({ state, onSit, reactions }: Props) {
             <PlayingCard key={board[i] ?? `empty-${i}`} card={board[i]} />
           ))}
         </div>
-        <div className="pot" data-testid="pot">
+        <div className="pot" data-testid="pot" key={pot}>
           Pot {chips(pot)}
         </div>
         {message && <div className="table-message">{message}</div>}

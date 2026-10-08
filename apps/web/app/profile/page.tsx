@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { TwoFactorPanel } from '@/components/account/TwoFactorPanel';
 import { ErrorAlert } from '@/components/ErrorAlert';
+import { PreferencesForm } from '@/components/PreferencesForm';
 import { RequireAuth } from '@/components/RequireAuth';
 import { errorMessage } from '@/lib/api/client';
 import { useSession } from '@/lib/session';
@@ -41,6 +42,11 @@ function ProfileView() {
         <p>
           <strong>{user?.username}</strong> <span className="muted">· {user?.email}</span>
         </p>
+      </div>
+      <div className="panel">
+        <h2>Table preferences</h2>
+        <p className="muted small">Saved in this browser.</p>
+        <PreferencesForm />
       </div>
       <TwoFactorPanel />
       <div className="panel">

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
+import { Avatar } from '@/components/Avatar';
 import { ErrorAlert } from '@/components/ErrorAlert';
 import { RequireAuth } from '@/components/RequireAuth';
 import { errorMessage, newIdempotencyKey } from '@/lib/api/client';
@@ -164,7 +165,12 @@ function ClubLobby({ clubId }: { clubId: string }) {
           <tbody>
             {members.map((m) => (
               <tr key={m.userId} data-member={m.username}>
-                <td>{m.username}</td>
+                <td>
+                  <span className="row" style={{ gap: 6, flexWrap: 'nowrap' }}>
+                    <Avatar seed={m.userId} size={18} />
+                    {m.username}
+                  </span>
+                </td>
                 <td>
                   <span className="badge">{m.role}</span>
                 </td>

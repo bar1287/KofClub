@@ -66,6 +66,23 @@ test('two players play a sit-and-go to the end', async ({ browser }) => {
     await expect.poll(() => myCards(p.page)).toHaveLength(2);
   }
   await expect(alice.page.getByRole('button', { name: 'Leave table' })).toHaveCount(0);
+
+  // --- look and feel (W1.6): settings stay in this browser ------------------------
+  await expect(alice.page.getByTestId('seat-1').getByTestId('avatar')).toBeVisible();
+  await alice.page.getByTestId('table-settings').click();
+  const settings = alice.page.getByTestId('preferences');
+  await settings.getByLabel('Four-color deck').check();
+  await settings.locator('select[name="felt"]').selectOption('blue');
+  await settings.locator('select[name="cardBack"]').selectOption('red');
+  await alice.page.getByRole('button', { name: 'Close', exact: true }).click();
+  const html = alice.page.locator('html');
+  await expect(html).toHaveAttribute('data-felt', 'blue');
+  await expect(html).toHaveAttribute('data-four-color', 'true');
+  await expect(html).toHaveAttribute('data-card-back', 'red');
+  await alice.page.reload();
+  await expect(html).toHaveAttribute('data-felt', 'blue');
+  await expect(alice.page.getByTestId('table-game')).toContainText('Level 1');
+  await expect(bob.page.locator('html')).toHaveAttribute('data-felt', 'green'); // per browser
   await snap(alice.page, '20-tournament-table');
 
   // --- play until one player has every chip ---------------------------------------
