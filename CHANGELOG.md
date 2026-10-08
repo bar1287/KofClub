@@ -5,6 +5,13 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Security — Go 1.26.9
+
+- Go toolchain and images move to 1.26.9 for standard-library fixes
+  (`net/http`, `html/template` advisories reported by govulncheck).
+- The browser tests' buy-in helper waits for the wallet before typing (the
+  default amount could land mid-typing and be appended to).
+
 ### Added — Showdown choices (roadmap W1.5)
 
 - Losing hands are mucked at showdown when the rules allow it: a hand that

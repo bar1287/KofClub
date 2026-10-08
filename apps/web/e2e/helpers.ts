@@ -118,6 +118,9 @@ export async function sitDown(
   await page.getByTestId(`sit-${seat}`).click();
   const input = page.getByLabel('Buy-in amount');
   await expect(input).not.toHaveValue('');
+  // The default amount follows the wallet balance: wait for it, or it can
+  // land while the field is being filled and be typed into.
+  if (!slowWallet) await expect(page.getByRole('dialog')).toContainText(/Wallet: [\d,]+/);
   await input.fill(String(buyIn));
   if (slowWallet) {
     releaseWallet();
