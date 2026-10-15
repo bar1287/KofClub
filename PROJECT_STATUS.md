@@ -1,6 +1,6 @@
 # Project status
 
-_Last updated: 2026-10-08_
+_Last updated: 2026-10-15_
 
 This file is the hand-off record for humans and AI agents. Keep it in sync
 with the repository at the end of every task.
@@ -16,7 +16,11 @@ tracing, failover/load/restore drills and a security review.
 **Now: the W roadmap ([docs/roadmap.md](docs/roadmap.md))**, the plan from a
 working platform to a world-class one (table essentials, game variety,
 tournament depth, social, trust and safety, experience, production scale).
-Current milestone: **W2.1 Antes** (W1 is done: pre-actions, time bank, re-buy and top-up, chat, showdown choices, look and feel).
+W1 is done (pre-actions, time bank, re-buy and top-up, chat, showdown choices,
+look and feel). The owner then asked for Telegram (roadmap section T):
+**T1 Mini App and sign-in is done; current milestone: T2 Telegram Stars
+store** (Club Pro subscription, premium themes, tips; ADR-018). W2.1 Antes
+follows.
 
 ## Milestones (spec §16)
 
@@ -56,7 +60,8 @@ only, 007 no event bus yet, 008 card privacy, 009 camelCase wire + `/v1`,
 visibility, table closure and administrative enforcement, 014 OpenTelemetry
 tracing, 015 game variants as rule modules in the engine, 016 tournaments on
 the shared table infrastructure, 017 two-factor authentication (TOTP) required
-for platform administration.
+for platform administration, 018 Telegram Mini App, Telegram sign-in and
+Stars only for digital goods that do not touch gameplay.
 
 ## How to verify the current state
 
@@ -90,6 +95,7 @@ make screenshots   # screenshot tour of the real stack into docs/screenshots
 - Re-buy and top-up (W1.3): a top-up asked for during a hand is kept in the game service's memory until the hand ends (no chips move before then), so a restart in between drops it; the player asks again. Leaving and re-sitting refills the time bank.
 - Table chat (W1.4): live delivery across gateways depends on Redis (frames published while a gateway is disconnected from Redis are lost; the history endpoint has the stored messages). There is no word filter, no per-member chat ban (staff ban the member or turn chat off) and no chat in the tournament lobby.
 - Tables cannot be reopened or edited after creation (close and create a new one).
+- Telegram (T1): inside the Mini App a reload signs in again from Telegram's launch data, which expires after `TELEGRAM_INIT_DATA_MAX_AGE_SECONDS` (default 1 h); after that the player reopens the app from the bot. Telegram-only accounts cannot add an email/password yet, so they cannot unlink Telegram. The Mini App needs public https URLs (no local tunnel tooling in the repo).
 - Engine simplifications (documented in docs/game-engine.md): no antes/straddles, no dead button or missed-blind tracking, no hi/lo split games.
 - Showdown choices (W1.5): cards can be shown after a hand only until the next hand starts, and not after a game-service restart (the finished hand is kept in memory only).
 - A table's game type is fixed at creation (by design; hands record their own game).
@@ -106,9 +112,10 @@ make screenshots   # screenshot tour of the real stack into docs/screenshots
 
 ## Implemented API (control-api, `/v1`)
 
-Auth: `POST /auth/register|login|refresh|logout` (login takes `mfaCode`). Me: `GET /me`,
+Auth: `POST /auth/register|login|refresh|logout|telegram` (login and telegram take `mfaCode`). Me: `GET /me`,
 `GET /me/sessions`, `DELETE /me/sessions/{id}`, `GET /me/mfa`,
-`POST /me/mfa/totp`, `POST /me/mfa/totp/confirm|disable`. Clubs: `POST|GET /clubs`,
+`POST /me/mfa/totp`, `POST /me/mfa/totp/confirm|disable`, `POST|DELETE /me/telegram`.
+Telegram: `GET /telegram/config`, `POST /telegram/webhook` (bot updates, secret header). Clubs: `POST|GET /clubs`,
 `POST /clubs/join`, `GET /clubs/{id}`, `POST /clubs/{id}/join|leave`,
 `POST /clubs/{id}/join-code/rotate`, `GET /clubs/{id}/members`,
 `PATCH /clubs/{id}/members/{userId}`, `POST|GET /clubs/{id}/invites`,
@@ -131,8 +138,14 @@ Canonical contract: `packages/contracts/openapi/control-api.yaml`
 ## Next tasks
 
 Follow [docs/roadmap.md](docs/roadmap.md) in its order of work, one milestone
-at a time: W2.1–W2.3 (antes, straddle and bomb pots, run it twice), then W7.1
-(single origin). Earlier suggestions (tournament structures, late
+at a time. Next: **T2 Telegram Stars store** (ADR-018): Club Pro 30-day Stars
+subscription per club (owner buys), premium felts/card backs (one-time), tips;
+`star_purchases`/entitlement tables separate from the chip ledger; invoices via
+`createInvoiceLink` (XTR); webhook `pre_checkout_query` validation and
+`successful_payment` handling idempotent by `telegram_payment_charge_id`;
+admin refunds with MFA and audit; a store page using `WebApp.openInvoice`.
+Never chips, seats, entries or prizes. Then W2.1–W2.3 (antes, straddle and
+bomb pots, run it twice), then W7.1 (single origin). Earlier suggestions (tournament structures, late
 registration, realtime tournament channel, passkeys, a keyring for
 `MFA_ENCRYPTION_KEY_B64`, a native client) are part of that plan.
 

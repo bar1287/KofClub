@@ -45,6 +45,12 @@ export interface ApiClientOptions {
   /** Cross-tab mutex for refresh-token rotation (navigator.locks in browsers). */
   locks?: LockManagerLike | null;
   now?: () => number;
+  /**
+   * Keep the refresh token in memory instead of the cookie: inside Telegram
+   * (Telegram Web frames the Mini App, where the cookie is not sent).
+   * Nothing is written to storage; a reload signs in with Telegram again.
+   */
+  refreshInMemory?: boolean;
 }
 
 /**
@@ -67,12 +73,15 @@ export class ApiClient {
   private state: AuthState = { user: null, sessionId: null };
   private refreshing: Promise<AuthResult> | null = null;
   private readonly listeners = new Set<(s: AuthState) => void>();
+  private readonly refreshInMemory: boolean;
+  private memoryRefreshToken: string | null = null;
 
   constructor(opts: ApiClientOptions) {
     this.baseUrl = opts.baseUrl;
     this.fetchImpl = opts.fetch ?? ((...args) => fetch(...args));
     this.locks = opts.locks ?? null;
     this.now = opts.now ?? Date.now;
+    this.refreshInMemory = opts.refreshInMemory ?? false;
   }
 
   get auth(): AuthState {
@@ -86,6 +95,7 @@ export class ApiClient {
 
   /** Installs tokens from a login/register/refresh response. */
   setSession(result: AuthResult): void {
+    if (this.refreshInMemory && result.refreshToken) this.memoryRefreshToken = result.refreshToken;
     this.accessToken = result.accessToken;
     this.expiresAt = Date.parse(result.accessTokenExpiresAt);
     this.state = { user: result.user, sessionId: result.sessionId };
@@ -95,6 +105,7 @@ export class ApiClient {
   /** Forgets the in-memory session (the cookie is cleared by logout). */
   clearSession(): void {
     this.accessToken = null;
+    this.memoryRefreshToken = null;
     this.expiresAt = 0;
     if (this.state.user !== null) {
       this.state = { user: null, sessionId: null };
@@ -122,8 +133,16 @@ export class ApiClient {
    */
   refresh(): Promise<AuthResult> {
     if (!this.refreshing) {
-      const run = () =>
-        this.send<AuthResult>('POST', '/v1/auth/refresh', { auth: false, body: {} }, true);
+      const run = () => {
+        if (!this.refreshInMemory) {
+          return this.send<AuthResult>('POST', '/v1/auth/refresh', { auth: false, body: {} }, true);
+        }
+        if (!this.memoryRefreshToken) {
+          return Promise.reject(new ApiError(401, 'AUTH_REFRESH_INVALID', 'Not signed in'));
+        }
+        const body = { refreshToken: this.memoryRefreshToken };
+        return this.send<AuthResult>('POST', '/v1/auth/refresh', { auth: false, body }, false);
+      };
       const locked = this.locks ? this.locks.request('kofclub-auth-refresh', run) : run();
       this.refreshing = locked
         .then((result) => {
@@ -156,7 +175,7 @@ export class ApiClient {
       'POST',
       '/v1/auth/register',
       { auth: false, body: input },
-      true,
+      !this.refreshInMemory,
     );
     this.setSession(result);
     return result.user;
@@ -167,10 +186,47 @@ export class ApiClient {
       'POST',
       '/v1/auth/login',
       { auth: false, body: input },
-      true,
+      !this.refreshInMemory,
     );
     this.setSession(result);
     return result.user;
+  }
+
+  /**
+   * Signs in with the Telegram Mini App's init data (ADR-018). Rejects with
+   * TELEGRAM_NOT_LINKED for a Telegram account without a KofClub account
+   * unless `create` is set.
+   */
+  async loginWithTelegram(input: {
+    initData: string;
+    create?: boolean;
+    mfaCode?: string;
+  }): Promise<User> {
+    const result = await this.send<AuthResult>(
+      'POST',
+      '/v1/auth/telegram',
+      { auth: false, body: input },
+      !this.refreshInMemory,
+    );
+    this.setSession(result);
+    return result.user;
+  }
+
+  /** Links the Mini App's Telegram account to the signed-in user. */
+  async linkTelegram(initData: string): Promise<User> {
+    const user = await this.request<User>('POST', '/v1/me/telegram', { body: { initData } });
+    this.state = { ...this.state, user };
+    this.emit();
+    return user;
+  }
+
+  /** Removes the Telegram link (accounts with a password only). */
+  async unlinkTelegram(): Promise<void> {
+    await this.request<void>('DELETE', '/v1/me/telegram');
+    if (this.state.user) {
+      this.state = { ...this.state, user: { ...this.state.user, telegram: null } };
+      this.emit();
+    }
   }
 
   async logout(): Promise<void> {

@@ -8,7 +8,8 @@ day. `PROJECT_STATUS.md` tracks which milestone is current.
 The project's rules still apply to every milestone:
 
 - Virtual chips only (ADR-006): no deposits, withdrawals, cash-out, crypto
-  or rake as revenue.
+  or rake as revenue. Telegram Stars may buy only digital goods that do
+  not touch gameplay (ADR-018).
 - The server is authoritative.
 - One milestone at a time.
 - Every milestone ships with:
@@ -106,8 +107,18 @@ These are needed before thousands of players.
 | W7.5 | Load proof       | A load test of 10,000 concurrent players on 1,500 tables against service-level objectives (p99 command round trip under 150 ms), plus a soak test.             |
 | W7.6 | Operations       | Dashboards for the service-level objectives, a status page, point-in-time recovery and a disaster-recovery drill.                                              |
 
+## T: Telegram
+
+The owner asked to bring clubs to where their players already are.
+
+| ID  | Milestone            | Scope                                                                                                                                                                                                                                                                                          |
+| --- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| T1  | Mini App and sign-in | The web client runs as a Telegram Mini App. Players sign in with Telegram's signed launch data, either on a new Telegram-only account or by linking an existing one. A bot handles /start with club links, /help, /terms and /paysupport, and clubs can be shared to Telegram chats (ADR-018). |
+| T2  | Telegram Stars store | Stars buy only digital goods that do not touch gameplay: Club Pro (a 30-day subscription for a club owner), premium felts and card backs, and tips. Payments are idempotent and kept separate from the chip ledger, with admin refunds. Never chips, seats, entries or prizes.                 |
+
 ## Order of work
 
-W1 in order comes first. Then W2.1–W2.3 and W7.1. W4.4 and W4.7, the club
+W1 in order comes first. The owner then asked for Telegram: T1 and T2. Then
+W2.1–W2.3 and W7.1. W4.4 and W4.7, the club
 loop, follow, then W3, W5, W6 and the rest. Each milestone that changes a
 contract or a core rule records its decision in an ADR.

@@ -52,6 +52,10 @@ service reports `draining` for `DRAIN_DELAY` before closing listeners.
   (control-api only), `DECK_ENCRYPTION_KEYS` (or the
   single-key `DECK_ENCRYPTION_KEY_B64`; game nodes only; rotation:
   [runbooks/deck-key-rotation.md](runbooks/deck-key-rotation.md)).
+- Telegram (optional, [telegram.md](telegram.md)): `TELEGRAM_BOT_TOKEN` and
+  `TELEGRAM_WEBHOOK_SECRET` from the secret store (control-api only);
+  `TELEGRAM_BOT_USERNAME` for control-api and web; `TELEGRAM_MINI_APP_URL`
+  is the public https web URL. Run `make telegram-setup` after deploying.
 - Web: served over HTTPS; the web tier sends a per-request nonce CSP and,
   with `APP_ENV=production|staging`, HSTS.
 - Platform administrators: granted with the operator CLI

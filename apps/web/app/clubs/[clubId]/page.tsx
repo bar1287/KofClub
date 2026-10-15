@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState, type ChangeEvent, type FormEvent } fr
 import { Avatar } from '@/components/Avatar';
 import { ErrorAlert } from '@/components/ErrorAlert';
 import { RequireAuth } from '@/components/RequireAuth';
+import { TelegramShareButton } from '@/components/TelegramShareButton';
 import { errorMessage, newIdempotencyKey } from '@/lib/api/client';
 import { chips } from '@/lib/format';
 import { GAME_TYPES, gameLabel, gameName, type GameType } from '@/lib/games';
@@ -72,6 +73,7 @@ function ClubLobby({ clubId }: { clubId: string }) {
             </strong>
           </span>
         )}
+        {club.joinCode && <TelegramShareButton code={club.joinCode} clubName={club.name} />}
       </div>
       <ErrorAlert error={error} />
       {notice && <div className="alert ok">{notice}</div>}

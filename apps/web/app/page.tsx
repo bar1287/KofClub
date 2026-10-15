@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useSession } from '@/lib/session';
 
 export default function HomePage() {
-  const { status, user } = useSession();
+  const { status, user, telegram } = useSession();
   return (
     <main className="content">
       <section className="hero">
@@ -16,6 +16,10 @@ export default function HomePage() {
         {status === 'authenticated' && user ? (
           <Link className="btn primary" href="/clubs">
             Go to my clubs
+          </Link>
+        ) : status === 'anonymous' && telegram ? (
+          <Link className="btn primary" href="/login">
+            Start playing
           </Link>
         ) : status === 'anonymous' ? (
           <div className="row" style={{ justifyContent: 'center' }}>

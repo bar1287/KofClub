@@ -12,6 +12,7 @@ import { MfaService } from './mfa/mfa.service';
 import { PasswordService } from './password.service';
 import { SessionRevocationPublisher } from './session-revocation.publisher';
 import { SessionsRepository } from './sessions.repository';
+import { TelegramAccountsRepository } from './telegram-accounts.repository';
 import { UsersRepository } from './users.repository';
 
 @Module({
@@ -23,12 +24,19 @@ import { UsersRepository } from './users.repository';
     PasswordService,
     UsersRepository,
     SessionsRepository,
+    TelegramAccountsRepository,
     SessionRevocationPublisher,
     // Order matters: authenticate first, then rate-limit by user.
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_GUARD, useClass: RateLimitGuard },
     { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor },
   ],
-  exports: [UsersRepository, SessionsRepository, SessionRevocationPublisher, MfaService],
+  exports: [
+    UsersRepository,
+    SessionsRepository,
+    TelegramAccountsRepository,
+    SessionRevocationPublisher,
+    MfaService,
+  ],
 })
 export class IdentityModule {}

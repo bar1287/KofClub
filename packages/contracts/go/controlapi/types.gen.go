@@ -224,6 +224,10 @@ const (
 	ErrorCodeTABLEFULL                ErrorCode = "TABLE_FULL"
 	ErrorCodeTABLENOTFOUND            ErrorCode = "TABLE_NOT_FOUND"
 	ErrorCodeTABLEUNAVAILABLE         ErrorCode = "TABLE_UNAVAILABLE"
+	ErrorCodeTELEGRAMALREADYLINKED    ErrorCode = "TELEGRAM_ALREADY_LINKED"
+	ErrorCodeTELEGRAMAUTHINVALID      ErrorCode = "TELEGRAM_AUTH_INVALID"
+	ErrorCodeTELEGRAMNOTCONFIGURED    ErrorCode = "TELEGRAM_NOT_CONFIGURED"
+	ErrorCodeTELEGRAMNOTLINKED        ErrorCode = "TELEGRAM_NOT_LINKED"
 	ErrorCodeTOURNAMENTFULL           ErrorCode = "TOURNAMENT_FULL"
 	ErrorCodeTOURNAMENTNOTFOUND       ErrorCode = "TOURNAMENT_NOT_FOUND"
 	ErrorCodeTOURNAMENTNOTOPEN        ErrorCode = "TOURNAMENT_NOT_OPEN"
@@ -327,6 +331,14 @@ func (e ErrorCode) Valid() bool {
 	case ErrorCodeTABLENOTFOUND:
 		return true
 	case ErrorCodeTABLEUNAVAILABLE:
+		return true
+	case ErrorCodeTELEGRAMALREADYLINKED:
+		return true
+	case ErrorCodeTELEGRAMAUTHINVALID:
+		return true
+	case ErrorCodeTELEGRAMNOTCONFIGURED:
+		return true
+	case ErrorCodeTELEGRAMNOTLINKED:
 		return true
 	case ErrorCodeTOURNAMENTFULL:
 		return true
@@ -958,6 +970,24 @@ func (e RegisterParamsXAuthTransport) Valid() bool {
 	}
 }
 
+// Defines values for LoginWithTelegramParamsXAuthTransport.
+const (
+	LoginWithTelegramParamsXAuthTransportBody   LoginWithTelegramParamsXAuthTransport = "body"
+	LoginWithTelegramParamsXAuthTransportCookie LoginWithTelegramParamsXAuthTransport = "cookie"
+)
+
+// Valid indicates whether the value is a known member of the LoginWithTelegramParamsXAuthTransport enum.
+func (e LoginWithTelegramParamsXAuthTransport) Valid() bool {
+	switch e {
+	case LoginWithTelegramParamsXAuthTransportBody:
+		return true
+	case LoginWithTelegramParamsXAuthTransportCookie:
+		return true
+	default:
+		return false
+	}
+}
+
 // AdminClub defines model for AdminClub.
 type AdminClub struct {
 	// CreatedAt UTC RFC 3339 timestamp
@@ -984,7 +1014,7 @@ type AdminUser struct {
 
 	// CreatedAt UTC RFC 3339 timestamp
 	CreatedAt    Timestamp    `json:"createdAt"`
-	Email        string       `json:"email"`
+	Email        *string      `json:"email"`
 	Id           Uuid         `json:"id"`
 	PlatformRole PlatformRole `json:"platformRole"`
 	Status       UserStatus   `json:"status"`
@@ -1853,6 +1883,35 @@ type TableSeat struct {
 	Username string     `json:"username"`
 }
 
+// TelegramConfig defines model for TelegramConfig.
+type TelegramConfig struct {
+	BotUsername *string `json:"botUsername"`
+	Enabled     bool    `json:"enabled"`
+}
+
+// TelegramLink defines model for TelegramLink.
+type TelegramLink struct {
+	FirstName *string `json:"firstName"`
+
+	// LinkedAt UTC RFC 3339 timestamp
+	LinkedAt Timestamp `json:"linkedAt"`
+	Username *string   `json:"username"`
+}
+
+// TelegramLinkRequest defines model for TelegramLinkRequest.
+type TelegramLinkRequest struct {
+	InitData string `json:"initData"`
+}
+
+// TelegramLoginRequest defines model for TelegramLoginRequest.
+type TelegramLoginRequest struct {
+	// Create Create a Telegram-only account when this Telegram account is not linked.
+	Create   *bool   `json:"create,omitempty"`
+	DeviceId *string `json:"deviceId,omitempty"`
+	InitData string  `json:"initData"`
+	MfaCode  *string `json:"mfaCode,omitempty"`
+}
+
 // Timestamp UTC RFC 3339 timestamp
 type Timestamp = time.Time
 
@@ -2063,12 +2122,18 @@ type UpdateMemberRequestStatus string
 // User defines model for User.
 type User struct {
 	// CreatedAt UTC RFC 3339 timestamp
-	CreatedAt    Timestamp           `json:"createdAt"`
-	Email        openapi_types.Email `json:"email"`
-	Id           Uuid                `json:"id"`
-	PlatformRole PlatformRole        `json:"platformRole"`
-	Status       UserStatus          `json:"status"`
-	Username     string              `json:"username"`
+	CreatedAt Timestamp `json:"createdAt"`
+
+	// Email Null for accounts created through Telegram.
+	Email *openapi_types.Email `json:"email"`
+
+	// HasPassword False for accounts that sign in with Telegram only.
+	HasPassword  bool          `json:"hasPassword"`
+	Id           Uuid          `json:"id"`
+	PlatformRole PlatformRole  `json:"platformRole"`
+	Status       UserStatus    `json:"status"`
+	Telegram     *TelegramLink `json:"telegram"`
+	Username     string        `json:"username"`
 }
 
 // UserStatus defines model for UserStatus.
@@ -2211,6 +2276,16 @@ type RegisterParams struct {
 // RegisterParamsXAuthTransport defines parameters for Register.
 type RegisterParamsXAuthTransport string
 
+// LoginWithTelegramParams defines parameters for LoginWithTelegram.
+type LoginWithTelegramParams struct {
+	// XAuthTransport `cookie` makes the API deliver the refresh token in an HttpOnly
+	// SameSite=Strict cookie (`kof_rt`, path `/v1/auth`) instead of the body.
+	XAuthTransport *LoginWithTelegramParamsXAuthTransport `json:"X-Auth-Transport,omitempty"`
+}
+
+// LoginWithTelegramParamsXAuthTransport defines parameters for LoginWithTelegram.
+type LoginWithTelegramParamsXAuthTransport string
+
 // CreateClubParams defines parameters for CreateClub.
 type CreateClubParams struct {
 	// IdempotencyKey Unique key making a retried state-changing request a no-op.
@@ -2340,6 +2415,14 @@ type TopUpParams struct {
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
+// TelegramWebhookJSONBody defines parameters for TelegramWebhook.
+type TelegramWebhookJSONBody map[string]interface{}
+
+// TelegramWebhookParams defines parameters for TelegramWebhook.
+type TelegramWebhookParams struct {
+	XTelegramBotApiSecretToken string `json:"X-Telegram-Bot-Api-Secret-Token"`
+}
+
 // RegisterForTournamentParams defines parameters for RegisterForTournament.
 type RegisterForTournamentParams struct {
 	// IdempotencyKey Unique key making a retried state-changing request a no-op.
@@ -2363,6 +2446,9 @@ type RefreshJSONRequestBody = RefreshRequest
 
 // RegisterJSONRequestBody defines body for Register for application/json ContentType.
 type RegisterJSONRequestBody = RegisterRequest
+
+// LoginWithTelegramJSONRequestBody defines body for LoginWithTelegram for application/json ContentType.
+type LoginWithTelegramJSONRequestBody = TelegramLoginRequest
 
 // CreateClubJSONRequestBody defines body for CreateClub for application/json ContentType.
 type CreateClubJSONRequestBody = CreateClubRequest
@@ -2409,6 +2495,9 @@ type ConfirmTotpEnrollmentJSONRequestBody = MfaCodeRequest
 // DisableTotpJSONRequestBody defines body for DisableTotp for application/json ContentType.
 type DisableTotpJSONRequestBody = MfaCodeRequest
 
+// LinkTelegramJSONRequestBody defines body for LinkTelegram for application/json ContentType.
+type LinkTelegramJSONRequestBody = TelegramLinkRequest
+
 // SetAutoTopUpJSONRequestBody defines body for SetAutoTopUp for application/json ContentType.
 type SetAutoTopUpJSONRequestBody = AutoTopUpRequest
 
@@ -2423,3 +2512,6 @@ type TakeSeatJSONRequestBody = SeatRequest
 
 // TopUpJSONRequestBody defines body for TopUp for application/json ContentType.
 type TopUpJSONRequestBody = TopUpRequest
+
+// TelegramWebhookJSONRequestBody defines body for TelegramWebhook for application/json ContentType.
+type TelegramWebhookJSONRequestBody TelegramWebhookJSONBody

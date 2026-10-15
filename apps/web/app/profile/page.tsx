@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { TelegramPanel } from '@/components/account/TelegramPanel';
 import { TwoFactorPanel } from '@/components/account/TwoFactorPanel';
 import { ErrorAlert } from '@/components/ErrorAlert';
 import { PreferencesForm } from '@/components/PreferencesForm';
@@ -40,7 +41,8 @@ function ProfileView() {
       <h1>Profile</h1>
       <div className="panel">
         <p>
-          <strong>{user?.username}</strong> <span className="muted">· {user?.email}</span>
+          <strong>{user?.username}</strong>{' '}
+          <span className="muted">· {user?.email ?? 'signs in with Telegram'}</span>
         </p>
       </div>
       <div className="panel">
@@ -48,6 +50,7 @@ function ProfileView() {
         <p className="muted small">Saved in this browser.</p>
         <PreferencesForm />
       </div>
+      <TelegramPanel />
       <TwoFactorPanel />
       <div className="panel">
         <h2>Signed-in devices</h2>

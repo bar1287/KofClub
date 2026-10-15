@@ -4,6 +4,11 @@ import { z } from 'zod';
  * Environment schema. The service refuses to start when configuration is
  * missing or malformed (no silent defaults for secrets).
  */
+/** Unset and empty variables both mean "not configured". */
+function optionalEnv<T extends z.ZodTypeAny>(schema: T) {
+  return z.preprocess((v) => (v === '' ? undefined : v), schema.optional());
+}
+
 const envSchema = z.object({
   APP_ENV: z.enum(['local', 'test', 'development', 'staging', 'production']).default('local'),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
@@ -67,6 +72,27 @@ const envSchema = z.object({
     .enum(['true', 'false'])
     .default('true')
     .transform((v) => v === 'true'),
+
+  // --- Telegram (ADR-018): all optional; set together to enable ---------------
+  /** Bot token from BotFather. Secret: never commit it. */
+  TELEGRAM_BOT_TOKEN: optionalEnv(
+    z.string().regex(/^\d{5,}:[A-Za-z0-9_-]{30,}$/, 'must look like 123456:ABC… (from BotFather)'),
+  ),
+  /** The bot's username without "@" (links such as t.me/<bot>?startapp=…). */
+  TELEGRAM_BOT_USERNAME: optionalEnv(
+    z.string().regex(/^[A-Za-z0-9_]{5,32}$/, 'must be the bot username without @'),
+  ),
+  /** Telegram sends it with every webhook call (X-Telegram-Bot-Api-Secret-Token). */
+  TELEGRAM_WEBHOOK_SECRET: optionalEnv(
+    z.string().regex(/^[A-Za-z0-9_-]{32,256}$/, 'must be 32-256 letters, digits, _ or -'),
+  ),
+  /** Public URL of the web app, opened as the Mini App (https in production). */
+  TELEGRAM_MINI_APP_URL: optionalEnv(z.string().url()),
+  /** Where players get help with payments (/paysupport), e.g. @support_user or an email. */
+  TELEGRAM_SUPPORT_CONTACT: optionalEnv(z.string().trim().min(3).max(128)),
+  TELEGRAM_API_URL: z.string().url().default('https://api.telegram.org'),
+  /** How old Mini App init data may be when signing in. */
+  TELEGRAM_INIT_DATA_MAX_AGE_SECONDS: z.coerce.number().int().min(60).max(86400).default(3600),
 });
 
 export type AppConfig = z.infer<typeof envSchema>;
@@ -102,6 +128,32 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
           path: ['ADMIN_MFA_REQUIRED'],
           message: 'cannot be disabled in production',
         });
+      }
+      if (cfg.TELEGRAM_BOT_TOKEN) {
+        for (const key of [
+          'TELEGRAM_BOT_USERNAME',
+          'TELEGRAM_WEBHOOK_SECRET',
+          'TELEGRAM_MINI_APP_URL',
+        ] as const) {
+          if (!cfg[key]) {
+            ctx.addIssue({
+              code: 'custom',
+              path: [key],
+              message: 'required with TELEGRAM_BOT_TOKEN',
+            });
+          }
+        }
+        if (
+          cfg.APP_ENV === 'production' &&
+          cfg.TELEGRAM_MINI_APP_URL &&
+          !cfg.TELEGRAM_MINI_APP_URL.startsWith('https://')
+        ) {
+          ctx.addIssue({
+            code: 'custom',
+            path: ['TELEGRAM_MINI_APP_URL'],
+            message: 'must be https in production (Telegram opens only https Mini Apps)',
+          });
+        }
       }
       if (cfg.APP_ENV === 'production' && !cfg.RATE_LIMIT_ENABLED) {
         ctx.addIssue({

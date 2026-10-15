@@ -10,8 +10,14 @@ test('protected pages redirect to login and return afterwards', async ({ page })
   const login = await page.goto('/login');
   const csp = login?.headers()['content-security-policy'] ?? '';
   expect(csp).toMatch(/script-src 'self' 'nonce-[A-Za-z0-9+/=]+' 'strict-dynamic'/);
-  expect(csp).toContain("frame-ancestors 'none'");
-  expect(login?.headers()['x-frame-options']).toBe('DENY');
+  if (process.env.E2E_TELEGRAM_BOT_TOKEN) {
+    // The Telegram Mini App is on: only Telegram Web may frame the app.
+    expect(csp).toContain("frame-ancestors 'self' https://web.telegram.org;");
+    expect(login?.headers()['x-frame-options']).toBeUndefined();
+  } else {
+    expect(csp).toContain("frame-ancestors 'none'");
+    expect(login?.headers()['x-frame-options']).toBe('DENY');
+  }
 
   await page.goto('/profile');
   await expect(page).toHaveURL(/\/login\?next=%2Fprofile$/);

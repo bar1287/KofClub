@@ -8,7 +8,7 @@ import { errorMessage } from '@/lib/api/client';
 import { useSession } from '@/lib/session';
 
 export default function RegisterPage() {
-  const { register } = useSession();
+  const { register, telegram } = useSession();
   const router = useRouter();
   const [form, setForm] = useState({ email: '', username: '', password: '' });
   const [error, setError] = useState<string | null>(null);
@@ -32,6 +32,12 @@ export default function RegisterPage() {
     <main className="content">
       <div className="panel auth-card">
         <h1>Create an account</h1>
+        {telegram && (
+          <p className="alert ok" data-testid="register-telegram">
+            In Telegram you can play without email or password:{' '}
+            <Link href="/login">continue with Telegram</Link>.
+          </p>
+        )}
         <form className="form" onSubmit={submit}>
           <label className="field">
             Email

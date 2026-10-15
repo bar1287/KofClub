@@ -69,6 +69,10 @@ migrate-down: ## Roll back the most recent migration
 migrate-status: ## Print the current schema version
 	$(GO) run ./go/cmd/migrate version
 
+.PHONY: telegram-setup
+telegram-setup: ## Point the Telegram bot at this deployment: webhook, commands, menu button (docs/telegram.md)
+	set -a; . ./.env; set +a; node scripts/telegram-setup.mjs
+
 .PHONY: seed
 seed: ## Load demo data (users, club, table, chip grants)
 	$(PNPM) --filter @kofclub/control-api seed

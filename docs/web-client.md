@@ -83,6 +83,30 @@ control API enforces every permission.
   from the user id, shown on seats, in chat and in member lists. Nothing is
   uploaded.
 
+## Inside Telegram (roadmap T1)
+
+The same client runs as a Telegram Mini App (ADR-018,
+[telegram.md](telegram.md)). `src/lib/telegram.ts` reads Telegram's signed
+launch data from the URL fragment (`#tgWebAppData=`) and keeps it in
+`sessionStorage` for the tab. It also loads Telegram's script only inside
+Telegram. With launch data present:
+
+- `SessionProvider` builds the API client with `refreshInMemory`, so the
+  refresh token stays in memory rather than in the cookie, which Telegram
+  Web's frame does not send. On page load it signs in with the launch data
+  instead of restoring from the cookie.
+- An unknown Telegram user (`TELEGRAM_NOT_LINKED`) is left signed out. The
+  login page then offers **Continue with Telegram**, which creates an
+  account, or a password login with "Sign in with this Telegram account from
+  now on" (link).
+- `TelegramBridge` calls `ready()`/`expand()` and routes a
+  `startapp=c-<CODE>` link to `/join?code=CODE`.
+- The profile shows the Telegram link. Club pages offer "Share in Telegram"
+  when `GET /v1/telegram/config` says a bot is configured.
+
+`e2e/telegram.spec.ts` drives this with launch data signed by a made-up bot,
+which `scripts/e2e.sh` configures, and a stand-in for Telegram's script.
+
 ## Testing
 
 - Unit (Jest, `pnpm --filter @kofclub/web test`): reducer (complete hand with

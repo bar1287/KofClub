@@ -3,6 +3,8 @@ import type { ControlApi, Realtime } from '@kofclub/contracts';
 /** Control-plane (HTTP) types, generated from control-api.yaml. */
 type Api = ControlApi.components['schemas'];
 export type User = Api['User'];
+export type TelegramLink = Api['TelegramLink'];
+export type TelegramConfig = Api['TelegramConfig'];
 export type AuthResult = Api['AuthResult'];
 export type Session = Api['Session'];
 export type MfaStatus = Api['MfaStatus'];

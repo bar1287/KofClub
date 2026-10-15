@@ -20,7 +20,9 @@ current milestone, decisions, known issues and the exact next task.
 9. Add/update tests with every behavior change.
 10. Keep local development runnable through Docker Compose (`make dev`).
 11. Never add real-money deposits, withdrawals, cash-out, crypto settlement or
-    payment rails (ADR-006).
+    payment rails (ADR-006). The only exception is Telegram Stars for digital
+    goods that do not touch gameplay (Club Pro, cosmetics, tips; ADR-018).
+    Stars never buy or become chips, seats, buy-ins, entries or prizes.
 12. Before finishing a task run: `make fmt lint typecheck test integration`.
 13. Proposing to replace a core technology requires an ADR (compatibility
     impact, migration plan, why it reduces risk).

@@ -14,6 +14,8 @@ import {
   refreshSchema,
   RegisterInput,
   registerSchema,
+  TelegramLoginInput,
+  telegramLoginSchema,
 } from './identity.schemas';
 import {
   clearRefreshCookie,
@@ -69,6 +71,25 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<AuthResponse> {
     return this.respond(await this.auth.login(body, ctx), req, res);
+  }
+
+  @Public()
+  @Post('telegram')
+  @HttpCode(200)
+  @RateLimit({
+    name: 'auth:telegram:ip',
+    by: 'ip',
+    limit: 30,
+    windowSec: 300,
+    memoryFallback: true,
+  })
+  async telegram(
+    @Body(new ZodPipe(telegramLoginSchema)) body: TelegramLoginInput,
+    @Ctx() ctx: RequestContext,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AuthResponse> {
+    return this.respond(await this.auth.loginWithTelegram(body, ctx), req, res);
   }
 
   @Public()

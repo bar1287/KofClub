@@ -55,4 +55,30 @@ describe('loadConfig', () => {
       expect(msg).toContain('APP_ENV');
     }
   });
+
+  it('enables Telegram only with every required setting', () => {
+    const tg = {
+      TELEGRAM_BOT_TOKEN: '123456789:' + 'A'.repeat(35),
+      TELEGRAM_BOT_USERNAME: 'kofclub_bot',
+      TELEGRAM_WEBHOOK_SECRET: 's'.repeat(40),
+      TELEGRAM_MINI_APP_URL: 'https://poker.example.test',
+    };
+    const off = loadConfig({ ...base, TELEGRAM_BOT_TOKEN: '', TELEGRAM_BOT_USERNAME: '' });
+    expect(off.TELEGRAM_BOT_TOKEN).toBeUndefined();
+    expect(loadConfig({ ...base, ...tg }).TELEGRAM_BOT_USERNAME).toBe('kofclub_bot');
+    expect(() => loadConfig({ ...base, ...tg, TELEGRAM_WEBHOOK_SECRET: '' })).toThrow(
+      /TELEGRAM_WEBHOOK_SECRET/,
+    );
+    expect(() => loadConfig({ ...base, ...tg, TELEGRAM_BOT_TOKEN: 'nope' })).toThrow(
+      /TELEGRAM_BOT_TOKEN/,
+    );
+    expect(() =>
+      loadConfig({
+        ...base,
+        ...tg,
+        APP_ENV: 'production',
+        TELEGRAM_MINI_APP_URL: 'http://poker.example.test',
+      }),
+    ).toThrow(/TELEGRAM_MINI_APP_URL/);
+  });
 });

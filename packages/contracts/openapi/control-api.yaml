@@ -40,6 +40,8 @@ tags:
     description: Table chat history, reports and moderation (live messages use the realtime connection)
   - name: tournaments
     description: Virtual-chip tournaments (registration, blind levels, balancing, prize payouts)
+  - name: telegram
+    description: Telegram Mini App sign-in, account linking and the bot webhook (ADR-018)
   - name: admin
     description: Platform administration (PLATFORM_ADMIN in a session verified with a second factor; otherwise 403 MFA_REQUIRED, ADR-017)
 paths:
@@ -214,6 +216,123 @@ paths:
       responses:
         '204':
           description: Revoked
+        '404':
+          $ref: '#/components/responses/Error'
+  /v1/auth/telegram:
+    post:
+      tags: [auth, telegram]
+      operationId: loginWithTelegram
+      summary: Sign in from the Telegram Mini App (init data signed by Telegram)
+      description: |
+        `initData` is `Telegram.WebApp.initData`, checked with the bot token
+        (HMAC-SHA256) and accepted for TELEGRAM_INIT_DATA_MAX_AGE_SECONDS.
+        A Telegram account that is not linked yet gets TELEGRAM_NOT_LINKED
+        unless `create` is true, which creates an account that signs in with
+        Telegram only. Accounts with two-factor authentication need
+        `mfaCode` (MFA_REQUIRED otherwise).
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/AuthTransport'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TelegramLoginRequest'
+      responses:
+        '200':
+          description: Signed in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResult'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+  /v1/me/telegram:
+    post:
+      tags: [me, telegram]
+      operationId: linkTelegram
+      summary: Link the Telegram account of the open Mini App to the signed-in user
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TelegramLinkRequest'
+      responses:
+        '200':
+          description: Linked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+    delete:
+      tags: [me, telegram]
+      operationId: unlinkTelegram
+      summary: Unlink Telegram (only for accounts that also have a password)
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Unlinked
+        '409':
+          $ref: '#/components/responses/Error'
+  /v1/telegram/config:
+    get:
+      tags: [telegram]
+      operationId: getTelegramConfig
+      summary: Whether Telegram is enabled, and the bot to link to
+      security: []
+      responses:
+        '200':
+          description: Telegram settings for clients
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TelegramConfig'
+  /v1/telegram/webhook:
+    post:
+      tags: [telegram]
+      operationId: telegramWebhook
+      summary: Bot API updates (called by Telegram only)
+      description: |
+        Telegram sends the configured secret in X-Telegram-Bot-Api-Secret-Token;
+        any other caller gets 401. Answers 200 for every accepted update.
+      security: []
+      parameters:
+        - name: X-Telegram-Bot-Api-Secret-Token
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Accepted
+        '401':
+          $ref: '#/components/responses/Error'
         '404':
           $ref: '#/components/responses/Error'
   /v1/me/mfa:
@@ -1754,13 +1873,15 @@ components:
     User:
       type: object
       additionalProperties: false
-      required: [id, email, username, status, platformRole, createdAt]
+      required: [id, email, username, status, platformRole, createdAt, hasPassword, telegram]
       properties:
         id:
           $ref: '#/components/schemas/Uuid'
         email:
           type: string
           format: email
+          nullable: true
+          description: Null for accounts created through Telegram.
         username:
           type: string
         status:
@@ -1769,6 +1890,62 @@ components:
           $ref: '#/components/schemas/PlatformRole'
         createdAt:
           $ref: '#/components/schemas/Timestamp'
+        hasPassword:
+          type: boolean
+          description: False for accounts that sign in with Telegram only.
+        telegram:
+          $ref: '#/components/schemas/TelegramLink'
+    TelegramLink:
+      type: object
+      nullable: true
+      additionalProperties: false
+      required: [username, firstName, linkedAt]
+      properties:
+        username:
+          type: string
+          nullable: true
+        firstName:
+          type: string
+          nullable: true
+        linkedAt:
+          $ref: '#/components/schemas/Timestamp'
+    TelegramLoginRequest:
+      type: object
+      additionalProperties: false
+      required: [initData]
+      properties:
+        initData:
+          type: string
+          minLength: 1
+          maxLength: 4096
+        create:
+          type: boolean
+          description: Create a Telegram-only account when this Telegram account is not linked.
+        deviceId:
+          type: string
+          maxLength: 128
+        mfaCode:
+          type: string
+          maxLength: 32
+    TelegramLinkRequest:
+      type: object
+      additionalProperties: false
+      required: [initData]
+      properties:
+        initData:
+          type: string
+          minLength: 1
+          maxLength: 4096
+    TelegramConfig:
+      type: object
+      additionalProperties: false
+      required: [enabled, botUsername]
+      properties:
+        enabled:
+          type: boolean
+        botUsername:
+          type: string
+          nullable: true
     RegisterRequest:
       type: object
       additionalProperties: false
@@ -3224,6 +3401,7 @@ components:
           type: string
         email:
           type: string
+          nullable: true
         status:
           $ref: '#/components/schemas/UserStatus'
         platformRole:
@@ -3463,6 +3641,11 @@ components:
         - NOT_ENOUGH_PLAYERS
         # chat
         - CHAT_DISABLED
+        # telegram
+        - TELEGRAM_NOT_CONFIGURED
+        - TELEGRAM_AUTH_INVALID
+        - TELEGRAM_NOT_LINKED
+        - TELEGRAM_ALREADY_LINKED
     ErrorBody:
       type: object
       required: [code, message, requestId]

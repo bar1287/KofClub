@@ -250,6 +250,31 @@ export type paths = {
     patch?: never;
     trace?: never;
   };
+  '/v1/auth/telegram': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Sign in from the Telegram Mini App (init data signed by Telegram)
+     * @description `initData` is `Telegram.WebApp.initData`, checked with the bot token
+     *     (HMAC-SHA256) and accepted for TELEGRAM_INIT_DATA_MAX_AGE_SECONDS.
+     *     A Telegram account that is not linked yet gets TELEGRAM_NOT_LINKED
+     *     unless `create` is true, which creates an account that signs in with
+     *     Telegram only. Accounts with two-factor authentication need
+     *     `mfaCode` (MFA_REQUIRED otherwise).
+     */
+    post: operations['loginWithTelegram'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/clubs': {
     parameters: {
       query?: never;
@@ -905,6 +930,24 @@ export type paths = {
     patch?: never;
     trace?: never;
   };
+  '/v1/me/telegram': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Link the Telegram account of the open Mini App to the signed-in user */
+    post: operations['linkTelegram'];
+    /** Unlink Telegram (only for accounts that also have a password) */
+    delete: operations['unlinkTelegram'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/tables/{tableId}': {
     parameters: {
       query?: never;
@@ -1129,6 +1172,44 @@ export type paths = {
     patch?: never;
     trace?: never;
   };
+  '/v1/telegram/config': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Whether Telegram is enabled, and the bot to link to */
+    get: operations['getTelegramConfig'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/telegram/webhook': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Bot API updates (called by Telegram only)
+     * @description Telegram sends the configured secret in X-Telegram-Bot-Api-Secret-Token;
+     *     any other caller gets 401. Answers 200 for every accepted update.
+     */
+    post: operations['telegramWebhook'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/tournaments/{tournamentId}': {
     parameters: {
       query?: never;
@@ -1249,7 +1330,7 @@ export type components = {
       activeSessions: number;
       clubCount: number;
       createdAt: components['schemas']['Timestamp'];
-      email: string;
+      email: string | null;
       id: components['schemas']['Uuid'];
       platformRole: components['schemas']['PlatformRole'];
       status: components['schemas']['UserStatus'];
@@ -1607,7 +1688,11 @@ export type components = {
       | 'ALREADY_REGISTERED'
       | 'NOT_REGISTERED'
       | 'NOT_ENOUGH_PLAYERS'
-      | 'CHAT_DISABLED';
+      | 'CHAT_DISABLED'
+      | 'TELEGRAM_NOT_CONFIGURED'
+      | 'TELEGRAM_AUTH_INVALID'
+      | 'TELEGRAM_NOT_LINKED'
+      | 'TELEGRAM_ALREADY_LINKED';
     ErrorEnvelope: {
       error: components['schemas']['ErrorBody'];
     };
@@ -2355,6 +2440,25 @@ export type components = {
       /** @description The viewer's private view (absent for anonymous spectators). */
       you?: components['schemas']['YouView'];
     };
+    TelegramConfig: {
+      botUsername: string | null;
+      enabled: boolean;
+    };
+    TelegramLink: {
+      firstName: string | null;
+      linkedAt: components['schemas']['Timestamp'];
+      username: string | null;
+    } | null;
+    TelegramLinkRequest: {
+      initData: string;
+    };
+    TelegramLoginRequest: {
+      /** @description Create a Telegram-only account when this Telegram account is not linked. */
+      create?: boolean;
+      deviceId?: string;
+      initData: string;
+      mfaCode?: string;
+    };
     /** @description The actor's turn timer ran out and their time bank is running; deadline replaces the turn's. */
     TimeBankStartedEvent: {
       /** Format: date-time */
@@ -2563,11 +2667,17 @@ export type components = {
     };
     User: {
       createdAt: components['schemas']['Timestamp'];
-      /** Format: email */
-      email: string;
+      /**
+       * Format: email
+       * @description Null for accounts created through Telegram.
+       */
+      email: string | null;
+      /** @description False for accounts that sign in with Telegram only. */
+      hasPassword: boolean;
       id: components['schemas']['Uuid'];
       platformRole: components['schemas']['PlatformRole'];
       status: components['schemas']['UserStatus'];
+      telegram: components['schemas']['TelegramLink'];
       username: string;
     };
     /** @enum {string} */
@@ -3038,6 +3148,41 @@ export interface operations {
       400: components['responses']['Error'];
       409: components['responses']['Error'];
       429: components['responses']['Error'];
+    };
+  };
+  loginWithTelegram: {
+    parameters: {
+      query?: never;
+      header?: {
+        /**
+         * @description `cookie` makes the API deliver the refresh token in an HttpOnly
+         *     SameSite=Strict cookie (`kof_rt`, path `/v1/auth`) instead of the body.
+         */
+        'X-Auth-Transport'?: components['parameters']['AuthTransport'];
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['TelegramLoginRequest'];
+      };
+    };
+    responses: {
+      /** @description Signed in */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AuthResult'];
+        };
+      };
+      401: components['responses']['Error'];
+      403: components['responses']['Error'];
+      404: components['responses']['Error'];
+      429: components['responses']['Error'];
+      503: components['responses']['Error'];
     };
   };
   listMyClubs: {
@@ -4044,6 +4189,52 @@ export interface operations {
       404: components['responses']['Error'];
     };
   };
+  linkTelegram: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['TelegramLinkRequest'];
+      };
+    };
+    responses: {
+      /** @description Linked */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['User'];
+        };
+      };
+      401: components['responses']['Error'];
+      409: components['responses']['Error'];
+      503: components['responses']['Error'];
+    };
+  };
+  unlinkTelegram: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Unlinked */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      409: components['responses']['Error'];
+    };
+  };
   getTable: {
     parameters: {
       query?: never;
@@ -4312,6 +4503,54 @@ export interface operations {
       400: components['responses']['Error'];
       409: components['responses']['Error'];
       422: components['responses']['Error'];
+    };
+  };
+  getTelegramConfig: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Telegram settings for clients */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TelegramConfig'];
+        };
+      };
+    };
+  };
+  telegramWebhook: {
+    parameters: {
+      query?: never;
+      header: {
+        'X-Telegram-Bot-Api-Secret-Token': string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': {
+          [key: string]: unknown;
+        };
+      };
+    };
+    responses: {
+      /** @description Accepted */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      401: components['responses']['Error'];
+      404: components['responses']['Error'];
     };
   };
   getTournament: {

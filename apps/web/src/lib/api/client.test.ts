@@ -8,15 +8,18 @@ const user: User = {
   status: 'ACTIVE',
   platformRole: 'USER',
   createdAt: '2026-01-01T00:00:00Z',
+  hasPassword: true,
+  telegram: null,
 };
 
-function authResult(token: string, expiresInMs = 900_000) {
+function authResult(token: string, expiresInMs = 900_000, refreshToken?: string) {
   return {
     user,
     sessionId: '0191a000-0000-7000-8000-0000000000s1',
     accessToken: token,
     accessTokenExpiresAt: new Date(Date.now() + expiresInMs).toISOString(),
     refreshTokenExpiresAt: new Date(Date.now() + 86_400_000).toISOString(),
+    ...(refreshToken ? { refreshToken } : {}),
   };
 }
 
@@ -117,5 +120,46 @@ describe('ApiClient', () => {
       status: 0,
       code: 'SERVICE_UNAVAILABLE',
     });
+  });
+
+  it('keeps the refresh token in memory inside Telegram and rotates it', async () => {
+    const sent: { url: string; transport?: string; body: unknown }[] = [];
+    let n = 0;
+    const fetchMock = jest.fn(async (url: string, init: RequestInit) => {
+      sent.push({
+        url,
+        transport: (init.headers as Record<string, string>)['X-Auth-Transport'],
+        body: init.body ? JSON.parse(init.body as string) : undefined,
+      });
+      if (url.endsWith('/v1/me/telegram')) {
+        return json(200, { ...user, telegram: { username: 'al', firstName: 'Al', linkedAt: 'x' } });
+      }
+      n++;
+      return json(200, authResult(`t${n}`, -1, `rt_${n}`));
+    });
+    const api = new ApiClient({
+      baseUrl: 'http://api',
+      fetch: fetchMock as unknown as typeof fetch,
+      refreshInMemory: true,
+    });
+    await api.loginWithTelegram({ initData: 'signed' });
+    // The access token is already expired: the next call refreshes with the body token.
+    await api.getAccessToken();
+    await api.getAccessToken();
+    expect(sent.map((s) => [s.url, s.transport, s.body])).toEqual([
+      ['http://api/v1/auth/telegram', undefined, { initData: 'signed' }],
+      ['http://api/v1/auth/refresh', undefined, { refreshToken: 'rt_1' }],
+      ['http://api/v1/auth/refresh', undefined, { refreshToken: 'rt_2' }],
+    ]);
+    // Linking keeps the session and updates the user.
+    api.setSession(authResult('fresh', 900_000, 'rt_9'));
+    await api.linkTelegram('signed');
+    expect(api.auth.user?.telegram?.username).toBe('al');
+
+    // Without a token in memory nothing is sent.
+    api.clearSession();
+    sent.length = 0;
+    await expect(api.restore()).resolves.toBeNull();
+    expect(sent).toEqual([]);
   });
 });

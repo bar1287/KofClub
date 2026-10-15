@@ -8,20 +8,29 @@ import { APP_CONFIG, AppConfig } from '../../config/config';
 import { Database, isUniqueViolation } from '../../infra/database/database';
 import { MetricsService } from '../../metrics/metrics.service';
 import { RiskService } from '../risk/risk.service';
-import type { LoginInput, RegisterInput } from './identity.schemas';
+import {
+  InitDataError,
+  validateInitData,
+  type InitData,
+  type TelegramUser,
+} from '../telegram/init-data';
+import type { LoginInput, RegisterInput, TelegramLoginInput } from './identity.schemas';
 import { MfaService } from './mfa/mfa.service';
 import { PasswordService } from './password.service';
 import { SessionRevocationPublisher } from './session-revocation.publisher';
 import { SessionRow, SessionsRepository } from './sessions.repository';
+import { TelegramAccountRow, TelegramAccountsRepository } from './telegram-accounts.repository';
 import { UserRow, UsersRepository } from './users.repository';
 
 export interface UserDto {
   id: string;
-  email: string;
+  email: string | null;
   username: string;
   status: UserRow['status'];
   platformRole: UserRow['platformRole'];
   createdAt: string;
+  hasPassword: boolean;
+  telegram: { username: string | null; firstName: string | null; linkedAt: string } | null;
 }
 
 export interface AuthResult {
@@ -43,7 +52,7 @@ export interface SessionDto {
   current: boolean;
 }
 
-export function toUserDto(u: UserRow): UserDto {
+export function toUserDto(u: UserRow, telegram: TelegramAccountRow | null): UserDto {
   return {
     id: u.id,
     email: u.email,
@@ -51,7 +60,27 @@ export function toUserDto(u: UserRow): UserDto {
     status: u.status,
     platformRole: u.platformRole,
     createdAt: u.createdAt.toISOString(),
+    hasPassword: u.passwordHash !== null,
+    telegram: telegram
+      ? {
+          username: telegram.telegramUsername,
+          firstName: telegram.firstName,
+          linkedAt: telegram.linkedAt.toISOString(),
+        }
+      : null,
   };
+}
+
+/** Usernames to try for a new Telegram account, best first. */
+export function telegramUsernameCandidates(u: TelegramUser): string[] {
+  const clean = (s: string | null) => (s ?? '').replace(/[^A-Za-z0-9_]/g, '').slice(0, 24);
+  const out: string[] = [];
+  const handle = clean(u.username);
+  if (handle.length >= 3) out.push(handle);
+  const first = clean(u.firstName);
+  if (first.length >= 3) out.push(`${first.slice(0, 18)}_${String(u.id).slice(-4)}`);
+  out.push(`tg_${u.id}`.slice(0, 24));
+  return out;
 }
 
 const REFRESH_PREFIX = 'rt';
@@ -64,6 +93,7 @@ export class AuthService {
     private readonly db: Database,
     private readonly users: UsersRepository,
     private readonly sessions: SessionsRepository,
+    private readonly telegramAccounts: TelegramAccountsRepository,
     private readonly passwords: PasswordService,
     private readonly tokens: TokenService,
     private readonly revocations: SessionRevocationPublisher,
@@ -103,7 +133,8 @@ export class AuthService {
 
   async login(input: LoginInput, ctx: RequestContext): Promise<AuthResult> {
     const user = await this.users.findByLogin(input.login);
-    if (!user) {
+    // Accounts created through Telegram have no password to sign in with.
+    if (!user?.passwordHash) {
       await this.passwords.verifyAgainstDummy(input.password);
       this.securityEvent('login_failed', { reason: 'unknown_login' });
       throw new AppError('AUTH_INVALID_CREDENTIALS', 'Invalid login or password');
@@ -126,7 +157,7 @@ export class AuthService {
       }
       throw err;
     }
-    if (this.passwords.needsRehash(user.passwordHash)) {
+    if (user.passwordHash && this.passwords.needsRehash(user.passwordHash)) {
       await this.users.updatePasswordHash(user.id, await this.passwords.hash(input.password));
     }
 
@@ -219,7 +250,159 @@ export class AuthService {
   async me(userId: string): Promise<UserDto> {
     const user = await this.users.findById(userId);
     if (!user) throw new AppError('AUTH_REQUIRED', 'User no longer exists');
-    return toUserDto(user);
+    return toUserDto(user, await this.telegramAccounts.findByUser(userId));
+  }
+
+  /**
+   * Signs in from the Telegram Mini App (ADR-018). A Telegram account that
+   * is not linked yet needs `create` to get a new Telegram-only account;
+   * otherwise TELEGRAM_NOT_LINKED lets the client offer linking instead.
+   */
+  async loginWithTelegram(input: TelegramLoginInput, ctx: RequestContext): Promise<AuthResult> {
+    const tg = this.telegramInitData(input.initData);
+    const account = await this.telegramAccounts.findByTelegramId(tg.user.id);
+    let user = account ? await this.users.findById(account.userId) : null;
+    if (user) {
+      await this.telegramAccounts.touch(tg.user.id, tg.user.username, tg.user.firstName);
+    } else if (input.create) {
+      user = await this.createTelegramUser(tg.user);
+    } else {
+      throw new AppError(
+        'TELEGRAM_NOT_LINKED',
+        'This Telegram account has no KofClub account yet',
+        {
+          firstName: tg.user.firstName,
+          telegramUsername: tg.user.username,
+        },
+      );
+    }
+    if (user.status !== 'ACTIVE') {
+      this.securityEvent('login_blocked', { userId: user.id, status: user.status });
+      throw new AppError('ACCOUNT_SUSPENDED', 'Account is not active');
+    }
+    const mfa = await this.mfa.verifyLogin(user, input.mfaCode, ctx);
+    const refreshToken = randomToken(REFRESH_PREFIX);
+    const session = await this.sessions.insert(this.db, {
+      ...this.newSession(user.id, refreshToken, input.deviceId, ctx),
+      mfa,
+    });
+    this.securityEvent('login_succeeded', {
+      userId: user.id,
+      sessionId: session.id,
+      method: 'telegram',
+    });
+    return this.authResult(user, session, refreshToken);
+  }
+
+  /** Links the open Mini App's Telegram account to a signed-in user. */
+  async linkTelegram(userId: string, initData: string): Promise<UserDto> {
+    const tg = this.telegramInitData(initData);
+    const existing = await this.telegramAccounts.findByTelegramId(tg.user.id);
+    if (existing?.userId === userId) return this.me(userId);
+    if (existing) {
+      throw new AppError(
+        'TELEGRAM_ALREADY_LINKED',
+        'This Telegram account belongs to another account',
+      );
+    }
+    if (await this.telegramAccounts.findByUser(userId)) {
+      throw new AppError(
+        'TELEGRAM_ALREADY_LINKED',
+        'Your account is linked to another Telegram account',
+      );
+    }
+    try {
+      await this.telegramAccounts.insert(this.db, {
+        userId,
+        telegramUserId: tg.user.id,
+        username: tg.user.username,
+        firstName: tg.user.firstName,
+      });
+    } catch (err) {
+      if (isUniqueViolation(err)) {
+        throw new AppError('TELEGRAM_ALREADY_LINKED', 'This Telegram account is already linked');
+      }
+      throw err;
+    }
+    this.securityEvent('telegram_linked', { userId });
+    return this.me(userId);
+  }
+
+  /** Unlinks Telegram; an account without a password would lose access. */
+  async unlinkTelegram(userId: string): Promise<void> {
+    const user = await this.users.findById(userId);
+    if (!user) throw new AppError('AUTH_REQUIRED', 'User no longer exists');
+    if (!user.passwordHash) {
+      throw new AppError(
+        'CONFLICT',
+        'This account signs in with Telegram only and cannot unlink it',
+      );
+    }
+    if (!(await this.telegramAccounts.delete(this.db, userId))) {
+      throw new AppError('NOT_FOUND', 'No Telegram account is linked');
+    }
+    this.securityEvent('telegram_unlinked', { userId });
+  }
+
+  private telegramInitData(raw: string): InitData {
+    const token = this.config.TELEGRAM_BOT_TOKEN;
+    if (!token) {
+      throw new AppError('TELEGRAM_NOT_CONFIGURED', 'Telegram sign-in is not available here');
+    }
+    try {
+      return validateInitData(raw, token, this.config.TELEGRAM_INIT_DATA_MAX_AGE_SECONDS);
+    } catch (err) {
+      if (!(err instanceof InitDataError)) throw err;
+      this.securityEvent('telegram_auth_failed', { reason: err.problem });
+      throw new AppError(
+        'TELEGRAM_AUTH_INVALID',
+        err.problem === 'expired'
+          ? 'The Telegram sign-in expired; reopen the app from Telegram'
+          : 'The Telegram sign-in could not be verified',
+      );
+    }
+  }
+
+  /** A new account that signs in with Telegram only (no email or password). */
+  private async createTelegramUser(tg: TelegramUser): Promise<UserRow> {
+    const candidates = telegramUsernameCandidates(tg);
+    for (let attempt = 0; attempt < candidates.length + 3; attempt++) {
+      const username =
+        candidates[attempt] ??
+        `player_${randomToken('x')
+          .replace(/[^A-Za-z0-9]/g, '')
+          .slice(-8)}`;
+      if (attempt < candidates.length && (await this.users.usernameTaken(username))) continue;
+      try {
+        const user = await this.db.tx(async (q) => {
+          const created = await this.users.insert(q, {
+            id: uuidv7(),
+            email: null,
+            username,
+            passwordHash: null,
+          });
+          await this.telegramAccounts.insert(q, {
+            userId: created.id,
+            telegramUserId: tg.id,
+            username: tg.username,
+            firstName: tg.firstName,
+          });
+          return created;
+        });
+        this.securityEvent('register', { userId: user.id, method: 'telegram' });
+        return user;
+      } catch (err) {
+        if (isUniqueViolation(err, 'users_username_key')) continue;
+        if (isUniqueViolation(err, 'telegram_accounts_telegram_user_key')) {
+          // Created concurrently (two taps): sign in to that account.
+          const account = await this.telegramAccounts.findByTelegramId(tg.id);
+          const user = account ? await this.users.findById(account.userId) : null;
+          if (user) return user;
+        }
+        throw err;
+      }
+    }
+    throw new AppError('CONFLICT', 'Could not choose a username; try again');
   }
 
   async listSessions(userId: string, currentSessionId: string): Promise<SessionDto[]> {
@@ -271,7 +454,7 @@ export class AuthService {
       platformRole: user.platformRole,
     });
     return {
-      user: toUserDto(user),
+      user: toUserDto(user, await this.telegramAccounts.findByUser(user.id)),
       sessionId: session.id,
       accessToken: access.token,
       accessTokenExpiresAt: access.expiresAt.toISOString(),

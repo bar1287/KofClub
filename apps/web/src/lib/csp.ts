@@ -13,15 +13,31 @@ export interface CspOptions {
   realtimeUrl: string;
   /** next dev needs eval (React refresh) and its HMR socket. */
   dev: boolean;
+  /**
+   * The Telegram Mini App is enabled: Telegram Web (web.telegram.org) shows
+   * the app in a frame, so that origin may frame it (ADR-018). The mobile and
+   * desktop Telegram apps use a web view and need no framing.
+   */
+  telegramFraming?: boolean;
 }
+
+/** Origins allowed to frame the app when the Telegram Mini App is on. */
+export const TELEGRAM_FRAME_ANCESTORS = ['https://web.telegram.org'];
 
 /**
  * Content-Security-Policy for every page. Scripts run only with the
  * per-request nonce ('strict-dynamic' lets Next's nonce-bearing loader pull
  * its chunks); network access is limited to this origin, the control API
- * and the realtime gateway; the app cannot be framed.
+ * and the realtime gateway; the app cannot be framed (except by Telegram Web
+ * when the Mini App is on).
  */
-export function buildCsp({ nonce, apiUrl, realtimeUrl, dev }: CspOptions): string {
+export function buildCsp({
+  nonce,
+  apiUrl,
+  realtimeUrl,
+  dev,
+  telegramFraming = false,
+}: CspOptions): string {
   const connect = new Set(["'self'"]);
   for (const url of [apiUrl, realtimeUrl]) {
     const origin = originOf(url);
@@ -41,7 +57,7 @@ export function buildCsp({ nonce, apiUrl, realtimeUrl, dev }: CspOptions): strin
     'img-src': ["'self'", 'data:', 'blob:'],
     'font-src': ["'self'", 'data:'],
     'connect-src': [...connect],
-    'frame-ancestors': ["'none'"],
+    'frame-ancestors': telegramFraming ? ["'self'", ...TELEGRAM_FRAME_ANCESTORS] : ["'none'"],
     'base-uri': ["'self'"],
     'form-action': ["'self'"],
     'object-src': ["'none'"],

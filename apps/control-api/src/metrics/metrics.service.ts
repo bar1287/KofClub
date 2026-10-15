@@ -37,6 +37,13 @@ export class MetricsService {
     registers: [this.registry],
   });
 
+  readonly telegramUpdates = new Counter({
+    name: 'telegram_updates_total',
+    help: 'Telegram bot updates received, by kind.',
+    labelNames: ['kind'] as const,
+    registers: [this.registry],
+  });
+
   constructor() {
     this.registry.setDefaultLabels({ service: 'control-api' });
     collectDefaultMetrics({ register: this.registry });

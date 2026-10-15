@@ -5,6 +5,41 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added — Telegram Mini App and sign-in (roadmap T1, ADR-018)
+
+- KofClub runs inside Telegram as a Mini App (the same web client). Players
+  sign in with Telegram's signed launch data (`POST /v1/auth/telegram`).
+  They either start on a new Telegram-only account (no email or password)
+  or log in with a password once to link an existing account
+  (`POST|DELETE /v1/me/telegram`). Two-factor authentication still applies.
+- A bot (`POST /v1/telegram/webhook`, secret-checked) answers `/start`
+  (club links open the join page), `/help`, `/terms` and `/paysupport`.
+  `make telegram-setup` registers the webhook, commands and menu button.
+  Setup guide: [docs/telegram.md](docs/telegram.md).
+- "Share in Telegram" on a club page and for new invites: a
+  `t.me/<bot>?startapp=c-<CODE>` link opens the app on `/join?code=CODE`.
+- A terms page (`/terms`): chips have no value, playing for money in any
+  form (including outside the app) is forbidden, and Stars only buy digital
+  extras.
+- Profile → Telegram shows the link and can unlink it (accounts with a
+  password). `GET /v1/telegram/config` tells clients whether Telegram is on.
+- Migration 000017: `telegram_accounts`; `users.email` and
+  `users.password_hash` are nullable, and a deferred trigger guarantees
+  every user can still sign in.
+
+### Changed — framing and tokens inside Telegram (ADR-018)
+
+- When the web server has `TELEGRAM_BOT_USERNAME`, CSP `frame-ancestors`
+  allows `https://web.telegram.org` (Telegram Web frames Mini Apps) and
+  `X-Frame-Options` is omitted. Without it, framing is still refused. The
+  header is now set per request by the web proxy.
+- Inside Telegram the web client keeps the refresh token in memory, since the
+  cookie is not sent in Telegram Web's frame. Elsewhere the HttpOnly cookie
+  is unchanged.
+- `User.email` may be null; `User` gains `hasPassword` and `telegram`.
+- AGENTS.md rule 11 allows Telegram Stars only for digital goods that do not
+  touch gameplay.
+
 ### Added — Look and feel (roadmap W1.6)
 
 - Sounds for your turn, dealing, chips, checks, folds and wins, synthesized

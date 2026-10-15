@@ -4,7 +4,7 @@ import { Database, Queryable } from '../../infra/database/database';
 export interface AdminUserRow {
   id: string;
   username: string;
-  email: string;
+  email: string | null;
   status: 'ACTIVE' | 'SUSPENDED' | 'DELETED';
   platformRole: 'USER' | 'PLATFORM_ADMIN';
   createdAt: string;

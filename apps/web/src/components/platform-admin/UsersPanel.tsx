@@ -71,7 +71,7 @@ export function UsersPanel() {
                 {u.platformRole === 'PLATFORM_ADMIN' && (
                   <span className="badge yellow"> admin</span>
                 )}
-                <div className="muted small">{u.email}</div>
+                <div className="muted small">{u.email ?? 'Telegram account'}</div>
               </td>
               <td>
                 <span className={`badge ${u.status === 'ACTIVE' ? 'green' : 'red'}`}>

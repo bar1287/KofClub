@@ -27,6 +27,7 @@ import type {
   LedgerTransaction,
   MemberPage,
   SeatResult,
+  TelegramConfig,
   TopUpResult,
   AutoTopUpResult,
   MuckPreferenceResult,
@@ -53,6 +54,8 @@ export function endpoints(api: ApiClient) {
     sessions: async (): Promise<Session[]> =>
       (await api.request<{ items: Session[] }>('GET', '/v1/me/sessions')).items,
     revokeSession: (id: string) => api.request<void>('DELETE', `/v1/me/sessions/${enc(id)}`),
+    telegramConfig: () =>
+      api.request<TelegramConfig>('GET', '/v1/telegram/config', { auth: false }),
     // --- two-factor authentication (ADR-017) ----------------------------------
     mfa: () => api.request<MfaStatus>('GET', '/v1/me/mfa'),
     startTotp: () => api.request<TotpEnrollment>('POST', '/v1/me/mfa/totp'),

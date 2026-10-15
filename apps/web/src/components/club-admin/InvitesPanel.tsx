@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { TelegramShareButton } from '@/components/TelegramShareButton';
 import { newIdempotencyKey } from '@/lib/api/client';
 import { useSession } from '@/lib/session';
 import type { Club, Invite } from '@/lib/types';
@@ -106,7 +107,8 @@ export function InvitesPanel({ club, onClubChanged }: { club: Club; onClubChange
           Invite code (shown once):{' '}
           <strong className="mono" data-testid="invite-code">
             {created}
-          </strong>
+          </strong>{' '}
+          <TelegramShareButton code={created} clubName={club.name} />
         </div>
       )}
       <Feedback error={error} notice={notice} />

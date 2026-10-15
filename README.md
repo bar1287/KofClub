@@ -143,6 +143,7 @@ make dev-local  # run all services natively with live reload
 | `make seed`                                        | Demo data                                                           |
 | `make demo`                                        | `make dev` plus demo accounts, Docker only                          |
 | `make screenshots`                                 | Screenshot tour of the real stack into `docs/screenshots`           |
+| `make telegram-setup`                              | Point the Telegram bot at this deployment (docs/telegram.md)        |
 | `make platform-admin ADMIN_USER=<name>`            | Grant the platform-admin role (operator CLI, audited)               |
 | `make observability`                               | Prometheus (:9090), Jaeger (:16686), Grafana (:3001)                |
 | `make contracts` / `contracts-check`               | Regenerate / verify generated contract types                        |
@@ -175,5 +176,6 @@ a managed secret store ([docs/security.md](docs/security.md)).
 - [docs/database.md](docs/database.md) — schema and migrations
 - [docs/security.md](docs/security.md) — auth, RBAC, secrets, logging rules
 - [docs/deployment.md](docs/deployment.md) — environments and rollout
+- [docs/telegram.md](docs/telegram.md) — run KofClub as a Telegram Mini App: bot setup
 - [docs/adr/](docs/adr/) — architecture decision records
 - [AGENTS.md](AGENTS.md) — rules for AI coding agents working in this repo

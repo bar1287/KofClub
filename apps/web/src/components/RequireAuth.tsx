@@ -11,8 +11,10 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   useEffect(() => {
     if (status !== 'anonymous') return;
-    // After an explicit sign-out there is nothing to come back to.
-    router.replace(signedOut ? '/login' : `/login?next=${encodeURIComponent(pathname)}`);
+    // After an explicit sign-out there is nothing to come back to. The query
+    // is kept (a join link's code survives signing in).
+    const next = pathname + window.location.search;
+    router.replace(signedOut ? '/login' : `/login?next=${encodeURIComponent(next)}`);
   }, [status, signedOut, router, pathname]);
   if (status !== 'authenticated') return <p className="muted">Loading…</p>;
   return <>{children}</>;

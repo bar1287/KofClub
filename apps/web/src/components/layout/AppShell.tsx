@@ -4,12 +4,14 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { useSession } from '@/lib/session';
+import { TelegramBridge } from './TelegramBridge';
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { status, user, logout } = useSession();
   const router = useRouter();
   return (
     <div className="shell">
+      <TelegramBridge />
       <header className="topbar">
         <Link href="/" className="brand">
           Kof<span>Club</span>
@@ -49,7 +51,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {children}
       <footer className="footer">
         Social poker with virtual chips. Virtual chips have no monetary value and cannot be
-        exchanged for money or prizes.
+        exchanged for money or prizes. <Link href="/terms">Terms</Link>
       </footer>
     </div>
   );

@@ -20,6 +20,13 @@ trap stack_cleanup EXIT INT TERM
 stack_load_env
 stack_configure "${E2E_WEB_PORT:-3100}" "${E2E_API_PORT:-4400}" "${E2E_RT_PORT:-4500}" "${E2E_GAME_PORT:-4600}"
 export HAND_START_DELAY=1s HAND_INTERVAL=4s
+# A made-up Telegram bot that is never contacted (the API URL goes nowhere):
+# Playwright signs Mini App launch data with its token (e2e/telegram.spec.ts).
+E2E_TELEGRAM_BOT_TOKEN="${E2E_TELEGRAM_BOT_TOKEN:-1234567:$(od -An -N24 -tx1 /dev/urandom | tr -d ' \n')}"
+export E2E_TELEGRAM_BOT_TOKEN TELEGRAM_BOT_TOKEN="$E2E_TELEGRAM_BOT_TOKEN"
+export TELEGRAM_BOT_USERNAME=kofclub_e2e_bot TELEGRAM_API_URL=http://127.0.0.1:9
+export TELEGRAM_WEBHOOK_SECRET="$(od -An -N24 -tx1 /dev/urandom | tr -d ' \n')"
+export TELEGRAM_MINI_APP_URL="http://localhost:${STACK_WEB_PORT}"
 stack_check_ports "$STACK_WEB_PORT" "$STACK_API_PORT" "$STACK_RT_PORT" "$STACK_GAME_PORT"
 stack_reset_db
 stack_build web

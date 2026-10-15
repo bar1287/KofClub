@@ -18,6 +18,18 @@ describe('buildCsp', () => {
     expect(csp).toContain("object-src 'none'");
   });
 
+  it('lets only Telegram Web frame the app when the Mini App is on', () => {
+    const csp = buildCsp({
+      nonce: 'n',
+      apiUrl: 'https://api.example.test',
+      realtimeUrl: 'wss://rt.example.test/ws',
+      dev: false,
+      telegramFraming: true,
+    });
+    expect(csp).toContain("frame-ancestors 'self' https://web.telegram.org;");
+    expect(csp).toContain("script-src 'self' 'nonce-n' 'strict-dynamic'");
+  });
+
   it('relaxes only what next dev needs', () => {
     const csp = policy(true);
     expect(csp).toContain("'unsafe-eval'");

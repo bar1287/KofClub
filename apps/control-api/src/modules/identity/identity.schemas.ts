@@ -38,6 +38,21 @@ export const loginSchema = z
   .strict();
 export type LoginInput = z.infer<typeof loginSchema>;
 
+const initDataSchema = z.string().min(1).max(4096);
+
+export const telegramLoginSchema = z
+  .object({
+    initData: initDataSchema,
+    create: z.boolean().optional(),
+    deviceId: deviceIdSchema,
+    mfaCode: z.string().trim().min(1).max(32).optional(),
+  })
+  .strict();
+export type TelegramLoginInput = z.infer<typeof telegramLoginSchema>;
+
+export const telegramLinkSchema = z.object({ initData: initDataSchema }).strict();
+export type TelegramLinkInput = z.infer<typeof telegramLinkSchema>;
+
 export const refreshSchema = z
   .object({ refreshToken: z.string().min(10).max(256).optional() })
   .strict()

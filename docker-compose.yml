@@ -163,6 +163,8 @@ services:
         NEXT_PUBLIC_REALTIME_URL: ${NEXT_PUBLIC_REALTIME_URL}
     environment:
       APP_ENV: ${APP_ENV:-local}
+      # Set when the Telegram Mini App is on: Telegram Web may frame the app.
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
     ports:
       - '${WEB_PORT:-3000}:3000'
     depends_on:

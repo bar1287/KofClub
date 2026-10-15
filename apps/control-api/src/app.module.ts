@@ -18,6 +18,7 @@ import { HistoryModule } from './modules/history/history.module';
 import { InternalModule } from './modules/internal/internal.module';
 import { LedgerModule } from './modules/ledger/ledger.module';
 import { RiskModule } from './modules/risk/risk.module';
+import { TelegramModule } from './modules/telegram/telegram.module';
 import { TablesModule } from './modules/tables/tables.module';
 import { TournamentsModule } from './modules/tournaments/tournaments.module';
 
@@ -41,6 +42,7 @@ export class AppModule {
         LedgerModule,
         TablesModule,
         ChatModule,
+        TelegramModule,
         TournamentsModule,
         HistoryModule,
         AdminModule,
