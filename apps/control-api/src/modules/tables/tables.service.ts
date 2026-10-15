@@ -85,8 +85,8 @@ export class TablesService {
   ): Promise<TableDetailDto> {
     const id = uuidv7();
     await this.db.tx(async (q) => {
-      await this.access.require(clubId, auth, 'TABLES_MANAGE', q);
-      await this.plans.checkLimit(q, clubId, 'openTables', () =>
+      const { club } = await this.access.require(clubId, auth, 'TABLES_MANAGE', q);
+      await this.plans.checkLimit(q, club, 'openTables', () =>
         this.repo.countOpenCashTables(clubId, q),
       );
       await this.repo.insert(q, {

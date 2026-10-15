@@ -33,7 +33,7 @@ export class StoreController {
 
   @Get('store')
   catalog(@CurrentAuth() auth: AuthContext) {
-    return this.store.catalog(auth.userId);
+    return this.store.catalog(auth);
   }
 
   @Post('store/orders')

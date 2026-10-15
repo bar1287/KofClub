@@ -77,6 +77,36 @@ export function telegramInitData(): string | null {
   return data;
 }
 
+const OPERATOR_KEY = 'kofclub.operator';
+
+/** The `op` query parameter of a launch URL, when it is a valid slug. */
+export function operatorFromSearch(search: string): string | null {
+  const slug = new URLSearchParams(search).get('op');
+  return slug && /^[a-z0-9][a-z0-9-]{2,31}$/.test(slug) ? slug : null;
+}
+
+let cachedOperator: string | null | undefined;
+
+/**
+ * The operator whose bot opened the app (ADR-019): their Mini App URL
+ * carries `?op=<slug>`. Kept for the tab like the launch data; only inside
+ * Telegram. Null in KofClub's own world.
+ */
+export function currentOperator(): string | null {
+  if (cachedOperator !== undefined) return cachedOperator;
+  if (typeof window === 'undefined' || !telegramInitData()) return null;
+  const storage = session();
+  let slug = operatorFromSearch(window.location.search);
+  try {
+    if (slug) storage?.setItem(OPERATOR_KEY, slug);
+    else slug = storage?.getItem(OPERATOR_KEY) ?? null;
+  } catch {
+    /* storage blocked: lasts for this page */
+  }
+  cachedOperator = slug;
+  return slug;
+}
+
 /**
  * Where a start parameter leads: `c-<CODE>` to a club's join page,
  * `store` to the store. Null for anything else.
@@ -214,5 +244,6 @@ export function telegramOutcome(initData: string, err: unknown): TelegramSession
 /** For tests: forget the cached launch data. */
 export function resetTelegramForTests(): void {
   cached = undefined;
+  cachedOperator = undefined;
   loading = null;
 }

@@ -7,6 +7,7 @@ import type { RequestContext } from '../../common/request-context';
 import { APP_CONFIG, AppConfig } from '../../config/config';
 import { Database, isUniqueViolation } from '../../infra/database/database';
 import { MetricsService } from '../../metrics/metrics.service';
+import { OperatorBotsService } from '../operators/operator-bots.service';
 import { RiskService } from '../risk/risk.service';
 import {
   InitDataError,
@@ -100,6 +101,7 @@ export class AuthService {
     private readonly risk: RiskService,
     private readonly mfa: MfaService,
     private readonly metrics: MetricsService,
+    private readonly operatorBots: OperatorBotsService,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
@@ -259,13 +261,16 @@ export class AuthService {
    * otherwise TELEGRAM_NOT_LINKED lets the client offer linking instead.
    */
   async loginWithTelegram(input: TelegramLoginInput, ctx: RequestContext): Promise<AuthResult> {
-    const tg = this.telegramInitData(input.initData);
-    const account = await this.telegramAccounts.findByTelegramId(tg.user.id);
+    // An operator's world is signed in with that operator's bot (ADR-019).
+    const bot = input.operator ? await this.operatorBots.activeBySlug(input.operator) : null;
+    const operatorId = bot?.operator.id ?? null;
+    const tg = this.telegramInitData(input.initData, bot?.token);
+    const account = await this.telegramAccounts.findByTelegramId(tg.user.id, operatorId);
     let user = account ? await this.users.findById(account.userId) : null;
     if (user) {
-      await this.telegramAccounts.touch(tg.user.id, tg.user.username, tg.user.firstName);
+      await this.telegramAccounts.touch(user.id, tg.user.username, tg.user.firstName);
     } else if (input.create) {
-      user = await this.createTelegramUser(tg.user);
+      user = await this.createTelegramUser(tg.user, operatorId);
     } else {
       throw new AppError(
         'TELEGRAM_NOT_LINKED',
@@ -294,10 +299,14 @@ export class AuthService {
     return this.authResult(user, session, refreshToken);
   }
 
-  /** Links the open Mini App's Telegram account to a signed-in user. */
+  /** Links the open Mini App's Telegram account to a signed-in KofClub user. */
   async linkTelegram(userId: string, initData: string): Promise<UserDto> {
+    const user = await this.users.findById(userId);
+    if (user?.operatorId) {
+      throw new AppError('FORBIDDEN', "Accounts in an operator's service already use Telegram");
+    }
     const tg = this.telegramInitData(initData);
-    const existing = await this.telegramAccounts.findByTelegramId(tg.user.id);
+    const existing = await this.telegramAccounts.findByTelegramId(tg.user.id, null);
     if (existing?.userId === userId) return this.me(userId);
     if (existing) {
       throw new AppError(
@@ -344,8 +353,9 @@ export class AuthService {
     this.securityEvent('telegram_unlinked', { userId });
   }
 
-  private telegramInitData(raw: string): InitData {
-    const token = this.config.TELEGRAM_BOT_TOKEN;
+  /** Checks launch data against KofClub's bot, or an operator's bot token. */
+  private telegramInitData(raw: string, botToken?: string): InitData {
+    const token = botToken ?? this.config.TELEGRAM_BOT_TOKEN;
     if (!token) {
       throw new AppError('TELEGRAM_NOT_CONFIGURED', 'Telegram sign-in is not available here');
     }
@@ -364,7 +374,7 @@ export class AuthService {
   }
 
   /** A new account that signs in with Telegram only (no email or password). */
-  private async createTelegramUser(tg: TelegramUser): Promise<UserRow> {
+  private async createTelegramUser(tg: TelegramUser, operatorId: string | null): Promise<UserRow> {
     const candidates = telegramUsernameCandidates(tg);
     for (let attempt = 0; attempt < candidates.length + 3; attempt++) {
       const username =
@@ -380,22 +390,24 @@ export class AuthService {
             email: null,
             username,
             passwordHash: null,
+            operatorId,
           });
           await this.telegramAccounts.insert(q, {
             userId: created.id,
             telegramUserId: tg.id,
             username: tg.username,
             firstName: tg.firstName,
+            operatorId,
           });
           return created;
         });
-        this.securityEvent('register', { userId: user.id, method: 'telegram' });
+        this.securityEvent('register', { userId: user.id, method: 'telegram', operatorId });
         return user;
       } catch (err) {
         if (isUniqueViolation(err, 'users_username_key')) continue;
         if (isUniqueViolation(err, 'telegram_accounts_telegram_user_key')) {
           // Created concurrently (two taps): sign in to that account.
-          const account = await this.telegramAccounts.findByTelegramId(tg.id);
+          const account = await this.telegramAccounts.findByTelegramId(tg.id, operatorId);
           const user = account ? await this.users.findById(account.userId) : null;
           if (user) return user;
         }

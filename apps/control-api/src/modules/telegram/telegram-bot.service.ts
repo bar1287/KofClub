@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { RequestContext } from '../../common/request-context';
 import { APP_CONFIG, AppConfig } from '../../config/config';
 import { MetricsService } from '../../metrics/metrics.service';
+import { OperatorBot, OperatorBotsService } from '../operators/operator-bots.service';
 import { findProduct } from '../store/store.catalog';
 import { PaymentOutcome, StoreService } from '../store/store.service';
 import {
@@ -46,6 +47,17 @@ export function parseCommand(
   return { command: m[1]!, arg: (m[3] ?? '').trim() };
 }
 
+/** Who a bot speaks for: KofClub's own bot, or an operator's (ADR-019). */
+interface BotProfile {
+  name: string;
+  username: string | undefined;
+  /** Null for KofClub's bot (the configured token). */
+  token: string | undefined;
+  appUrl(path: string): string;
+  /** Operator bots sell nothing: payments are KofClub's own. */
+  sells: boolean;
+}
+
 /**
  * Bot updates (ADR-018). Commands: /start opens the Mini App (a club join
  * code in the start payload opens that club's join page), /help, /terms and
@@ -60,9 +72,52 @@ export class TelegramBotService {
   constructor(
     private readonly telegram: TelegramClient,
     private readonly store: StoreService,
+    private readonly operatorBots: OperatorBotsService,
     private readonly metrics: MetricsService,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
+
+  private platformProfile(): BotProfile {
+    return {
+      name: 'KofClub',
+      username: this.config.TELEGRAM_BOT_USERNAME,
+      token: undefined,
+      appUrl: (path) => this.appUrl(path),
+      sells: true,
+    };
+  }
+
+  private operatorProfile(bot: OperatorBot): BotProfile {
+    return {
+      name: bot.operator.name,
+      username: bot.operator.botUsername,
+      token: bot.token,
+      appUrl: (path) => this.operatorBots.miniAppUrl(bot.operator.slug, path),
+      sells: false,
+    };
+  }
+
+  /** An update for an operator's bot (ADR-019): commands only, no store. */
+  async handleOperatorUpdate(update: TelegramUpdate, bot: OperatorBot): Promise<void> {
+    const profile = this.operatorProfile(bot);
+    if (update.pre_checkout_query) {
+      this.metrics.telegramUpdates.inc({ kind: 'operator_pre_checkout_query' });
+      const query = preCheckoutQuerySchema.safeParse(update.pre_checkout_query);
+      if (!query.success) return;
+      await this.telegram.call(
+        'answerPreCheckoutQuery',
+        {
+          pre_checkout_query_id: query.data.id,
+          ok: false,
+          error_message: 'This bot does not sell anything.',
+        },
+        bot.token,
+      );
+      return;
+    }
+    this.metrics.telegramUpdates.inc({ kind: 'operator_message' });
+    await this.answerCommand(update.message, profile);
+  }
 
   /**
    * Handles one update. Payment errors propagate (the webhook answers 500
@@ -90,13 +145,17 @@ export class TelegramBotService {
         await this.store.paymentRefunded(refund.data.telegram_payment_charge_id, ctx);
       return;
     }
+    await this.answerCommand(msg, this.platformProfile());
+  }
+
+  private async answerCommand(msg: TelegramMessage | undefined, bot: BotProfile): Promise<void> {
     if (!msg?.text || msg.from?.is_bot) return;
-    const cmd = parseCommand(msg.text, this.config.TELEGRAM_BOT_USERNAME);
+    const cmd = parseCommand(msg.text, bot.username);
     if (!cmd) return;
-    const reply = this.reply(cmd.command, cmd.arg, msg.chat.type === 'private');
+    const reply = this.reply(cmd.command, cmd.arg, msg.chat.type === 'private', bot);
     if (!reply) return;
     try {
-      await this.telegram.sendMessage(msg.chat.id, reply.text, reply.extra);
+      await this.telegram.sendMessage(msg.chat.id, reply.text, reply.extra, bot.token);
     } catch {
       // Logged by the client; a failed reply must not make Telegram retry.
     }
@@ -157,14 +216,14 @@ export class TelegramBotService {
     return `${base}${path}`;
   }
 
-  private openButton(text: string, code: string | null, privateChat: boolean) {
+  private openButton(text: string, code: string | null, privateChat: boolean, bot: BotProfile) {
     // Mini App buttons work in private chats; groups get a t.me link that
     // opens the bot's main Mini App with the same club code.
     const path = code ? `/join?code=${encodeURIComponent(code)}` : '/';
     const startapp = code ? `?startapp=c-${encodeURIComponent(code)}` : '?startapp';
     const button = privateChat
-      ? { text, web_app: { url: this.appUrl(path) } }
-      : { text, url: `https://t.me/${this.config.TELEGRAM_BOT_USERNAME}${startapp}` };
+      ? { text, web_app: { url: bot.appUrl(path) } }
+      : { text, url: `https://t.me/${bot.username}${startapp}` };
     return { reply_markup: { inline_keyboard: [[button]] } };
   }
 
@@ -172,23 +231,33 @@ export class TelegramBotService {
     command: string,
     arg: string,
     privateChat: boolean,
+    bot: BotProfile,
   ): { text: string; extra: Record<string, unknown> } | null {
+    const poweredBy = bot.sells ? '' : ' (powered by KofClub)';
     switch (command) {
       case 'start': {
         const code = joinCodeFromStartParam(arg);
         return {
           text: code
-            ? `You're invited to a KofClub poker club (code ${code}). Tap below to join.`
-            : 'KofClub: private poker clubs with friends. Play with virtual chips; they have no money value and cannot be cashed out.',
-          extra: this.openButton(code ? 'Join the club' : 'Open KofClub', code, privateChat),
+            ? `You're invited to a poker club on ${bot.name} (code ${code}). Tap below to join.`
+            : `${bot.name}${poweredBy}: private poker clubs with friends. Play with virtual chips; ` +
+              'they have no money value and cannot be cashed out.',
+          extra: this.openButton(
+            code ? 'Join the club' : `Open ${bot.name}`,
+            code,
+            privateChat,
+            bot,
+          ),
         };
       }
       case 'help':
         return {
           text: [
-            '/start: open KofClub',
+            `/start: open ${bot.name}`,
             '/terms: terms of use',
-            '/paysupport: help with a Telegram Stars purchase',
+            bot.sells
+              ? '/paysupport: help with a Telegram Stars purchase'
+              : '/paysupport: payments',
             'Share a club link from the club page to invite friends.',
           ].join('\n'),
           extra: {},
@@ -196,18 +265,20 @@ export class TelegramBotService {
       case 'terms':
         return {
           text:
-            'KofClub is a social game. Chips are virtual, have no monetary value and can never be ' +
-            'bought, sold or exchanged for money or prizes. Playing for money, in or outside the ' +
-            `app, is forbidden. Full terms: ${this.appUrl('/terms')}`,
+            `${bot.name} is a social game${poweredBy}. Chips are virtual, have no monetary value ` +
+            'and can never be bought, sold or exchanged for money or prizes. Playing for money, ' +
+            `in or outside the app, is forbidden. Full terms: ${bot.appUrl('/terms')}`,
           extra: { link_preview_options: { is_disabled: true } },
         };
       case 'paysupport':
         return {
-          text:
-            'Telegram Stars buy Club Pro, premium themes and tips: never chips. For a problem ' +
-            'with a purchase, write to ' +
-            (this.config.TELEGRAM_SUPPORT_CONTACT ?? 'the operators of this KofClub service') +
-            ' with the date and the item. Refunds go back to your Stars balance.',
+          text: bot.sells
+            ? 'Telegram Stars buy Club Pro, premium themes and tips: never chips. For a problem ' +
+              'with a purchase, write to ' +
+              (this.config.TELEGRAM_SUPPORT_CONTACT ?? 'the operators of this KofClub service') +
+              ' with the date and the item. Refunds go back to your Stars balance.'
+            : `${bot.name} sells nothing in this bot, and chips are always free. Nobody may ` +
+              'charge you money to play.',
           extra: {},
         };
       default:

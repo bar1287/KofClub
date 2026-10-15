@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { useSession } from '@/lib/session';
+import { useOperator } from '@/lib/useOperator';
 import { useTelegramConfig } from '@/lib/useTelegramConfig';
 import { TelegramBridge } from './TelegramBridge';
 
@@ -11,19 +12,34 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { status, user, logout, ep } = useSession();
   const router = useRouter();
   const telegramConfig = useTelegramConfig(ep);
+  // Inside an operator's bot the app carries the operator's name (ADR-019).
+  const operator = useOperator(ep);
+  const inOperatorWorld = operator.slug !== null;
   return (
     <div className="shell">
       <TelegramBridge />
       <header className="topbar">
-        <Link href="/" className="brand">
-          Kof<span>Club</span>
+        <Link href="/" className="brand" data-testid="brand">
+          {inOperatorWorld ? (
+            <>
+              {operator.info?.name ?? ''}
+              <small className="powered-by">by KofClub</small>
+            </>
+          ) : (
+            <>
+              Kof<span>Club</span>
+            </>
+          )}
         </Link>
         <nav>
           {status === 'authenticated' && (
             <>
               <Link href="/clubs">Clubs</Link>
               <Link href="/hands">Hands</Link>
-              {telegramConfig?.storeEnabled && <Link href="/store">Store</Link>}
+              {telegramConfig?.storeEnabled && !inOperatorWorld && <Link href="/store">Store</Link>}
+              {telegramConfig?.operatorsEnabled && !inOperatorWorld && (
+                <Link href="/operators">Your bot</Link>
+              )}
               <Link href="/profile">Profile</Link>
               {user?.platformRole === 'PLATFORM_ADMIN' && <Link href="/admin">Admin</Link>}
             </>
@@ -46,7 +62,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           ) : status === 'anonymous' ? (
             <>
               <Link href="/login">Log in</Link>
-              <Link href="/register">Register</Link>
+              {!inOperatorWorld && <Link href="/register">Register</Link>}
             </>
           ) : null}
         </div>

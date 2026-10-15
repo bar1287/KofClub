@@ -70,6 +70,7 @@ async function main(): Promise<void> {
         sessionId: result.sessionId,
         platformRole: result.user.platformRole,
         mfa: false,
+        operatorId: null,
       });
     }
 

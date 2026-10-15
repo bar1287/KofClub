@@ -2,6 +2,7 @@
 
 import { useSession } from '@/lib/session';
 import { openTelegramLink, shareClubLink } from '@/lib/telegram';
+import { useOperator } from '@/lib/useOperator';
 import { useTelegramConfig } from '@/lib/useTelegramConfig';
 
 /**
@@ -11,8 +12,14 @@ import { useTelegramConfig } from '@/lib/useTelegramConfig';
 export function TelegramShareButton({ code, clubName }: { code: string; clubName: string }) {
   const { ep } = useSession();
   const config = useTelegramConfig(ep);
-  if (!config?.enabled || !config.botUsername) return null;
-  const bot = config.botUsername;
+  const operator = useOperator(ep);
+  // In an operator's world, links open the operator's bot (ADR-019).
+  const bot = operator.slug
+    ? (operator.info?.botUsername ?? null)
+    : config?.enabled
+      ? config.botUsername
+      : null;
+  if (!bot) return null;
   return (
     <button
       className="btn small"

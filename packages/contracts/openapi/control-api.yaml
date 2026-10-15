@@ -44,6 +44,8 @@ tags:
     description: Telegram Mini App sign-in, account linking and the bot webhook (ADR-018)
   - name: store
     description: Telegram Stars store for digital goods that never touch gameplay (Club Pro, themes, tips; ADR-018)
+  - name: operators
+    description: Operators run KofClub under their own Telegram bot, each in a separate world (ADR-019)
   - name: admin
     description: Platform administration (PLATFORM_ADMIN in a session verified with a second factor; otherwise 403 MFA_REQUIRED, ADR-017)
 paths:
@@ -456,6 +458,142 @@ paths:
         '409':
           $ref: '#/components/responses/Error'
         '503':
+          $ref: '#/components/responses/Error'
+  /v1/operators:
+    post:
+      tags: [operators]
+      operationId: registerOperator
+      summary: Register your own Telegram bot as an operator (starts PENDING until approved)
+      description: |
+        The bot token is checked with Telegram (getMe) and stored encrypted.
+        The operator's players and clubs form a separate world; chips stay
+        virtual there too (terms acceptance required).
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterOperatorRequest'
+      responses:
+        '201':
+          description: Registered, waiting for approval
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operator'
+        '400':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+  /v1/operators/mine:
+    get:
+      tags: [operators]
+      operationId: listMyOperators
+      summary: Operators I registered
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperatorList'
+        '401':
+          $ref: '#/components/responses/Error'
+  /v1/operators/{operatorId}/bot:
+    parameters:
+      - name: operatorId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+    put:
+      tags: [operators]
+      operationId: replaceOperatorBotToken
+      summary: Replace the bot token (after /revoke in BotFather); must be the same bot
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OperatorBotTokenRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operator'
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+  /v1/operators/{slug}/public:
+    parameters:
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^[a-z0-9][a-z0-9-]{2,31}$'
+    get:
+      tags: [operators]
+      operationId: getOperatorPublic
+      summary: An active operator's public details (shown in its Mini App)
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperatorPublic'
+        '404':
+          $ref: '#/components/responses/Error'
+  /v1/telegram/operators/{operatorId}/webhook:
+    parameters:
+      - name: operatorId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+    post:
+      tags: [operators]
+      operationId: operatorTelegramWebhook
+      summary: Bot API updates for an operator's bot (called by Telegram only)
+      security: []
+      parameters:
+        - name: X-Telegram-Bot-Api-Secret-Token
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Accepted
+        '401':
+          $ref: '#/components/responses/Error'
+        '404':
           $ref: '#/components/responses/Error'
   /v1/me/mfa:
     get:
@@ -1949,6 +2087,69 @@ paths:
           $ref: '#/components/responses/Error'
         '503':
           $ref: '#/components/responses/Error'
+  /v1/admin/operators:
+    get:
+      tags: [admin]
+      operationId: adminOperators
+      summary: Operators, newest first, optionally by status (PLATFORM_ADMIN)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [PENDING, ACTIVE, SUSPENDED, REJECTED]
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperatorPage'
+        '400':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+  /v1/admin/operators/{operatorId}/status:
+    parameters:
+      - name: operatorId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+    put:
+      tags: [admin]
+      operationId: adminSetOperatorStatus
+      summary: Approve (connects the bot), suspend, reinstate or reject an operator (PLATFORM_ADMIN, audited)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetOperatorStatusRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operator'
+        '400':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
 components:
   securitySchemes:
     bearerAuth:
@@ -2106,6 +2307,10 @@ components:
         mfaCode:
           type: string
           maxLength: 32
+        operator:
+          allOf:
+            - $ref: '#/components/schemas/OperatorSlug'
+          description: Sign in to this operator's world with its bot's launch data (ADR-019)
     TelegramLinkRequest:
       type: object
       additionalProperties: false
@@ -2118,7 +2323,7 @@ components:
     TelegramConfig:
       type: object
       additionalProperties: false
-      required: [enabled, botUsername, storeEnabled]
+      required: [enabled, botUsername, storeEnabled, operatorsEnabled]
       properties:
         enabled:
           type: boolean
@@ -2128,6 +2333,9 @@ components:
         storeEnabled:
           type: boolean
           description: The Telegram Stars store is on (ADR-018)
+        operatorsEnabled:
+          type: boolean
+          description: Anyone can register their own bot as an operator (ADR-019)
     RegisterRequest:
       type: object
       additionalProperties: false
@@ -3831,6 +4039,14 @@ components:
         # store
         - STORE_DISABLED
         - CLUB_PLAN_LIMIT
+        # operators
+        - OPERATORS_DISABLED
+        - OPERATOR_NOT_FOUND
+        - OPERATOR_UNAVAILABLE
+        - OPERATOR_BOT_INVALID
+        - OPERATOR_BOT_TAKEN
+        - OPERATOR_SLUG_TAKEN
+        - OPERATOR_LIMIT
     StoreProductId:
       type: string
       description: Digital goods only. Nothing here buys chips, seats, entries or prizes (ADR-018).
@@ -4039,6 +4255,131 @@ components:
       properties:
         renewing:
           type: boolean
+    OperatorSlug:
+      type: string
+      pattern: '^[a-z0-9][a-z0-9-]{2,31}$'
+      description: Lowercase letters, digits and dashes; part of the Mini App URL (?op=slug)
+    OperatorStatus:
+      type: string
+      enum: [PENDING, ACTIVE, SUSPENDED, REJECTED]
+    RegisterOperatorRequest:
+      type: object
+      additionalProperties: false
+      required: [name, slug, botToken, acceptTerms]
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 48
+        slug:
+          $ref: '#/components/schemas/OperatorSlug'
+        botToken:
+          type: string
+          minLength: 30
+          maxLength: 128
+          description: From @BotFather. Stored encrypted, never shown again.
+        acceptTerms:
+          type: boolean
+          enum: [true]
+          description: The operator accepts the terms, including no play for money in any form.
+    OperatorBotTokenRequest:
+      type: object
+      additionalProperties: false
+      required: [botToken]
+      properties:
+        botToken:
+          type: string
+          minLength: 30
+          maxLength: 128
+    Operator:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          id,
+          slug,
+          name,
+          status,
+          statusReason,
+          botUsername,
+          miniAppUrl,
+          ownerUserId,
+          ownerUsername,
+          createdAt,
+          reviewedAt,
+        ]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        slug:
+          $ref: '#/components/schemas/OperatorSlug'
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/OperatorStatus'
+        statusReason:
+          type: string
+          nullable: true
+        botUsername:
+          type: string
+        miniAppUrl:
+          type: string
+          description: Set this as the bot's Main Mini App URL in @BotFather
+        ownerUserId:
+          $ref: '#/components/schemas/Uuid'
+        ownerUsername:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        reviewedAt:
+          type: string
+          format: date-time
+          nullable: true
+    OperatorList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Operator'
+    OperatorPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Operator'
+        nextCursor:
+          type: string
+          nullable: true
+    OperatorPublic:
+      type: object
+      additionalProperties: false
+      required: [slug, name, botUsername]
+      properties:
+        slug:
+          $ref: '#/components/schemas/OperatorSlug'
+        name:
+          type: string
+        botUsername:
+          type: string
+    SetOperatorStatusRequest:
+      type: object
+      additionalProperties: false
+      required: [status, reason]
+      properties:
+        status:
+          type: string
+          enum: [ACTIVE, SUSPENDED, REJECTED]
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 200
     ErrorBody:
       type: object
       required: [code, message, requestId]

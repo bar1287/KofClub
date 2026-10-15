@@ -29,6 +29,10 @@ import type {
   SeatResult,
   ClubPlan,
   MyStore,
+  Operator,
+  OperatorPage,
+  OperatorPublic,
+  OperatorStatus,
   StarOrderCreated,
   StarPayment,
   StarPaymentPage,
@@ -63,6 +67,19 @@ export function endpoints(api: ApiClient) {
     revokeSession: (id: string) => api.request<void>('DELETE', `/v1/me/sessions/${enc(id)}`),
     telegramConfig: () =>
       api.request<TelegramConfig>('GET', '/v1/telegram/config', { auth: false }),
+    // --- operators (ADR-019) ---------------------------------------------------
+    operatorPublic: (slug: string) =>
+      api.request<OperatorPublic>('GET', `/v1/operators/${enc(slug)}/public`, { auth: false }),
+    myOperators: async (): Promise<Operator[]> =>
+      (await api.request<{ items: Operator[] }>('GET', '/v1/operators/mine')).items,
+    registerOperator: (
+      body: { name: string; slug: string; botToken: string; acceptTerms: true },
+      key = newIdempotencyKey(),
+    ) => api.request<Operator>('POST', '/v1/operators', { body, idempotencyKey: key }),
+    replaceOperatorToken: (operatorId: string, botToken: string) =>
+      api.request<Operator>('PUT', `/v1/operators/${enc(operatorId)}/bot`, {
+        body: { botToken },
+      }),
     // --- Telegram Stars store (ADR-018): digital goods only ---------------------
     store: () => api.request<StoreCatalog>('GET', '/v1/store'),
     myStore: () => api.request<MyStore>('GET', '/v1/me/store'),
@@ -273,6 +290,19 @@ export function endpoints(api: ApiClient) {
         'GET',
         `/v1/admin/risk-events?limit=50&status=${status}${cursorParam(cursor)}`,
       ),
+    adminOperators: (status: OperatorStatus | '', cursor?: string | null) =>
+      api.request<OperatorPage>(
+        'GET',
+        `/v1/admin/operators?limit=50${status ? `&status=${status}` : ''}${cursorParam(cursor)}`,
+      ),
+    adminSetOperatorStatus: (
+      id: string,
+      status: 'ACTIVE' | 'SUSPENDED' | 'REJECTED',
+      reason: string,
+    ) =>
+      api.request<Operator>('PUT', `/v1/admin/operators/${enc(id)}/status`, {
+        body: { status, reason },
+      }),
     adminStarPayments: (cursor?: string | null) =>
       api.request<StarPaymentPage>('GET', `/v1/admin/star-payments?limit=50${cursorParam(cursor)}`),
     adminRefundStarPayment: (id: string, reason: string) =>

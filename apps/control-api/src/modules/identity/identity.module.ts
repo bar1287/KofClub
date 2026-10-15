@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { IdempotencyInterceptor } from '../../common/idempotency/idempotency.interceptor';
+import { OperatorsCoreModule } from '../operators/operators-core.module';
 import { RateLimitGuard } from '../../common/rate-limit/rate-limit.guard';
 import { AuthController } from './auth.controller';
 import { AuthGuard } from './auth.guard';
@@ -16,6 +17,7 @@ import { TelegramAccountsRepository } from './telegram-accounts.repository';
 import { UsersRepository } from './users.repository';
 
 @Module({
+  imports: [OperatorsCoreModule],
   controllers: [AuthController, MeController, MfaController],
   providers: [
     AuthService,

@@ -26,10 +26,17 @@ const COLS = 'user_id, telegram_user_id, telegram_username, first_name, linked_a
 export class TelegramAccountsRepository {
   constructor(private readonly db: Database) {}
 
-  async findByTelegramId(telegramUserId: number, q: Queryable = this.db) {
-    const res = await q.query(`SELECT ${COLS} FROM telegram_accounts WHERE telegram_user_id = $1`, [
-      telegramUserId,
-    ]);
+  /** The account a Telegram user has in a world (null: KofClub's own). */
+  async findByTelegramId(
+    telegramUserId: number,
+    operatorId: string | null,
+    q: Queryable = this.db,
+  ): Promise<TelegramAccountRow | null> {
+    const res = await q.query(
+      `SELECT ${COLS} FROM telegram_accounts
+        WHERE telegram_user_id = $1 AND operator_id IS NOT DISTINCT FROM $2`,
+      [telegramUserId, operatorId],
+    );
     return res.rows[0] ? map(res.rows[0]) : null;
   }
 
@@ -45,23 +52,24 @@ export class TelegramAccountsRepository {
       telegramUserId: number;
       username: string | null;
       firstName: string | null;
+      operatorId?: string | null;
     },
   ): Promise<TelegramAccountRow> {
     const res = await q.query(
-      `INSERT INTO telegram_accounts (user_id, telegram_user_id, telegram_username, first_name)
-       VALUES ($1, $2, $3, $4) RETURNING ${COLS}`,
-      [a.userId, a.telegramUserId, a.username, a.firstName],
+      `INSERT INTO telegram_accounts (user_id, telegram_user_id, telegram_username, first_name, operator_id)
+       VALUES ($1, $2, $3, $4, $5) RETURNING ${COLS}`,
+      [a.userId, a.telegramUserId, a.username, a.firstName, a.operatorId ?? null],
     );
     return map(res.rows[0]);
   }
 
   /** Keeps the Telegram name current and records the visit. */
-  async touch(telegramUserId: number, username: string | null, firstName: string | null) {
+  async touch(userId: string, username: string | null, firstName: string | null) {
     await this.db.query(
       `UPDATE telegram_accounts
           SET telegram_username = $2, first_name = $3, last_seen_at = now()
-        WHERE telegram_user_id = $1`,
-      [telegramUserId, username, firstName],
+        WHERE user_id = $1`,
+      [userId, username, firstName],
     );
   }
 

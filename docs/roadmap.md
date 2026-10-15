@@ -111,14 +111,17 @@ These are needed before thousands of players.
 
 The owner asked to bring clubs to where their players already are.
 
-| ID  | Milestone            | Scope                                                                                                                                                                                                                                                                                          |
-| --- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| T1  | Mini App and sign-in | The web client runs as a Telegram Mini App. Players sign in with Telegram's signed launch data, either on a new Telegram-only account or by linking an existing one. A bot handles /start with club links, /help, /terms and /paysupport, and clubs can be shared to Telegram chats (ADR-018). |
-| T2  | Telegram Stars store | Stars buy only digital goods that do not touch gameplay: Club Pro (a 30-day subscription for a club owner), premium felts and card backs, and tips. Payments are idempotent and kept separate from the chip ledger, with admin refunds. Never chips, seats, entries or prizes.                 |
+| ID  | Milestone             | Scope                                                                                                                                                                                                                                                                                          |
+| --- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| T1  | Mini App and sign-in  | The web client runs as a Telegram Mini App. Players sign in with Telegram's signed launch data, either on a new Telegram-only account or by linking an existing one. A bot handles /start with club links, /help, /terms and /paysupport, and clubs can be shared to Telegram chats (ADR-018). |
+| T2  | Telegram Stars store  | Stars buy only digital goods that do not touch gameplay: Club Pro (a 30-day subscription for a club owner), premium felts and card backs, and tips. Payments are idempotent and kept separate from the chip ledger, with admin refunds. Never chips, seats, entries or prizes.                 |
+| T3  | Operators             | Anyone registers their own Telegram bot (with the platform's approval). Each operator is a separate world of players and clubs, signed in through the operator's bot (ADR-019).                                                                                                                |
+| T4  | Operator branding     | Logo and colors in the operator's Mini App. An operator dashboard with players, clubs and activity, and moderation inside the operator's world.                                                                                                                                                |
+| T5  | Operator subscription | Operators pay KofClub a monthly Stars subscription through KofClub's own bot, with plan limits on clubs and players.                                                                                                                                                                           |
 
 ## Order of work
 
-W1 in order comes first. The owner then asked for Telegram: T1 and T2 (both
-done). Then W2.1–W2.3 and W7.1. W4.4 and W4.7, the club
+W1 in order comes first. The owner then asked for Telegram (T1, T2) and for
+operators (T3–T5). Then W2.1–W2.3 and W7.1. W4.4 and W4.7, the club
 loop, follow, then W3, W5, W6 and the rest. Each milestone that changes a
 contract or a core rule records its decision in an ADR.

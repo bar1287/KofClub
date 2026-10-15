@@ -201,6 +201,8 @@ export class ApiClient {
     initData: string;
     create?: boolean;
     mfaCode?: string;
+    /** An operator's world (ADR-019). */
+    operator?: string;
   }): Promise<User> {
     const result = await this.send<AuthResult>(
       'POST',

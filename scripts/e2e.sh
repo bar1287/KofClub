@@ -35,6 +35,10 @@ export E2E_TELEGRAM_WEBHOOK_SECRET="$TELEGRAM_WEBHOOK_SECRET"
 export TELEGRAM_MINI_APP_URL="http://localhost:${STACK_WEB_PORT}"
 export TELEGRAM_STARS_ENABLED=true TELEGRAM_SUPPORT_CONTACT=@kofclub_e2e_support
 export E2E_API_URL="http://localhost:${STACK_API_PORT}"
+# Operators (e2e/operator.spec.ts): bots register against the same stand-in.
+export OPERATORS_ENABLED=true
+export OPERATOR_SECRET_KEY_B64="$(head -c 32 /dev/urandom | base64 | tr -d '\n')"
+export TELEGRAM_WEBHOOK_BASE_URL="http://localhost:${STACK_API_PORT}"
 stack_check_ports "$STACK_WEB_PORT" "$STACK_API_PORT" "$STACK_RT_PORT" "$STACK_GAME_PORT" "$E2E_TELEGRAM_API_PORT"
 stack_reset_db
 stack_build web

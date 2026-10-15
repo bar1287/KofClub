@@ -1,5 +1,5 @@
-import { createServer, type Server } from 'node:http';
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { startFakeBotApi, type FakeBotApi } from './fake-bot-api';
 import { uniqueName } from './helpers';
 import {
   botToken,
@@ -18,36 +18,15 @@ const webhookSecret = process.env.E2E_TELEGRAM_WEBHOOK_SECRET ?? '';
 const fakePort = Number(process.env.E2E_TELEGRAM_API_PORT ?? 0);
 test.skip(!botToken || !apiUrl || !fakePort, 'needs the E2E Telegram bot of scripts/e2e.sh');
 
-interface BotCall {
-  method: string;
-  body: Record<string, unknown>;
-}
-
-const calls: BotCall[] = [];
-let server: Server;
+let bot: FakeBotApi;
+const calls = () => bot.calls;
 
 test.beforeAll(async () => {
-  server = createServer((req, res) => {
-    let raw = '';
-    req.on('data', (c: Buffer) => (raw += c.toString()));
-    req.on('end', () => {
-      const method = (req.url ?? '').split('/').pop() ?? '';
-      calls.push({ method, body: JSON.parse(raw || '{}') as Record<string, unknown> });
-      const result =
-        method === 'createInvoiceLink'
-          ? `https://t.me/$e2e-invoice-${calls.length}`
-          : method === 'sendMessage'
-            ? { message_id: calls.length }
-            : true;
-      res.setHeader('content-type', 'application/json');
-      res.end(JSON.stringify({ ok: true, result }));
-    });
-  });
-  await new Promise<void>((resolve) => server.listen(fakePort, '127.0.0.1', resolve));
+  bot = await startFakeBotApi(fakePort);
 });
 
 test.afterAll(async () => {
-  await new Promise<void>((resolve) => server.close(() => resolve()));
+  await bot.close();
 });
 
 let updateId = 1;
@@ -70,7 +49,7 @@ async function payInvoice(
   await expect
     .poll(() => page.evaluate(() => Boolean((window as { __invoice?: unknown }).__invoice)))
     .toBe(true);
-  const invoice = [...calls].reverse().find((c) => c.method === 'createInvoiceLink')!.body;
+  const invoice = [...calls()].reverse().find((c) => c.method === 'createInvoiceLink')!.body;
   const amount = (invoice.prices as { amount: number }[])[0]!.amount;
   const from = { id: user.id, is_bot: false, first_name: user.first_name };
   await webhook(request, {
@@ -82,7 +61,7 @@ async function payInvoice(
       invoice_payload: invoice.payload,
     },
   });
-  expect(calls.at(-1)).toMatchObject({ method: 'answerPreCheckoutQuery', body: { ok: true } });
+  expect(calls().at(-1)).toMatchObject({ method: 'answerPreCheckoutQuery', body: { ok: true } });
   await webhook(request, {
     message: {
       message_id: updateId,
@@ -144,7 +123,7 @@ test('a Telegram player buys premium themes and Club Pro with Stars', async ({ p
   await expect(plan).toContainText('Renews on');
   await plan.getByRole('button', { name: 'Cancel renewal' }).click();
   await expect(plan).toContainText('renewal canceled');
-  expect(calls.find((c) => c.method === 'editUserStarSubscription')?.body).toMatchObject({
+  expect(bot.of('editUserStarSubscription')[0]).toMatchObject({
     user_id: user.id,
     is_canceled: true,
   });

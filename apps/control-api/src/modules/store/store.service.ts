@@ -140,10 +140,15 @@ export class StoreService {
     return this.config.TELEGRAM_STARS_ENABLED && Boolean(this.config.TELEGRAM_BOT_TOKEN);
   }
 
-  async catalog(userId: string): Promise<StoreCatalogDto> {
-    const owned = new Set<Entitlement>(await this.repo.entitlements(userId));
+  /** The store is KofClub's own: operator worlds have none (ADR-019). */
+  enabledFor(auth: AuthContext): boolean {
+    return this.enabled && auth.operatorId === null;
+  }
+
+  async catalog(auth: AuthContext): Promise<StoreCatalogDto> {
+    const owned = new Set<Entitlement>(await this.repo.entitlements(auth.userId));
     return {
-      enabled: this.enabled,
+      enabled: this.enabledFor(auth),
       botUsername: this.config.TELEGRAM_BOT_TOKEN
         ? (this.config.TELEGRAM_BOT_USERNAME ?? null)
         : null,
@@ -174,7 +179,7 @@ export class StoreService {
     auth: AuthContext,
     input: { product: ProductId; clubId?: string | undefined },
   ): Promise<{ orderId: string; invoiceLink: string }> {
-    this.requireEnabled();
+    this.requireEnabled(auth);
     const product = findProduct(this.config, input.product);
     if ((product.id === 'CLUB_PRO') !== (input.clubId !== undefined)) {
       throw new AppError('VALIDATION_FAILED', 'clubId is required for Club Pro and only for it');
@@ -248,7 +253,7 @@ export class StoreService {
     const outcome = await this.db.tx(async (q): Promise<PaymentOutcome> => {
       const order = orderId ? await this.repo.findOrder(orderId, q) : null;
       // A payment that matches no order is still recorded, so it can be refunded.
-      const payer = order ? null : await this.telegramAccounts.findByTelegramId(fromId, q);
+      const payer = order ? null : await this.telegramAccounts.findByTelegramId(fromId, null, q);
       const expires = payment.subscription_expiration_date
         ? new Date(payment.subscription_expiration_date * 1000)
         : null;
@@ -367,8 +372,10 @@ export class StoreService {
   }
 
   async clubPlan(auth: AuthContext, clubId: string): Promise<ClubPlanDto> {
-    await this.access.require(clubId, auth, 'CLUB_VIEW');
-    return this.planDto(auth, clubId);
+    const { club } = await this.access.require(clubId, auth, 'CLUB_VIEW');
+    const plan = await this.planDto(auth, clubId);
+    // Operator worlds have no Club Pro (ADR-019).
+    return club.operatorId === null ? plan : { ...plan, limitsEnforced: false };
   }
 
   /** The subscriber cancels or resumes the monthly Club Pro renewal. */
@@ -378,7 +385,7 @@ export class StoreService {
     renewing: boolean,
     ctx: RequestContext,
   ): Promise<ClubPlanDto> {
-    this.requireEnabled();
+    this.requireEnabled(auth);
     await this.access.require(clubId, auth, 'CLUB_VIEW');
     const state = await this.plans.state(clubId);
     const sub = state.subscription;
@@ -432,8 +439,8 @@ export class StoreService {
     };
   }
 
-  private requireEnabled(): void {
-    if (!this.enabled) {
+  private requireEnabled(auth: AuthContext): void {
+    if (!this.enabledFor(auth)) {
       throw new AppError('STORE_DISABLED', 'The Stars store is not available here');
     }
   }

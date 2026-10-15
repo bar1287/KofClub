@@ -28,8 +28,12 @@ export class TelegramClient {
     return Boolean(this.config.TELEGRAM_BOT_TOKEN);
   }
 
-  async call<T>(method: string, params: Record<string, unknown>): Promise<T> {
-    const token = this.config.TELEGRAM_BOT_TOKEN;
+  /**
+   * Calls the Bot API as KofClub's bot, or as an operator's bot when its
+   * token is given (ADR-019).
+   */
+  async call<T>(method: string, params: Record<string, unknown>, botToken?: string): Promise<T> {
+    const token = botToken ?? this.config.TELEGRAM_BOT_TOKEN;
     if (!token) throw new AppError('TELEGRAM_NOT_CONFIGURED', 'Telegram is not configured');
     const base = this.config.TELEGRAM_API_URL.replace(/\/+$/, '');
     let res: Response;
@@ -58,7 +62,12 @@ export class TelegramClient {
     return body.result as T;
   }
 
-  sendMessage(chatId: number, text: string, extra: Record<string, unknown> = {}) {
-    return this.call<unknown>('sendMessage', { chat_id: chatId, text, ...extra });
+  sendMessage(
+    chatId: number,
+    text: string,
+    extra: Record<string, unknown> = {},
+    botToken?: string,
+  ) {
+    return this.call<unknown>('sendMessage', { chat_id: chatId, text, ...extra }, botToken);
   }
 }

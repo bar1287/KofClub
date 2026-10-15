@@ -3,6 +3,7 @@ import {
   clubStartLink,
   initDataFromHash,
   joinCodeFromStartParam,
+  operatorFromSearch,
   routeForStartParam,
   shareClubLink,
   startParamOf,
@@ -34,6 +35,14 @@ describe('Telegram launch data', () => {
       `c-${'A'.repeat(17)}`,
     ]) {
       expect(joinCodeFromStartParam(bad)).toBeNull();
+    }
+  });
+
+  it("reads the operator from an operator bot's launch URL", () => {
+    expect(operatorFromSearch('?op=alpha-poker')).toBe('alpha-poker');
+    expect(operatorFromSearch('?x=1&op=abc')).toBe('abc');
+    for (const bad of ['', '?op=', '?op=AB', '?op=a', '?op=../x', `?op=${'a'.repeat(40)}`]) {
+      expect(operatorFromSearch(bad)).toBeNull();
     }
   });
 

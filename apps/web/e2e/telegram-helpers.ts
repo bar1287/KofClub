@@ -21,7 +21,7 @@ export function telegramUser(firstName: string): TelegramUser {
 }
 
 /** Mini App launch data signed with the bot token (Telegram's algorithm). */
-export function signInitData(user: TelegramUser, startParam?: string): string {
+export function signInitData(user: TelegramUser, startParam?: string, token = botToken): string {
   const fields: Record<string, string> = {
     auth_date: String(Math.floor(Date.now() / 1000)),
     query_id: `AAE${randomInt(1_000_000_000)}`,
@@ -32,7 +32,7 @@ export function signInitData(user: TelegramUser, startParam?: string): string {
     .sort()
     .map((k) => `${k}=${fields[k]}`)
     .join('\n');
-  const secret = createHmac('sha256', 'WebAppData').update(botToken).digest();
+  const secret = createHmac('sha256', 'WebAppData').update(token).digest();
   const hash = createHmac('sha256', secret).update(check).digest('hex');
   return new URLSearchParams({ ...fields, hash }).toString();
 }

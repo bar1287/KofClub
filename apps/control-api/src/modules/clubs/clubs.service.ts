@@ -44,6 +44,8 @@ export class ClubsService {
             name: input.name,
             description: input.description ?? null,
             joinCode: randomCode(JOIN_CODE_LENGTH),
+            // Clubs live in their creator's world (ADR-019).
+            operatorId: auth.operatorId,
           });
           await this.repo.insertMembership(q, {
             clubId: club.id,
@@ -119,7 +121,13 @@ export class ClubsService {
         role = invite.role;
         inviteId = invite.id;
       }
-      if (!club || club.status !== 'ACTIVE' || (expectedClubId && club.id !== expectedClubId)) {
+      // Codes of another operator's world do not exist here (ADR-019).
+      if (
+        !club ||
+        club.status !== 'ACTIVE' ||
+        club.operatorId !== auth.operatorId ||
+        (expectedClubId && club.id !== expectedClubId)
+      ) {
         throw new AppError('INVITE_INVALID', 'Invalid, expired or used-up code');
       }
 
@@ -130,7 +138,7 @@ export class ClubsService {
       if (existing?.status === 'BANNED')
         throw new AppError('CLUB_BANNED', 'You are banned from this club');
       const clubId = club.id;
-      await this.plans.checkLimit(q, clubId, 'members', () =>
+      await this.plans.checkLimit(q, club, 'members', () =>
         this.repo.countActiveMembers(clubId, q),
       );
       if (existing) {

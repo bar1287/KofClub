@@ -4,7 +4,12 @@ import { useEffect, useState } from 'react';
 import type { Endpoints } from './api/endpoints';
 import type { TelegramConfig } from './types';
 
-const OFF: TelegramConfig = { enabled: false, botUsername: null, storeEnabled: false };
+const OFF: TelegramConfig = {
+  enabled: false,
+  botUsername: null,
+  storeEnabled: false,
+  operatorsEnabled: false,
+};
 let cached: Promise<TelegramConfig> | null = null;
 
 /** Whether this deployment has a Telegram bot (fetched once per page load). */

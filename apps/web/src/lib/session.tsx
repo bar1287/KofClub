@@ -13,7 +13,12 @@ import { ApiClient, ApiError } from './api/client';
 import { endpoints, type Endpoints } from './api/endpoints';
 import { publicEnv } from './env';
 import { RealtimeClient } from './realtime/client';
-import { telegramInitData, telegramOutcome, type TelegramSession } from './telegram';
+import {
+  currentOperator,
+  telegramInitData,
+  telegramOutcome,
+  type TelegramSession,
+} from './telegram';
 import type { User } from './types';
 
 export type SessionStatus = 'loading' | 'authenticated' | 'anonymous';
@@ -69,6 +74,12 @@ function getClients(): Clients {
   return clients;
 }
 
+/** Inside an operator's bot, sign-ins go to that operator's world. */
+function operatorParam(): { operator?: string } {
+  const operator = currentOperator();
+  return operator ? { operator } : {};
+}
+
 interface Restored {
   user: User | null;
   telegram: TelegramSession | null;
@@ -89,7 +100,7 @@ async function restore(api: ApiClient): Promise<Restored> {
     return { user: await api.restore().catch(() => null), telegram: null };
   }
   try {
-    const user = await api.loginWithTelegram({ initData });
+    const user = await api.loginWithTelegram({ initData, ...operatorParam() });
     return { user, telegram: telegramOutcome(initData, null) };
   } catch (err) {
     return { user: null, telegram: telegramOutcome(initData, err) };
@@ -156,7 +167,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const initData = telegramInitData();
       if (!initData) throw new Error('Open KofClub from Telegram to sign in with Telegram.');
       try {
-        await api.loginWithTelegram({ initData, ...opts });
+        await api.loginWithTelegram({ initData, ...opts, ...operatorParam() });
         setTelegram(telegramOutcome(initData, null));
         setSignedOut(false);
       } catch (err) {

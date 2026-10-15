@@ -13,6 +13,8 @@ export interface ClubRow {
   status: ClubStatus;
   /** Players can chat and send reactions at the club's tables. */
   tableChat: boolean;
+  /** The operator world the club is in (ADR-019); null for KofClub's own. */
+  operatorId: string | null;
   createdAt: Date;
 }
 
@@ -43,7 +45,7 @@ export interface InviteRow {
 }
 
 const CLUB_COLS =
-  'c.id, c.owner_user_id, c.name, c.description, c.join_code, c.status, c.table_chat, c.created_at';
+  'c.id, c.owner_user_id, c.name, c.description, c.join_code, c.status, c.table_chat, c.operator_id, c.created_at';
 const INVITE_COLS =
   'id, club_id, created_by, role, max_uses, use_count, expires_at, revoked_at, created_at';
 
@@ -56,6 +58,7 @@ const mapClub = (r: any): ClubRow => ({
   joinCode: r.join_code,
   status: r.status,
   tableChat: r.table_chat,
+  operatorId: r.operator_id,
   createdAt: r.created_at,
 });
 const mapMembership = (r: any): MembershipRow => ({
@@ -91,12 +94,13 @@ export class ClubsRepository {
       name: string;
       description: string | null;
       joinCode: string;
+      operatorId: string | null;
     },
   ): Promise<ClubRow> {
     const res = await q.query(
-      `INSERT INTO clubs AS c (id, owner_user_id, name, description, join_code)
-       VALUES ($1, $2, $3, $4, $5) RETURNING ${CLUB_COLS}`,
-      [c.id, c.ownerUserId, c.name, c.description, c.joinCode],
+      `INSERT INTO clubs AS c (id, owner_user_id, name, description, join_code, operator_id)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING ${CLUB_COLS}`,
+      [c.id, c.ownerUserId, c.name, c.description, c.joinCode, c.operatorId],
     );
     return mapClub(res.rows[0]);
   }

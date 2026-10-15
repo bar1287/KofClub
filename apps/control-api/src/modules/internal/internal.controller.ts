@@ -57,6 +57,7 @@ export class InternalController {
       ? await this.sessions.authState(query.sessionId, user.id)
       : null;
     const mfa = !!session && session.mfa && !session.sessionRevoked && !session.sessionExpired;
+    if (session?.operatorClosed) return { allowed: false, code: 'OPERATOR_UNAVAILABLE' };
     try {
       await this.access.require(
         table.clubId,
@@ -65,6 +66,7 @@ export class InternalController {
           sessionId: query.sessionId ?? 'internal',
           platformRole: user.platformRole,
           mfa,
+          operatorId: user.operatorId,
         },
         'CLUB_VIEW',
       );

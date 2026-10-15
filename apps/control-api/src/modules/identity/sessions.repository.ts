@@ -56,6 +56,10 @@ export interface SessionAuthState {
   userStatus: UserStatus;
   platformRole: PlatformRole;
   mfa: boolean;
+  /** The user's operator world (ADR-019); null for KofClub's own. */
+  operatorId: string | null;
+  /** That operator is not ACTIVE: its world is closed. */
+  operatorClosed: boolean;
 }
 
 @Injectable()
@@ -147,6 +151,18 @@ export class SessionsRepository {
     return res.rows.map((r) => r.id);
   }
 
+  /** Signs out everyone in an operator's world (it was suspended, ADR-019). */
+  async revokeAllForOperator(q: Queryable, operatorId: string): Promise<string[]> {
+    const res = await q.query<{ id: string }>(
+      `UPDATE sessions SET revoked_at = now(), revoke_reason = 'ADMIN'
+        WHERE revoked_at IS NULL
+          AND user_id IN (SELECT id FROM users WHERE operator_id = $1)
+        RETURNING id`,
+      [operatorId],
+    );
+    return res.rows.map((r) => r.id);
+  }
+
   async listActive(userId: string): Promise<SessionRow[]> {
     const res = await this.db.query<DbSession>(
       `SELECT ${COLUMNS} FROM sessions
@@ -197,9 +213,13 @@ export class SessionsRepository {
       status: UserStatus;
       platform_role: PlatformRole;
       mfa_at: Date | null;
+      operator_id: string | null;
+      operator_status: string | null;
     }>(
-      `SELECT s.revoked_at, s.expires_at, u.status, u.platform_role, s.mfa_at
+      `SELECT s.revoked_at, s.expires_at, u.status, u.platform_role, s.mfa_at,
+              u.operator_id, o.status AS operator_status
          FROM sessions s JOIN users u ON u.id = s.user_id
+         LEFT JOIN operators o ON o.id = u.operator_id
         WHERE s.id = $1 AND s.user_id = $2`,
       [sessionId, userId],
     );
@@ -211,6 +231,8 @@ export class SessionsRepository {
       userStatus: r.status,
       platformRole: r.platform_role,
       mfa: r.mfa_at !== null,
+      operatorId: r.operator_id,
+      operatorClosed: r.operator_id !== null && r.operator_status !== 'ACTIVE',
     };
   }
 }

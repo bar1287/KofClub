@@ -13,6 +13,8 @@ export interface UserRow {
   passwordHash: string | null;
   status: UserStatus;
   platformRole: PlatformRole;
+  /** The operator world the account lives in; null for KofClub's own (ADR-019). */
+  operatorId: string | null;
   createdAt: Date;
 }
 
@@ -23,10 +25,12 @@ interface DbUser {
   password_hash: string | null;
   status: UserStatus;
   platform_role: PlatformRole;
+  operator_id: string | null;
   created_at: Date;
 }
 
-const COLUMNS = 'id, email, username, password_hash, status, platform_role, created_at';
+const COLUMNS =
+  'id, email, username, password_hash, status, platform_role, operator_id, created_at';
 
 function map(r: DbUser): UserRow {
   return {
@@ -36,6 +40,7 @@ function map(r: DbUser): UserRow {
     passwordHash: r.password_hash,
     status: r.status,
     platformRole: r.platform_role,
+    operatorId: r.operator_id,
     createdAt: r.created_at,
   };
 }
@@ -46,19 +51,30 @@ export class UsersRepository {
 
   async insert(
     q: Queryable,
-    u: { id: string; email: string | null; username: string; passwordHash: string | null },
+    u: {
+      id: string;
+      email: string | null;
+      username: string;
+      passwordHash: string | null;
+      operatorId?: string | null;
+    },
   ): Promise<UserRow> {
     const res = await q.query<DbUser>(
-      `INSERT INTO users (id, email, username, password_hash) VALUES ($1, $2, $3, $4) RETURNING ${COLUMNS}`,
-      [u.id, u.email, u.username, u.passwordHash],
+      `INSERT INTO users (id, email, username, password_hash, operator_id)
+       VALUES ($1, $2, $3, $4, $5) RETURNING ${COLUMNS}`,
+      [u.id, u.email, u.username, u.passwordHash, u.operatorId ?? null],
     );
     return map(res.rows[0]!);
   }
 
-  /** Finds a user by email or username (both case-insensitive citext). */
+  /**
+   * Finds a KofClub-world user by email or username (both case-insensitive
+   * citext). Operator worlds sign in with Telegram only.
+   */
   async findByLogin(login: string): Promise<UserRow | null> {
     const res = await this.db.query<DbUser>(
-      `SELECT ${COLUMNS} FROM users WHERE email = $1 OR username = $1 LIMIT 1`,
+      `SELECT ${COLUMNS} FROM users
+        WHERE (email = $1 OR username = $1) AND operator_id IS NULL LIMIT 1`,
       [login],
     );
     return res.rows[0] ? map(res.rows[0]) : null;

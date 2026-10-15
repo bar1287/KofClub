@@ -20,6 +20,7 @@ import { LedgerModule } from './modules/ledger/ledger.module';
 import { RiskModule } from './modules/risk/risk.module';
 import { TelegramModule } from './modules/telegram/telegram.module';
 import { StoreModule } from './modules/store/store.module';
+import { OperatorsModule } from './modules/operators/operators.module';
 import { TablesModule } from './modules/tables/tables.module';
 import { TournamentsModule } from './modules/tournaments/tournaments.module';
 
@@ -45,6 +46,7 @@ export class AppModule {
         ChatModule,
         TelegramModule,
         StoreModule,
+        OperatorsModule,
         TournamentsModule,
         HistoryModule,
         AdminModule,

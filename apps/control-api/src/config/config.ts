@@ -104,6 +104,24 @@ const envSchema = z.object({
   STARS_PRICE_CLUB_PRO: z.coerce.number().int().min(1).max(10000).default(250),
   /** Premium felts and card backs, once, in Stars. */
   STARS_PRICE_PREMIUM_THEMES: z.coerce.number().int().min(1).max(10000).default(150),
+  // --- Operators (T3, ADR-019): other people's bots on this service ---------
+  /** Anyone can register their own Telegram bot as an operator (with approval). */
+  OPERATORS_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
+  /** AES-256-GCM key (32 bytes, base64) for operators' bot tokens at rest. */
+  OPERATOR_SECRET_KEY_B64: optionalEnv(
+    z
+      .string()
+      .refine(
+        (v) => Buffer.from(v, 'base64').length === 32,
+        'must be 32 random bytes, base64 (run scripts/init-env.sh)',
+      ),
+  ),
+  /** Public URL of this API; operators' bots send their updates here. */
+  TELEGRAM_WEBHOOK_BASE_URL: optionalEnv(z.string().url()),
+  MAX_OPERATORS_PER_USER: z.coerce.number().int().min(1).max(100).default(3),
   /** Plan limits, enforced only while the store is on. */
   CLUB_FREE_MAX_OPEN_TABLES: z.coerce.number().int().min(1).max(1000).default(3),
   CLUB_FREE_MAX_MEMBERS: z.coerce.number().int().min(2).max(100000).default(50),
@@ -168,6 +186,32 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
             code: 'custom',
             path: ['TELEGRAM_MINI_APP_URL'],
             message: 'must be https in production (Telegram opens only https Mini Apps)',
+          });
+        }
+      }
+      if (cfg.OPERATORS_ENABLED) {
+        for (const key of [
+          'OPERATOR_SECRET_KEY_B64',
+          'TELEGRAM_WEBHOOK_BASE_URL',
+          'TELEGRAM_MINI_APP_URL',
+        ] as const) {
+          if (!cfg[key]) {
+            ctx.addIssue({
+              code: 'custom',
+              path: [key],
+              message: 'required with OPERATORS_ENABLED',
+            });
+          }
+        }
+        if (
+          cfg.APP_ENV === 'production' &&
+          cfg.TELEGRAM_WEBHOOK_BASE_URL &&
+          !cfg.TELEGRAM_WEBHOOK_BASE_URL.startsWith('https://')
+        ) {
+          ctx.addIssue({
+            code: 'custom',
+            path: ['TELEGRAM_WEBHOOK_BASE_URL'],
+            message: 'must be https in production (Telegram delivers webhooks over https only)',
           });
         }
       }

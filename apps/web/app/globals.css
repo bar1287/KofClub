@@ -1028,3 +1028,11 @@ html[data-motion='reduced'] *::after {
   background: #8f6a1f;
   color: #fff8e6;
 }
+
+/* ---------- operators (T3) ---------- */
+.brand .powered-by {
+  margin-left: 6px;
+  font-size: 0.65rem;
+  font-weight: 400;
+  opacity: 0.6;
+}

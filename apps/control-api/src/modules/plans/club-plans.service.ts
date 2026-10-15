@@ -91,11 +91,13 @@ export class ClubPlansService {
    */
   async checkLimit(
     q: Queryable,
-    clubId: string,
+    club: { id: string; operatorId: string | null },
     kind: LimitKind,
     count: () => Promise<number>,
   ): Promise<void> {
-    if (!this.limitsEnforced) return;
+    // Club Pro is sold in KofClub's own world; operator worlds have their own plans.
+    if (!this.limitsEnforced || club.operatorId !== null) return;
+    const clubId = club.id;
     await this.subscriptions.lockClub(q, clubId);
     const { plan, limits } = await this.state(clubId, q);
     const max = kind === 'members' ? limits.maxMembers : limits.maxOpenTables;

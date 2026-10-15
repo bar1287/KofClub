@@ -131,6 +131,7 @@ export class ChatService {
         sessionId: input.sessionId ?? 'internal',
         platformRole: user.platformRole,
         mfa: false,
+        operatorId: user.operatorId,
       },
       'CHAT_SEND',
     );

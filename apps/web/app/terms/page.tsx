@@ -42,6 +42,19 @@ export default function TermsPage() {
           </li>
         </ul>
 
+        <h2>Operators</h2>
+        <ul>
+          <li>
+            Anyone can run KofClub under their own Telegram bot as an operator. Each operator&apos;s
+            players and clubs form a separate service with these same rules.
+          </li>
+          <li>
+            Operators may not charge players money, run cash games, collect fees or settle results
+            in any form. KofClub suspends operators that do, and their bots stop working.
+          </li>
+          <li>Report an operator that breaks these rules to KofClub&apos;s support.</li>
+        </ul>
+
         <h2>Fair play</h2>
         <ul>
           <li>One person, one account. No bots, collusion, chip dumping or sharing hole cards.</li>

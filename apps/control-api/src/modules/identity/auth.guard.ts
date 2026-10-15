@@ -40,6 +40,9 @@ export class AuthGuard implements CanActivate {
       throw new AppError('AUTH_SESSION_REVOKED', 'Session has been revoked');
     if (state.userStatus !== 'ACTIVE')
       throw new AppError('ACCOUNT_SUSPENDED', 'Account is not active');
+    if (state.operatorClosed) {
+      throw new AppError('OPERATOR_UNAVAILABLE', 'This service is not available right now');
+    }
 
     // Role comes from the database, not the token, so demotions apply at once.
     req.auth = {
@@ -47,6 +50,7 @@ export class AuthGuard implements CanActivate {
       sessionId: claims.sessionId,
       platformRole: state.platformRole,
       mfa: state.mfa,
+      operatorId: state.operatorId,
     };
     return true;
   }

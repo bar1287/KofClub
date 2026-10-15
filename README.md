@@ -177,5 +177,6 @@ a managed secret store ([docs/security.md](docs/security.md)).
 - [docs/security.md](docs/security.md) — auth, RBAC, secrets, logging rules
 - [docs/deployment.md](docs/deployment.md) — environments and rollout
 - [docs/telegram.md](docs/telegram.md) — run KofClub as a Telegram Mini App: bot setup
+- [docs/operators.md](docs/operators.md) — let anyone run their own poker bot on KofClub
 - [docs/adr/](docs/adr/) — architecture decision records
 - [AGENTS.md](AGENTS.md) — rules for AI coding agents working in this repo

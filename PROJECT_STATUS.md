@@ -19,7 +19,11 @@ tournament depth, social, trust and safety, experience, production scale).
 W1 is done (pre-actions, time bank, re-buy and top-up, chat, showdown choices,
 look and feel). The owner then asked for Telegram (roadmap section T):
 T1 (Mini App and sign-in) and T2 (Telegram Stars store: Club Pro, premium
-themes, tips; ADR-018) are done. Current milestone: **W2.1 Antes**.
+themes, tips; ADR-018) are done. The owner then asked for KofClub to be a
+game provider for other people's bots: T3 (operators: own bot, separate
+world, registration with approval; ADR-019) is done. Current milestone:
+**T4 Operator branding and dashboard**, then T5 (operator subscription in
+Stars), then W2.1 Antes.
 
 ## Milestones (spec §16)
 
@@ -60,7 +64,8 @@ visibility, table closure and administrative enforcement, 014 OpenTelemetry
 tracing, 015 game variants as rule modules in the engine, 016 tournaments on
 the shared table infrastructure, 017 two-factor authentication (TOTP) required
 for platform administration, 018 Telegram Mini App, Telegram sign-in and
-Stars only for digital goods that do not touch gameplay.
+Stars only for digital goods that do not touch gameplay, 019 operators:
+other people's Telegram bots, each a separate world.
 
 ## How to verify the current state
 
@@ -94,6 +99,7 @@ make screenshots   # screenshot tour of the real stack into docs/screenshots
 - Re-buy and top-up (W1.3): a top-up asked for during a hand is kept in the game service's memory until the hand ends (no chips move before then), so a restart in between drops it; the player asks again. Leaving and re-sitting refills the time bank.
 - Table chat (W1.4): live delivery across gateways depends on Redis (frames published while a gateway is disconnected from Redis are lost; the history endpoint has the stored messages). There is no word filter, no per-member chat ban (staff ban the member or turn chat off) and no chat in the tournament lobby.
 - Tables cannot be reopened or edited after creation (close and create a new one).
+- Operators (T3): operator worlds are Telegram-only (no website sign-in for their players); usernames stay unique across worlds; open realtime connections of a suspended world end when their access token expires (≤15 min; new HTTP calls fail at once); operators get no dashboard or branding beyond their name yet (T4).
 - Stars store (T2): purchases work only inside the Telegram Mini App (Telegram's rule for digital goods). Premium themes are checked in the browser (cosmetic, seen only by the buyer). A refund of any Club Pro charge ends the subscription. Orders that are never paid stay PENDING (no cleanup job yet). Plan limits are checked on join and table creation only: lowering the limits never removes members or tables.
 - Telegram (T1): inside the Mini App a reload signs in again from Telegram's launch data, which expires after `TELEGRAM_INIT_DATA_MAX_AGE_SECONDS` (default 1 h); after that the player reopens the app from the bot. Telegram-only accounts cannot add an email/password yet, so they cannot unlink Telegram. The Mini App needs public https URLs (no local tunnel tooling in the repo).
 - Engine simplifications (documented in docs/game-engine.md): no antes/straddles, no dead button or missed-blind tracking, no hi/lo split games.
@@ -116,6 +122,9 @@ Auth: `POST /auth/register|login|refresh|logout|telegram` (login and telegram ta
 `GET /me/sessions`, `DELETE /me/sessions/{id}`, `GET /me/mfa`,
 `POST /me/mfa/totp`, `POST /me/mfa/totp/confirm|disable`, `POST|DELETE /me/telegram`.
 Telegram: `GET /telegram/config`, `POST /telegram/webhook` (bot updates, secret header).
+Operators: `POST /operators`, `GET /operators/mine`, `PUT /operators/{id}/bot`,
+`GET /operators/{slug}/public`, `POST /telegram/operators/{id}/webhook`; admin
+`GET /admin/operators`, `PUT /admin/operators/{id}/status`.
 Store (Stars, digital goods only): `GET /store`, `POST /store/orders`, `GET /me/store`,
 `GET /clubs/{id}/plan`, `PUT /clubs/{id}/plan/renewal`; admin `GET /admin/star-payments`,
 `POST /admin/star-payments/{id}/refund`. Clubs: `POST|GET /clubs`,
@@ -141,7 +150,10 @@ Canonical contract: `packages/contracts/openapi/control-api.yaml`
 ## Next tasks
 
 Follow [docs/roadmap.md](docs/roadmap.md) in its order of work, one milestone
-at a time: W2.1–W2.3 (antes, straddle and
+at a time: **T4** (operator branding: logo and colors; operator dashboard
+with players, clubs and activity, and moderation inside their world), **T5**
+(operator subscription in Stars through KofClub's bot, with operator plan
+limits), then W2.1–W2.3 (antes, straddle and
 bomb pots, run it twice), then W7.1 (single origin). Earlier suggestions (tournament structures, late
 registration, realtime tournament channel, passkeys, a keyring for
 `MFA_ENCRYPTION_KEY_B64`, a native client) are part of that plan.

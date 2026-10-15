@@ -88,6 +88,42 @@ export type paths = {
     patch: operations['adminSetClubStatus'];
     trace?: never;
   };
+  '/v1/admin/operators': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Operators, newest first, optionally by status (PLATFORM_ADMIN) */
+    get: operations['adminOperators'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/operators/{operatorId}/status': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        operatorId: components['schemas']['Uuid'];
+      };
+      cookie?: never;
+    };
+    get?: never;
+    /** Approve (connects the bot), suspend, reinstate or reject an operator (PLATFORM_ADMIN, audited) */
+    put: operations['adminSetOperatorStatus'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/admin/overview': {
     parameters: {
       query?: never;
@@ -1039,6 +1075,83 @@ export type paths = {
     patch?: never;
     trace?: never;
   };
+  '/v1/operators': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Register your own Telegram bot as an operator (starts PENDING until approved)
+     * @description The bot token is checked with Telegram (getMe) and stored encrypted.
+     *     The operator's players and clubs form a separate world; chips stay
+     *     virtual there too (terms acceptance required).
+     */
+    post: operations['registerOperator'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/operators/{operatorId}/bot': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        operatorId: components['schemas']['Uuid'];
+      };
+      cookie?: never;
+    };
+    get?: never;
+    /** Replace the bot token (after /revoke in BotFather); must be the same bot */
+    put: operations['replaceOperatorBotToken'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/operators/{slug}/public': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        slug: string;
+      };
+      cookie?: never;
+    };
+    /** An active operator's public details (shown in its Mini App) */
+    get: operations['getOperatorPublic'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/operators/mine': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Operators I registered */
+    get: operations['listMyOperators'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/store': {
     parameters: {
       query?: never;
@@ -1313,6 +1426,25 @@ export type paths = {
     get: operations['getTelegramConfig'];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/telegram/operators/{operatorId}/webhook': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        operatorId: components['schemas']['Uuid'];
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Bot API updates for an operator's bot (called by Telegram only) */
+    post: operations['operatorTelegramWebhook'];
     delete?: never;
     options?: never;
     head?: never;
@@ -1855,7 +1987,14 @@ export type components = {
       | 'TELEGRAM_NOT_LINKED'
       | 'TELEGRAM_ALREADY_LINKED'
       | 'STORE_DISABLED'
-      | 'CLUB_PLAN_LIMIT';
+      | 'CLUB_PLAN_LIMIT'
+      | 'OPERATORS_DISABLED'
+      | 'OPERATOR_NOT_FOUND'
+      | 'OPERATOR_UNAVAILABLE'
+      | 'OPERATOR_BOT_INVALID'
+      | 'OPERATOR_BOT_TAKEN'
+      | 'OPERATOR_SLUG_TAKEN'
+      | 'OPERATOR_LIMIT';
     ErrorEnvelope: {
       error: components['schemas']['ErrorBody'];
     };
@@ -2222,6 +2361,41 @@ export type components = {
       entitlements: components['schemas']['Entitlement'][];
       payments: components['schemas']['StarPayment'][];
     };
+    Operator: {
+      botUsername: string;
+      /** Format: date-time */
+      createdAt: string;
+      id: components['schemas']['Uuid'];
+      /** @description Set this as the bot's Main Mini App URL in @BotFather */
+      miniAppUrl: string;
+      name: string;
+      ownerUserId: components['schemas']['Uuid'];
+      ownerUsername: string;
+      /** Format: date-time */
+      reviewedAt: string | null;
+      slug: components['schemas']['OperatorSlug'];
+      status: components['schemas']['OperatorStatus'];
+      statusReason: string | null;
+    };
+    OperatorBotTokenRequest: {
+      botToken: string;
+    };
+    OperatorList: {
+      items: components['schemas']['Operator'][];
+    };
+    OperatorPage: {
+      items: components['schemas']['Operator'][];
+      nextCursor: string | null;
+    };
+    OperatorPublic: {
+      botUsername: string;
+      name: string;
+      slug: components['schemas']['OperatorSlug'];
+    };
+    /** @description Lowercase letters, digits and dashes; part of the Mini App URL (?op=slug) */
+    OperatorSlug: string;
+    /** @enum {string} */
+    OperatorStatus: 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'REJECTED';
     PlatformOverview: {
       clubs: {
         active: number;
@@ -2375,6 +2549,17 @@ export type components = {
     RefundStarPaymentRequest: {
       reason: string;
     };
+    RegisterOperatorRequest: {
+      /**
+       * @description The operator accepts the terms, including no play for money in any form.
+       * @enum {boolean}
+       */
+      acceptTerms: true;
+      /** @description From @BotFather. Stored encrypted, never shown again. */
+      botToken: string;
+      name: string;
+      slug: components['schemas']['OperatorSlug'];
+    };
     RegisterRequest: {
       deviceId?: string;
       /** Format: email */
@@ -2479,6 +2664,11 @@ export type components = {
     };
     SessionList: {
       items: components['schemas']['Session'][];
+    };
+    SetOperatorStatusRequest: {
+      reason: string;
+      /** @enum {string} */
+      status: 'ACTIVE' | 'SUSPENDED' | 'REJECTED';
     };
     StarOrderCreated: {
       /** @description Open with Telegram.WebApp.openInvoice */
@@ -2675,6 +2865,8 @@ export type components = {
     TelegramConfig: {
       botUsername: string | null;
       enabled: boolean;
+      /** @description Anyone can register their own bot as an operator (ADR-019) */
+      operatorsEnabled: boolean;
       /** @description The Telegram Stars store is on (ADR-018) */
       storeEnabled: boolean;
     };
@@ -2692,6 +2884,8 @@ export type components = {
       deviceId?: string;
       initData: string;
       mfaCode?: string;
+      /** @description Sign in to this operator's world with its bot's launch data (ADR-019) */
+      operator?: components['schemas']['OperatorSlug'];
     };
     /** @description The actor's turn timer ran out and their time bank is running; deadline replaces the turn's. */
     TimeBankStartedEvent: {
@@ -3131,6 +3325,64 @@ export interface operations {
       400: components['responses']['Error'];
       403: components['responses']['Error'];
       404: components['responses']['Error'];
+    };
+  };
+  adminOperators: {
+    parameters: {
+      query?: {
+        /** @description Opaque cursor from a previous page's `nextCursor`. */
+        cursor?: components['parameters']['Cursor'];
+        limit?: components['parameters']['Limit'];
+        status?: 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'REJECTED';
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['OperatorPage'];
+        };
+      };
+      400: components['responses']['Error'];
+      403: components['responses']['Error'];
+    };
+  };
+  adminSetOperatorStatus: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        operatorId: components['schemas']['Uuid'];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['SetOperatorStatusRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Operator'];
+        };
+      };
+      400: components['responses']['Error'];
+      403: components['responses']['Error'];
+      404: components['responses']['Error'];
+      409: components['responses']['Error'];
+      503: components['responses']['Error'];
     };
   };
   adminOverview: {
@@ -4602,6 +4854,110 @@ export interface operations {
       409: components['responses']['Error'];
     };
   };
+  registerOperator: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Unique key making a retried state-changing request a no-op. */
+        'Idempotency-Key'?: components['parameters']['IdempotencyKey'];
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['RegisterOperatorRequest'];
+      };
+    };
+    responses: {
+      /** @description Registered, waiting for approval */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Operator'];
+        };
+      };
+      400: components['responses']['Error'];
+      403: components['responses']['Error'];
+      409: components['responses']['Error'];
+      503: components['responses']['Error'];
+    };
+  };
+  replaceOperatorBotToken: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        operatorId: components['schemas']['Uuid'];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['OperatorBotTokenRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Operator'];
+        };
+      };
+      400: components['responses']['Error'];
+      404: components['responses']['Error'];
+      503: components['responses']['Error'];
+    };
+  };
+  getOperatorPublic: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        slug: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['OperatorPublic'];
+        };
+      };
+      404: components['responses']['Error'];
+    };
+  };
+  listMyOperators: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['OperatorList'];
+        };
+      };
+      401: components['responses']['Error'];
+    };
+  };
   getStore: {
     parameters: {
       query?: never;
@@ -4943,6 +5299,36 @@ export interface operations {
           'application/json': components['schemas']['TelegramConfig'];
         };
       };
+    };
+  };
+  operatorTelegramWebhook: {
+    parameters: {
+      query?: never;
+      header: {
+        'X-Telegram-Bot-Api-Secret-Token': string;
+      };
+      path: {
+        operatorId: components['schemas']['Uuid'];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': {
+          [key: string]: unknown;
+        };
+      };
+    };
+    responses: {
+      /** @description Accepted */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      401: components['responses']['Error'];
+      404: components['responses']['Error'];
     };
   };
   telegramWebhook: {

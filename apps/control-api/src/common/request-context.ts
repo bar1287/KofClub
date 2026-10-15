@@ -9,6 +9,8 @@ export interface AuthContext {
   platformRole: PlatformRole;
   /** The session was verified with a second factor (ADR-017). */
   mfa: boolean;
+  /** The user's operator world (ADR-019); null for KofClub's own. */
+  operatorId: string | null;
 }
 
 /** Per-request metadata used for audit/security records. */

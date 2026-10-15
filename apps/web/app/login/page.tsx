@@ -7,6 +7,7 @@ import { ErrorAlert } from '@/components/ErrorAlert';
 import { ApiError, errorMessage } from '@/lib/api/client';
 import { safeNext } from '@/lib/nav';
 import { useSession } from '@/lib/session';
+import { useOperatorSlug } from '@/lib/useOperator';
 
 /**
  * Inside the Telegram Mini App (ADR-018): continue with the Telegram
@@ -14,6 +15,7 @@ import { useSession } from '@/lib/session';
  */
 function TelegramSignIn({ onDone }: { onDone: () => void }) {
   const { telegram, loginWithTelegram } = useSession();
+  const operatorSlug = useOperatorSlug();
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -80,7 +82,7 @@ function TelegramSignIn({ onDone }: { onDone: () => void }) {
       >
         Continue with Telegram
       </button>
-      {isNew && (
+      {isNew && !operatorSlug && (
         <p className="muted small">
           Already have a KofClub account? Log in below to sign in with Telegram from now on.
         </p>
@@ -91,6 +93,7 @@ function TelegramSignIn({ onDone }: { onDone: () => void }) {
 
 function LoginForm() {
   const { login, telegram, linkTelegram } = useSession();
+  const operatorSlug = useOperatorSlug();
   const router = useRouter();
   const params = useSearchParams();
   const next = safeNext(params.get('next'));
@@ -144,6 +147,10 @@ function LoginForm() {
     );
   }
 
+  // Operator worlds sign in with the operator's bot only (ADR-019).
+  if (operatorSlug) {
+    return <TelegramSignIn onDone={() => router.replace(next)} />;
+  }
   return (
     <div className="stack">
       <TelegramSignIn onDone={() => router.replace(next)} />

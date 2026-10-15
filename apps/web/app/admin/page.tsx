@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { ErrorAlert } from '@/components/ErrorAlert';
 import { PlatformAuditPanel } from '@/components/platform-admin/AuditPanel';
 import { ClubsPanel } from '@/components/platform-admin/ClubsPanel';
+import { OperatorsPanel } from '@/components/platform-admin/OperatorsPanel';
 import { OverviewPanel } from '@/components/platform-admin/OverviewPanel';
 import { PaymentsPanel } from '@/components/platform-admin/PaymentsPanel';
 import { RiskPanel } from '@/components/platform-admin/RiskPanel';
@@ -17,6 +18,7 @@ const TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'users', label: 'Accounts' },
   { id: 'clubs', label: 'Clubs' },
+  { id: 'operators', label: 'Operators' },
   { id: 'risk', label: 'Risk cases' },
   { id: 'payments', label: 'Stars payments' },
   { id: 'audit', label: 'Audit log' },
@@ -101,6 +103,7 @@ function PlatformAdmin() {
         {tab === 'overview' && <OverviewPanel />}
         {tab === 'users' && <UsersPanel />}
         {tab === 'clubs' && <ClubsPanel />}
+        {tab === 'operators' && <OperatorsPanel />}
         {tab === 'risk' && <RiskPanel />}
         {tab === 'payments' && <PaymentsPanel />}
         {tab === 'audit' && <PlatformAuditPanel />}

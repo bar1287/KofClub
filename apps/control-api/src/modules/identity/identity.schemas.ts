@@ -46,6 +46,11 @@ export const telegramLoginSchema = z
     create: z.boolean().optional(),
     deviceId: deviceIdSchema,
     mfaCode: z.string().trim().min(1).max(32).optional(),
+    /** An operator's world (ADR-019); absent for KofClub's own. */
+    operator: z
+      .string()
+      .regex(/^[a-z0-9][a-z0-9-]{2,31}$/)
+      .optional(),
   })
   .strict();
 export type TelegramLoginInput = z.infer<typeof telegramLoginSchema>;

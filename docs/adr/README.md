@@ -24,6 +24,7 @@ to the same thing.
 | [016](ADR-016-tournaments.md)                           | Tournaments on the shared table infrastructure                         | Accepted |
 | [017](ADR-017-mfa.md)                                   | Two-factor authentication (TOTP) and admin enforcement                 | Accepted |
 | [018](ADR-018-telegram-mini-app-and-stars.md)           | Telegram Mini App, Telegram sign-in and Stars for non-game goods       | Accepted |
+| [019](ADR-019-operators.md)                             | Operators: other people's Telegram bots, each a separate world         | Accepted |
 
 ## Template
 

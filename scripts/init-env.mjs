@@ -50,5 +50,6 @@ set('INTERNAL_SERVICE_TOKEN', randomBytes(32).toString('hex'));
 set('IP_HASH_SECRET', randomBytes(32).toString('hex'));
 set('MFA_ENCRYPTION_KEY_B64', randomBytes(32).toString('base64'));
 set('DECK_ENCRYPTION_KEY_B64', randomBytes(32).toString('base64'));
+set('OPERATOR_SECRET_KEY_B64', randomBytes(32).toString('base64'));
 
 writeFileSync(envPath, lines.join('\n'));

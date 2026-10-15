@@ -248,6 +248,13 @@ const (
 	ErrorCodeNOTFOUND                 ErrorCode = "NOT_FOUND"
 	ErrorCodeNOTREGISTERED            ErrorCode = "NOT_REGISTERED"
 	ErrorCodeNOTYOURTURN              ErrorCode = "NOT_YOUR_TURN"
+	ErrorCodeOPERATORBOTINVALID       ErrorCode = "OPERATOR_BOT_INVALID"
+	ErrorCodeOPERATORBOTTAKEN         ErrorCode = "OPERATOR_BOT_TAKEN"
+	ErrorCodeOPERATORLIMIT            ErrorCode = "OPERATOR_LIMIT"
+	ErrorCodeOPERATORNOTFOUND         ErrorCode = "OPERATOR_NOT_FOUND"
+	ErrorCodeOPERATORSDISABLED        ErrorCode = "OPERATORS_DISABLED"
+	ErrorCodeOPERATORSLUGTAKEN        ErrorCode = "OPERATOR_SLUG_TAKEN"
+	ErrorCodeOPERATORUNAVAILABLE      ErrorCode = "OPERATOR_UNAVAILABLE"
 	ErrorCodePLAYERNOTSEATED          ErrorCode = "PLAYER_NOT_SEATED"
 	ErrorCodeRATELIMITED              ErrorCode = "RATE_LIMITED"
 	ErrorCodeROLECHANGENOTALLOWED     ErrorCode = "ROLE_CHANGE_NOT_ALLOWED"
@@ -348,6 +355,20 @@ func (e ErrorCode) Valid() bool {
 	case ErrorCodeNOTREGISTERED:
 		return true
 	case ErrorCodeNOTYOURTURN:
+		return true
+	case ErrorCodeOPERATORBOTINVALID:
+		return true
+	case ErrorCodeOPERATORBOTTAKEN:
+		return true
+	case ErrorCodeOPERATORLIMIT:
+		return true
+	case ErrorCodeOPERATORNOTFOUND:
+		return true
+	case ErrorCodeOPERATORSDISABLED:
+		return true
+	case ErrorCodeOPERATORSLUGTAKEN:
+		return true
+	case ErrorCodeOPERATORUNAVAILABLE:
 		return true
 	case ErrorCodePLAYERNOTSEATED:
 		return true
@@ -643,6 +664,30 @@ func (e MemberStatus) Valid() bool {
 	}
 }
 
+// Defines values for OperatorStatus.
+const (
+	OperatorStatusACTIVE    OperatorStatus = "ACTIVE"
+	OperatorStatusPENDING   OperatorStatus = "PENDING"
+	OperatorStatusREJECTED  OperatorStatus = "REJECTED"
+	OperatorStatusSUSPENDED OperatorStatus = "SUSPENDED"
+)
+
+// Valid indicates whether the value is a known member of the OperatorStatus enum.
+func (e OperatorStatus) Valid() bool {
+	switch e {
+	case OperatorStatusACTIVE:
+		return true
+	case OperatorStatusPENDING:
+		return true
+	case OperatorStatusREJECTED:
+		return true
+	case OperatorStatusSUSPENDED:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PlatformRole.
 const (
 	PlatformRolePLATFORMADMIN PlatformRole = "PLATFORM_ADMIN"
@@ -655,6 +700,21 @@ func (e PlatformRole) Valid() bool {
 	case PlatformRolePLATFORMADMIN:
 		return true
 	case PlatformRoleUSER:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RegisterOperatorRequestAcceptTerms.
+const (
+	RegisterOperatorRequestAcceptTermsTrue RegisterOperatorRequestAcceptTerms = true
+)
+
+// Valid indicates whether the value is a known member of the RegisterOperatorRequestAcceptTerms enum.
+func (e RegisterOperatorRequestAcceptTerms) Valid() bool {
+	switch e {
+	case RegisterOperatorRequestAcceptTermsTrue:
 		return true
 	default:
 		return false
@@ -739,6 +799,27 @@ func (e RiskEventSeverity) Valid() bool {
 	case RiskEventSeverityLOW:
 		return true
 	case RiskEventSeverityMEDIUM:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SetOperatorStatusRequestStatus.
+const (
+	SetOperatorStatusRequestStatusACTIVE    SetOperatorStatusRequestStatus = "ACTIVE"
+	SetOperatorStatusRequestStatusREJECTED  SetOperatorStatusRequestStatus = "REJECTED"
+	SetOperatorStatusRequestStatusSUSPENDED SetOperatorStatusRequestStatus = "SUSPENDED"
+)
+
+// Valid indicates whether the value is a known member of the SetOperatorStatusRequestStatus enum.
+func (e SetOperatorStatusRequestStatus) Valid() bool {
+	switch e {
+	case SetOperatorStatusRequestStatusACTIVE:
+		return true
+	case SetOperatorStatusRequestStatusREJECTED:
+		return true
+	case SetOperatorStatusRequestStatusSUSPENDED:
 		return true
 	default:
 		return false
@@ -1009,6 +1090,30 @@ func (e AuthTransport) Valid() bool {
 	case AuthTransportBody:
 		return true
 	case AuthTransportCookie:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AdminOperatorsParamsStatus.
+const (
+	AdminOperatorsParamsStatusACTIVE    AdminOperatorsParamsStatus = "ACTIVE"
+	AdminOperatorsParamsStatusPENDING   AdminOperatorsParamsStatus = "PENDING"
+	AdminOperatorsParamsStatusREJECTED  AdminOperatorsParamsStatus = "REJECTED"
+	AdminOperatorsParamsStatusSUSPENDED AdminOperatorsParamsStatus = "SUSPENDED"
+)
+
+// Valid indicates whether the value is a known member of the AdminOperatorsParamsStatus enum.
+func (e AdminOperatorsParamsStatus) Valid() bool {
+	switch e {
+	case AdminOperatorsParamsStatusACTIVE:
+		return true
+	case AdminOperatorsParamsStatusPENDING:
+		return true
+	case AdminOperatorsParamsStatusREJECTED:
+		return true
+	case AdminOperatorsParamsStatusSUSPENDED:
 		return true
 	default:
 		return false
@@ -1791,6 +1896,56 @@ type MyStore struct {
 	Payments     []StarPayment `json:"payments"`
 }
 
+// Operator defines model for Operator.
+type Operator struct {
+	BotUsername string    `json:"botUsername"`
+	CreatedAt   time.Time `json:"createdAt"`
+	Id          Uuid      `json:"id"`
+
+	// MiniAppUrl Set this as the bot's Main Mini App URL in @BotFather
+	MiniAppUrl    string     `json:"miniAppUrl"`
+	Name          string     `json:"name"`
+	OwnerUserId   Uuid       `json:"ownerUserId"`
+	OwnerUsername string     `json:"ownerUsername"`
+	ReviewedAt    *time.Time `json:"reviewedAt"`
+
+	// Slug Lowercase letters, digits and dashes; part of the Mini App URL (?op=slug)
+	Slug         OperatorSlug   `json:"slug"`
+	Status       OperatorStatus `json:"status"`
+	StatusReason *string        `json:"statusReason"`
+}
+
+// OperatorBotTokenRequest defines model for OperatorBotTokenRequest.
+type OperatorBotTokenRequest struct {
+	BotToken string `json:"botToken"`
+}
+
+// OperatorList defines model for OperatorList.
+type OperatorList struct {
+	Items []Operator `json:"items"`
+}
+
+// OperatorPage defines model for OperatorPage.
+type OperatorPage struct {
+	Items      []Operator `json:"items"`
+	NextCursor *string    `json:"nextCursor"`
+}
+
+// OperatorPublic defines model for OperatorPublic.
+type OperatorPublic struct {
+	BotUsername string `json:"botUsername"`
+	Name        string `json:"name"`
+
+	// Slug Lowercase letters, digits and dashes; part of the Mini App URL (?op=slug)
+	Slug OperatorSlug `json:"slug"`
+}
+
+// OperatorSlug Lowercase letters, digits and dashes; part of the Mini App URL (?op=slug)
+type OperatorSlug = string
+
+// OperatorStatus defines model for OperatorStatus.
+type OperatorStatus string
+
 // PlatformOverview defines model for PlatformOverview.
 type PlatformOverview struct {
 	Clubs struct {
@@ -1840,6 +1995,22 @@ type RefreshRequest struct {
 type RefundStarPaymentRequest struct {
 	Reason string `json:"reason"`
 }
+
+// RegisterOperatorRequest defines model for RegisterOperatorRequest.
+type RegisterOperatorRequest struct {
+	// AcceptTerms The operator accepts the terms, including no play for money in any form.
+	AcceptTerms RegisterOperatorRequestAcceptTerms `json:"acceptTerms"`
+
+	// BotToken From @BotFather. Stored encrypted, never shown again.
+	BotToken string `json:"botToken"`
+	Name     string `json:"name"`
+
+	// Slug Lowercase letters, digits and dashes; part of the Mini App URL (?op=slug)
+	Slug OperatorSlug `json:"slug"`
+}
+
+// RegisterOperatorRequestAcceptTerms The operator accepts the terms, including no play for money in any form.
+type RegisterOperatorRequestAcceptTerms bool
 
 // RegisterRequest defines model for RegisterRequest.
 type RegisterRequest struct {
@@ -1949,6 +2120,15 @@ type Session struct {
 type SessionList struct {
 	Items []Session `json:"items"`
 }
+
+// SetOperatorStatusRequest defines model for SetOperatorStatusRequest.
+type SetOperatorStatusRequest struct {
+	Reason string                         `json:"reason"`
+	Status SetOperatorStatusRequestStatus `json:"status"`
+}
+
+// SetOperatorStatusRequestStatus defines model for SetOperatorStatusRequest.Status.
+type SetOperatorStatusRequestStatus string
 
 // StarOrderCreated defines model for StarOrderCreated.
 type StarOrderCreated struct {
@@ -2130,6 +2310,9 @@ type TelegramConfig struct {
 	BotUsername *string `json:"botUsername"`
 	Enabled     bool    `json:"enabled"`
 
+	// OperatorsEnabled Anyone can register their own bot as an operator (ADR-019)
+	OperatorsEnabled bool `json:"operatorsEnabled"`
+
 	// StoreEnabled The Telegram Stars store is on (ADR-018)
 	StoreEnabled bool `json:"storeEnabled"`
 }
@@ -2155,6 +2338,9 @@ type TelegramLoginRequest struct {
 	DeviceId *string `json:"deviceId,omitempty"`
 	InitData string  `json:"initData"`
 	MfaCode  *string `json:"mfaCode,omitempty"`
+
+	// Operator Sign in to this operator's world with its bot's launch data (ADR-019)
+	Operator *OperatorSlug `json:"operator,omitempty"`
 }
 
 // Timestamp UTC RFC 3339 timestamp
@@ -2469,6 +2655,18 @@ type AdminSearchClubsParams struct {
 	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
 }
 
+// AdminOperatorsParams defines parameters for AdminOperators.
+type AdminOperatorsParams struct {
+	Status *AdminOperatorsParamsStatus `form:"status,omitempty" json:"status,omitempty"`
+	Limit  *Limit                      `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Cursor Opaque cursor from a previous page's `nextCursor`.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+}
+
+// AdminOperatorsParamsStatus defines parameters for AdminOperators.
+type AdminOperatorsParamsStatus string
+
 // AdminRiskEventsParams defines parameters for AdminRiskEvents.
 type AdminRiskEventsParams struct {
 	Status *AdminRiskEventsParamsStatus `form:"status,omitempty" json:"status,omitempty"`
@@ -2650,6 +2848,12 @@ type ListMyHandsParams struct {
 	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
 }
 
+// RegisterOperatorParams defines parameters for RegisterOperator.
+type RegisterOperatorParams struct {
+	// IdempotencyKey Unique key making a retried state-changing request a no-op.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
 // CreateStarOrderParams defines parameters for CreateStarOrder.
 type CreateStarOrderParams struct {
 	// IdempotencyKey Unique key making a retried state-changing request a no-op.
@@ -2674,6 +2878,14 @@ type TopUpParams struct {
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
+// OperatorTelegramWebhookJSONBody defines parameters for OperatorTelegramWebhook.
+type OperatorTelegramWebhookJSONBody map[string]interface{}
+
+// OperatorTelegramWebhookParams defines parameters for OperatorTelegramWebhook.
+type OperatorTelegramWebhookParams struct {
+	XTelegramBotApiSecretToken string `json:"X-Telegram-Bot-Api-Secret-Token"`
+}
+
 // TelegramWebhookJSONBody defines parameters for TelegramWebhook.
 type TelegramWebhookJSONBody map[string]interface{}
 
@@ -2690,6 +2902,9 @@ type RegisterForTournamentParams struct {
 
 // AdminSetClubStatusJSONRequestBody defines body for AdminSetClubStatus for application/json ContentType.
 type AdminSetClubStatusJSONRequestBody = UpdateAccountStatusRequest
+
+// AdminSetOperatorStatusJSONRequestBody defines body for AdminSetOperatorStatus for application/json ContentType.
+type AdminSetOperatorStatusJSONRequestBody = SetOperatorStatusRequest
 
 // AdminReviewRiskEventJSONRequestBody defines body for AdminReviewRiskEvent for application/json ContentType.
 type AdminReviewRiskEventJSONRequestBody = ReviewRiskEventRequest
@@ -2763,6 +2978,12 @@ type DisableTotpJSONRequestBody = MfaCodeRequest
 // LinkTelegramJSONRequestBody defines body for LinkTelegram for application/json ContentType.
 type LinkTelegramJSONRequestBody = TelegramLinkRequest
 
+// RegisterOperatorJSONRequestBody defines body for RegisterOperator for application/json ContentType.
+type RegisterOperatorJSONRequestBody = RegisterOperatorRequest
+
+// ReplaceOperatorBotTokenJSONRequestBody defines body for ReplaceOperatorBotToken for application/json ContentType.
+type ReplaceOperatorBotTokenJSONRequestBody = OperatorBotTokenRequest
+
 // CreateStarOrderJSONRequestBody defines body for CreateStarOrder for application/json ContentType.
 type CreateStarOrderJSONRequestBody = CreateStarOrderRequest
 
@@ -2780,6 +3001,9 @@ type TakeSeatJSONRequestBody = SeatRequest
 
 // TopUpJSONRequestBody defines body for TopUp for application/json ContentType.
 type TopUpJSONRequestBody = TopUpRequest
+
+// OperatorTelegramWebhookJSONRequestBody defines body for OperatorTelegramWebhook for application/json ContentType.
+type OperatorTelegramWebhookJSONRequestBody OperatorTelegramWebhookJSONBody
 
 // TelegramWebhookJSONRequestBody defines body for TelegramWebhook for application/json ContentType.
 type TelegramWebhookJSONRequestBody TelegramWebhookJSONBody

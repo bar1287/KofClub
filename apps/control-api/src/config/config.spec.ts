@@ -108,4 +108,21 @@ describe('loadConfig', () => {
     );
     expect(() => loadConfig({ ...base, CLUB_PRO_MAX_MEMBERS: '10' })).toThrow(/Club Pro limits/);
   });
+
+  it('enables operators only with a key, the webhook URL and the Mini App URL', () => {
+    expect(loadConfig(base).OPERATORS_ENABLED).toBe(false);
+    expect(() => loadConfig({ ...base, OPERATORS_ENABLED: 'true' })).toThrow(
+      /OPERATOR_SECRET_KEY_B64[\s\S]*TELEGRAM_WEBHOOK_BASE_URL[\s\S]*TELEGRAM_MINI_APP_URL/,
+    );
+    const on = {
+      ...base,
+      OPERATORS_ENABLED: 'true',
+      OPERATOR_SECRET_KEY_B64: Buffer.alloc(32, 7).toString('base64'), // test fixture
+      TELEGRAM_WEBHOOK_BASE_URL: 'http://api.example.test',
+      TELEGRAM_MINI_APP_URL: 'http://play.example.test',
+    };
+    expect(loadConfig(on).MAX_OPERATORS_PER_USER).toBe(3);
+    expect(() => loadConfig({ ...on, OPERATOR_SECRET_KEY_B64: 'c2hvcnQ=' })).toThrow(/32 random/);
+    expect(() => loadConfig({ ...on, APP_ENV: 'production' })).toThrow(/https in production/);
+  });
 });

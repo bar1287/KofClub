@@ -32,6 +32,11 @@ export class ClubAccessService {
   ): Promise<ClubAccess> {
     const club = await this.repo.findClub(clubId, q);
     if (!club || club.status === 'CLOSED') throw new AppError('CLUB_NOT_FOUND', 'Club not found');
+    // Another operator's world is invisible (ADR-019); platform staff oversee all.
+    const platformStaff = auth.platformRole === 'PLATFORM_ADMIN' && auth.operatorId === null;
+    if (club.operatorId !== auth.operatorId && !platformStaff) {
+      throw new AppError('CLUB_NOT_FOUND', 'Club not found');
+    }
 
     const membership = await this.repo.findMembership(clubId, auth.userId, q);
     if (membership?.status === 'ACTIVE') {

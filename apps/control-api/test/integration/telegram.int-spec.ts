@@ -178,6 +178,7 @@ describe('Telegram sign-in and bot (integration)', () => {
       enabled: true,
       botUsername: 'kofclub_test_bot',
       storeEnabled: false,
+      operatorsEnabled: false,
     });
 
     const update = (text: string, chatType = 'private') => ({
@@ -242,6 +243,7 @@ describe('Telegram sign-in and bot (integration)', () => {
         enabled: false,
         botUsername: null,
         storeEnabled: false,
+        operatorsEnabled: false,
       });
       await request(plain.app.getHttpServer())
         .post('/v1/telegram/webhook')
