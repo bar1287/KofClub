@@ -27,6 +27,13 @@ import type {
   LedgerTransaction,
   MemberPage,
   SeatResult,
+  ClubPlan,
+  MyStore,
+  StarOrderCreated,
+  StarPayment,
+  StarPaymentPage,
+  StoreCatalog,
+  StoreProductId,
   TelegramConfig,
   TopUpResult,
   AutoTopUpResult,
@@ -56,6 +63,18 @@ export function endpoints(api: ApiClient) {
     revokeSession: (id: string) => api.request<void>('DELETE', `/v1/me/sessions/${enc(id)}`),
     telegramConfig: () =>
       api.request<TelegramConfig>('GET', '/v1/telegram/config', { auth: false }),
+    // --- Telegram Stars store (ADR-018): digital goods only ---------------------
+    store: () => api.request<StoreCatalog>('GET', '/v1/store'),
+    myStore: () => api.request<MyStore>('GET', '/v1/me/store'),
+    createStarOrder: (
+      body: { product: StoreProductId; clubId?: string },
+      key = newIdempotencyKey(),
+    ) => api.request<StarOrderCreated>('POST', '/v1/store/orders', { body, idempotencyKey: key }),
+    clubPlan: (clubId: string) => api.request<ClubPlan>('GET', `/v1/clubs/${enc(clubId)}/plan`),
+    setClubPlanRenewal: (clubId: string, renewing: boolean) =>
+      api.request<ClubPlan>('PUT', `/v1/clubs/${enc(clubId)}/plan/renewal`, {
+        body: { renewing },
+      }),
     // --- two-factor authentication (ADR-017) ----------------------------------
     mfa: () => api.request<MfaStatus>('GET', '/v1/me/mfa'),
     startTotp: () => api.request<TotpEnrollment>('POST', '/v1/me/mfa/totp'),
@@ -254,6 +273,12 @@ export function endpoints(api: ApiClient) {
         'GET',
         `/v1/admin/risk-events?limit=50&status=${status}${cursorParam(cursor)}`,
       ),
+    adminStarPayments: (cursor?: string | null) =>
+      api.request<StarPaymentPage>('GET', `/v1/admin/star-payments?limit=50${cursorParam(cursor)}`),
+    adminRefundStarPayment: (id: string, reason: string) =>
+      api.request<StarPayment>('POST', `/v1/admin/star-payments/${enc(id)}/refund`, {
+        body: { reason },
+      }),
     adminReviewRisk: (
       id: string,
       disposition: 'DISMISSED' | 'CONFIRMED' | 'ESCALATED',

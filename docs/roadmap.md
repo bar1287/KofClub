@@ -118,7 +118,7 @@ The owner asked to bring clubs to where their players already are.
 
 ## Order of work
 
-W1 in order comes first. The owner then asked for Telegram: T1 and T2. Then
-W2.1–W2.3 and W7.1. W4.4 and W4.7, the club
+W1 in order comes first. The owner then asked for Telegram: T1 and T2 (both
+done). Then W2.1–W2.3 and W7.1. W4.4 and W4.7, the club
 loop, follow, then W3, W5, W6 and the rest. Each milestone that changes a
 contract or a core rule records its decision in an ADR.

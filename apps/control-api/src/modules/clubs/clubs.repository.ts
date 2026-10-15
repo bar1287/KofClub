@@ -167,8 +167,8 @@ export class ClubsRepository {
     }));
   }
 
-  async countActiveMembers(clubId: string): Promise<number> {
-    const res = await this.db.query<{ n: number }>(
+  async countActiveMembers(clubId: string, q: Queryable = this.db): Promise<number> {
+    const res = await q.query<{ n: number }>(
       `SELECT count(*)::int AS n FROM club_members WHERE club_id = $1 AND status = 'ACTIVE'`,
       [clubId],
     );

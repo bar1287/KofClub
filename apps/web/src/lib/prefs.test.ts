@@ -5,6 +5,7 @@ import {
   prefsAttributes,
   sanitizePrefs,
   savePrefs,
+  withoutPremium,
 } from './prefs';
 
 describe('preferences', () => {
@@ -47,5 +48,13 @@ describe('preferences', () => {
       'data-four-color': 'true',
       'data-motion': 'auto',
     });
+  });
+
+  it('show premium themes only to players who have them', () => {
+    const premium = { ...DEFAULT_PREFS, felt: 'midnight' as const, cardBack: 'gold' as const };
+    expect(sanitizePrefs(premium)).toEqual(premium);
+    expect(withoutPremium(premium)).toEqual(DEFAULT_PREFS);
+    const plain = { ...DEFAULT_PREFS, felt: 'blue' as const, cardBack: 'red' as const };
+    expect(withoutPremium(plain)).toEqual(plain);
   });
 });

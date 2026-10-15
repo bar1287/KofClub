@@ -10,6 +10,7 @@ import { TelegramShareButton } from '@/components/TelegramShareButton';
 import { errorMessage, newIdempotencyKey } from '@/lib/api/client';
 import { chips } from '@/lib/format';
 import { GAME_TYPES, gameLabel, gameName, type GameType } from '@/lib/games';
+import { ClubPlanPanel } from '@/components/store/ClubPlanPanel';
 import { TournamentsPanel } from '@/components/tournaments/TournamentsPanel';
 import { atLeast } from '@/lib/roles';
 import { useSession } from '@/lib/session';
@@ -152,6 +153,7 @@ function ClubLobby({ clubId }: { clubId: string }) {
       </div>
 
       <TournamentsPanel clubId={clubId} canManage={isAdmin} onWalletChange={() => void load()} />
+      <ClubPlanPanel club={club} />
 
       <div className="panel">
         <h2>Members</h2>

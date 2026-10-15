@@ -4,6 +4,7 @@ import { uuidv7 } from '../../common/ids';
 import type { AuthContext, RequestContext } from '../../common/request-context';
 import { Database } from '../../infra/database/database';
 import { AuditService } from '../audit/audit.service';
+import { ClubPlansService } from '../plans/club-plans.service';
 import { ClubAccessService } from '../clubs/club-access.service';
 import { GameServiceClient } from './game-service.client';
 import type {
@@ -73,6 +74,7 @@ export class TablesService {
     private readonly access: ClubAccessService,
     private readonly audit: AuditService,
     private readonly game: GameServiceClient,
+    private readonly plans: ClubPlansService,
   ) {}
 
   async create(
@@ -84,6 +86,9 @@ export class TablesService {
     const id = uuidv7();
     await this.db.tx(async (q) => {
       await this.access.require(clubId, auth, 'TABLES_MANAGE', q);
+      await this.plans.checkLimit(q, clubId, 'openTables', () =>
+        this.repo.countOpenCashTables(clubId, q),
+      );
       await this.repo.insert(q, {
         id,
         clubId,

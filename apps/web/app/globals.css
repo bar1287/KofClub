@@ -910,6 +910,33 @@ html[data-card-back='black'] {
   --card-back-a: #2c2f33;
   --card-back-b: #1b1d20;
 }
+/* Premium themes (T2): looks only. */
+html[data-felt='midnight'] {
+  --felt: #12204a;
+  --felt-edge: #0a1230;
+  --felt-center: #22397a;
+  --rail: #8f6a1f;
+}
+html[data-felt='royal'] {
+  --felt: #4f1240;
+  --felt-edge: #2c0a24;
+  --felt-center: #7a1f62;
+  --rail: #1f1a14;
+}
+html[data-felt='emerald'] {
+  --felt: #0b6040;
+  --felt-edge: #053a26;
+  --felt-center: #16935f;
+  --rail: #a07c2c;
+}
+html[data-card-back='gold'] {
+  --card-back-a: #c49a36;
+  --card-back-b: #8f6a1f;
+}
+html[data-card-back='teal'] {
+  --card-back-a: #178a86;
+  --card-back-b: #0f5e5b;
+}
 html[data-four-color='true'] {
   --diamond: #2f6fdb;
   --club: #2b8a3e;
@@ -975,4 +1002,29 @@ html[data-motion='reduced'] *::before,
 html[data-motion='reduced'] *::after {
   animation: none !important;
   transition: none !important;
+}
+
+/* ---------- store (T2) ---------- */
+.felt-swatch {
+  display: inline-block;
+  width: 48px;
+  height: 30px;
+  border-radius: 999px;
+  border: 4px solid #3b2a1a;
+}
+.felt-swatch[data-felt='midnight'] {
+  background: radial-gradient(ellipse at center, #22397a, #12204a);
+  border-color: #8f6a1f;
+}
+.felt-swatch[data-felt='royal'] {
+  background: radial-gradient(ellipse at center, #7a1f62, #4f1240);
+  border-color: #1f1a14;
+}
+.felt-swatch[data-felt='emerald'] {
+  background: radial-gradient(ellipse at center, #16935f, #0b6040);
+  border-color: #a07c2c;
+}
+.badge.pro {
+  background: #8f6a1f;
+  color: #fff8e6;
 }

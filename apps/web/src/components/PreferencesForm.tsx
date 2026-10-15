@@ -1,14 +1,32 @@
 'use client';
 
+import Link from 'next/link';
+import { useEffect } from 'react';
 import { sounds } from '@/lib/sound';
-import { CARD_BACKS, FELTS, type CardBack, type Felt, type Motion } from '@/lib/prefs';
+import {
+  CARD_BACKS,
+  FELTS,
+  isPremiumCardBack,
+  isPremiumFelt,
+  type CardBack,
+  type Felt,
+  type Motion,
+} from '@/lib/prefs';
 import { usePrefs } from '@/lib/prefs-context';
 
 const label = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /** Sound, deck, felt, card back and motion settings (kept in this browser). */
 export function PreferencesForm() {
-  const { prefs, update } = usePrefs();
+  const { prefs, update, premium, checkPremium } = usePrefs();
+  useEffect(() => checkPremium(), [checkPremium]);
+  // Premium themes (T2): selectable once unlocked.
+  const option = (value: string, premiumOption: boolean) => (
+    <option key={value} value={value} disabled={premiumOption && premium !== true}>
+      {label(value)}
+      {premiumOption ? ' ★' : ''}
+    </option>
+  );
   return (
     <div className="stack prefs" style={{ gap: 10 }} data-testid="preferences">
       <label className="row small">
@@ -57,11 +75,7 @@ export function PreferencesForm() {
           value={prefs.felt}
           onChange={(e) => update({ felt: e.target.value as Felt })}
         >
-          {FELTS.map((f) => (
-            <option key={f} value={f}>
-              {label(f)}
-            </option>
-          ))}
+          {FELTS.map((f) => option(f, isPremiumFelt(f)))}
         </select>
         Card back
         <select
@@ -69,13 +83,15 @@ export function PreferencesForm() {
           value={prefs.cardBack}
           onChange={(e) => update({ cardBack: e.target.value as CardBack })}
         >
-          {CARD_BACKS.map((b) => (
-            <option key={b} value={b}>
-              {label(b)}
-            </option>
-          ))}
+          {CARD_BACKS.map((b) => option(b, isPremiumCardBack(b)))}
         </select>
       </label>
+      {premium === false && (
+        <p className="muted small" data-testid="premium-locked">
+          ★ Premium felts and card backs: <Link href="/store">unlock them in the store</Link> (looks
+          only).
+        </p>
+      )}
       <label className="row small">
         Animations
         <select

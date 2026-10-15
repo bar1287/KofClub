@@ -6,6 +6,7 @@ import type { AuthContext, RequestContext } from '../../common/request-context';
 import { decodeCursor, encodeCursor, Page } from '../../common/validation/schemas';
 import { Database, isUniqueViolation, Queryable } from '../../infra/database/database';
 import { AuditService } from '../audit/audit.service';
+import { ClubPlansService } from '../plans/club-plans.service';
 import { ClubAccessService } from './club-access.service';
 import { ClubRole, decideMemberChange, roleHasPermission } from './club-permissions';
 import { ClubRow, ClubsRepository, MembershipRow } from './clubs.repository';
@@ -30,6 +31,7 @@ export class ClubsService {
     private readonly repo: ClubsRepository,
     private readonly access: ClubAccessService,
     private readonly audit: AuditService,
+    private readonly plans: ClubPlansService,
   ) {}
 
   async create(auth: AuthContext, input: CreateClubInput, ctx: RequestContext): Promise<ClubDto> {
@@ -127,6 +129,10 @@ export class ClubsService {
         throw new AppError('ALREADY_CLUB_MEMBER', 'Already a member of this club');
       if (existing?.status === 'BANNED')
         throw new AppError('CLUB_BANNED', 'You are banned from this club');
+      const clubId = club.id;
+      await this.plans.checkLimit(q, clubId, 'members', () =>
+        this.repo.countActiveMembers(clubId, q),
+      );
       if (existing) {
         membership = await this.repo.updateMembership(q, club.id, auth.userId, {
           role,

@@ -123,6 +123,16 @@ export class TablesRepository {
     return res.rows[0] ? map(res.rows[0]) : null;
   }
 
+  /** Open cash tables (tournament tables come and go with their tournament). */
+  async countOpenCashTables(clubId: string, q: Queryable = this.db): Promise<number> {
+    const res = await q.query<{ n: number }>(
+      `SELECT count(*)::int AS n FROM tables
+        WHERE club_id = $1 AND status = 'OPEN' AND tournament_id IS NULL`,
+      [clubId],
+    );
+    return res.rows[0]!.n;
+  }
+
   async listForClub(clubId: string): Promise<TableRow[]> {
     const res = await this.db.query(
       // Tournament tables are reached through their tournament, not the lobby.

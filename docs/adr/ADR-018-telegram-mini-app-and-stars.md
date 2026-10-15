@@ -94,6 +94,37 @@ handled by platform admins, with MFA and an audit record.
 The terms page (`/terms`) and the bot's `/terms` state that playing for
 money in any form, including settling up outside the app, is forbidden.
 
+### Telegram Stars (roadmap T2): how it works
+
+- **Orders and payments.** An order (`star_orders`) is created for one
+  product and one payer, the user's linked Telegram account. The order id is
+  the invoice payload. Each charge Telegram reports becomes one
+  `star_payments` row, unique by Telegram's charge id, so a repeated webhook
+  delivery is harmless. The item is delivered in the same transaction. A
+  payment that matches no order is still recorded, so it can be refunded.
+- **Pre-checkout.** Telegram's `pre_checkout_query` is accepted only for the
+  order's payer, in XTR, at the order's price, while the order is unpaid. For
+  Club Pro the payer must still own the club. Anything else is declined, with
+  a reason Telegram shows to the player.
+- **Club Pro** is a Telegram subscription (`subscription_period` 30 days).
+  Renewals arrive as new charges and extend `club_subscriptions.active_until`
+  (it never shrinks). The subscriber cancels or resumes the renewal through
+  `editUserStarSubscription`. A refunded charge ends the paid period.
+- **Plan limits.** Club Pro raises the club's limits on open tables and
+  members. The limits are checked when someone joins or a table is created,
+  under a per-club advisory lock. They apply only while the store is on, so
+  deployments without it keep unlimited clubs. Lowering a limit never
+  removes anyone.
+- **Premium themes** are cosmetic and seen only by the buyer. The browser
+  hides premium choices unless the server reports the entitlement, or
+  reports that the store is off, in which case themes are free. Nothing is
+  enforced server-side because nothing about the game or other players
+  depends on them.
+- **Refunds.** Platform administrators refund from the console. A refund
+  needs an MFA-verified session (ADR-017), calls `refundStarPayment`, takes
+  back the item and writes an audit record. Refunds that Telegram reports
+  (`refunded_payment`) are applied the same way.
+
 ## Consequences
 
 - AGENTS.md rule 11 gains the carve-out above. Anything beyond it (selling

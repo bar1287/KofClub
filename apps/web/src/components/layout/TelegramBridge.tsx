@@ -2,12 +2,12 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { loadTelegramWebApp, takeStartJoinCode, telegramInitData } from '@/lib/telegram';
+import { loadTelegramWebApp, takeStartRoute, telegramInitData } from '@/lib/telegram';
 
 /**
  * Inside the Telegram Mini App: tells Telegram the app is ready, opens it
- * full height, and follows a club link (t.me/<bot>?startapp=c-<CODE>) to
- * the join page. Renders nothing; does nothing outside Telegram.
+ * full height, and follows the link that opened it (t.me/<bot>?startapp=…)
+ * to a club's join page or the store. Renders nothing; does nothing outside Telegram.
  */
 export function TelegramBridge() {
   const router = useRouter();
@@ -27,8 +27,8 @@ export function TelegramBridge() {
 
   useEffect(() => {
     if (pathname !== '/') return;
-    const code = takeStartJoinCode();
-    if (code) router.replace(`/join?code=${encodeURIComponent(code)}`);
+    const route = takeStartRoute();
+    if (route) router.replace(route);
   }, [pathname, router]);
 
   return null;

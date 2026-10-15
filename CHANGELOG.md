@@ -5,6 +5,42 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added — Telegram Stars store (roadmap T2, ADR-018)
+
+- A store for Telegram Stars that sells digital goods only. Stars never buy
+  chips, seats, entries or prizes, and the store never touches the chip
+  ledger. It offers:
+  - **Club Pro**: a 30-day subscription, bought by the club owner and renewed
+    monthly by Telegram, that raises the club's limits;
+  - **premium themes**: extra felts and card backs, bought once;
+  - **tips**.
+- `GET /v1/store`, `POST /v1/store/orders` (creates a Stars invoice link),
+  `GET /v1/me/store`, `GET /v1/clubs/{id}/plan` and
+  `PUT /v1/clubs/{id}/plan/renewal`, which cancels or resumes the renewal
+  through Telegram.
+- Payments arrive at the bot webhook:
+  - `pre_checkout_query` is accepted only for the order's own payer, at its
+    price, while the order is unpaid;
+  - `successful_payment` is recorded once per Telegram charge id and
+    delivered in the same transaction, and renewals extend Club Pro;
+  - `refunded_payment` takes back what was bought.
+- Club plans: while the store is on, Free clubs have up to 3 open tables and
+  50 members, and Club Pro clubs up to 30 and 1000 (all configurable).
+  Joining or opening a table beyond the limit answers `CLUB_PLAN_LIMIT`.
+  With the store off there are no limits and premium themes are free.
+- Web:
+  - a store page (`/store`, or `t.me/<bot>?startapp=store`) that opens
+    invoices with `Telegram.WebApp.openInvoice`;
+  - a plan panel on club pages with upgrade and renewal controls;
+  - premium felts (midnight, royal, emerald) and card backs (gold, teal) in
+    the table settings;
+  - a "Stars payments" tab in the admin console with refunds (MFA,
+    audited).
+- Migration 000018: `star_orders`, `star_payments`, `user_entitlements` and
+  `club_subscriptions`. New error codes `STORE_DISABLED` and
+  `CLUB_PLAN_LIMIT`. `TelegramConfig.storeEnabled`. Metric
+  `stars_store_events_total`.
+
 ### Added — Telegram Mini App and sign-in (roadmap T1, ADR-018)
 
 - KofClub runs inside Telegram as a Mini App (the same web client). Players

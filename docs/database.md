@@ -52,6 +52,7 @@ ephemeral data.
 | 000015_table_chat             | `clubs.table_chat`, `chat_messages` (W1.4: kept 7 days, unique per sender `request_id`, `hidden_at`), `chat_reports` (copy of the message, OPEN/DISMISSED/HIDDEN)              |
 | 000016_showdown_choices       | `table_seats.muck_losing` (W1.5: losing hands are mucked at showdown when allowed; default on)                                                                                 |
 | 000017_telegram               | `telegram_accounts` (one Telegram user per account and back); `users.email`/`password_hash` nullable for Telegram-only accounts; deferred trigger: every user can sign in (T1) |
+| 000018_stars_store            | `star_orders`, `star_payments` (unique Telegram charge id), `user_entitlements`, `club_subscriptions` (Club Pro): Stars purchases, kept apart from the chip ledger (T2)        |
 
 (The table is extended by each milestone; see the migration files for
 authoritative definitions.)

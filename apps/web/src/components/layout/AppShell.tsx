@@ -4,11 +4,13 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { useSession } from '@/lib/session';
+import { useTelegramConfig } from '@/lib/useTelegramConfig';
 import { TelegramBridge } from './TelegramBridge';
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { status, user, logout } = useSession();
+  const { status, user, logout, ep } = useSession();
   const router = useRouter();
+  const telegramConfig = useTelegramConfig(ep);
   return (
     <div className="shell">
       <TelegramBridge />
@@ -21,6 +23,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <>
               <Link href="/clubs">Clubs</Link>
               <Link href="/hands">Hands</Link>
+              {telegramConfig?.storeEnabled && <Link href="/store">Store</Link>}
               <Link href="/profile">Profile</Link>
               {user?.platformRole === 'PLATFORM_ADMIN' && <Link href="/admin">Admin</Link>}
             </>

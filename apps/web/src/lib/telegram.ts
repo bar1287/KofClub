@@ -78,13 +78,23 @@ export function telegramInitData(): string | null {
 }
 
 /**
- * The club join code of the link that opened the app, once per tab: later
+ * Where a start parameter leads: `c-<CODE>` to a club's join page,
+ * `store` to the store. Null for anything else.
+ */
+export function routeForStartParam(param: string | null): string | null {
+  if (param === 'store') return '/store';
+  const code = joinCodeFromStartParam(param);
+  return code ? `/join?code=${encodeURIComponent(code)}` : null;
+}
+
+/**
+ * The page the link that opened the app points to, once per tab: later
  * visits to the home page are not redirected again.
  */
-export function takeStartJoinCode(): string | null {
+export function takeStartRoute(): string | null {
   const data = telegramInitData();
-  const code = data ? joinCodeFromStartParam(startParamOf(data)) : null;
-  if (!code) return null;
+  const route = data ? routeForStartParam(startParamOf(data)) : null;
+  if (!route) return null;
   const storage = session();
   try {
     if (storage?.getItem(START_HANDLED_KEY)) return null;
@@ -92,7 +102,7 @@ export function takeStartJoinCode(): string | null {
   } catch {
     /* without storage the redirect may repeat on reload; harmless */
   }
-  return code;
+  return route;
 }
 
 let loading: Promise<TelegramWebApp | null> | null = null;
@@ -117,6 +127,27 @@ export function loadTelegramWebApp(): Promise<TelegramWebApp | null> {
     document.head.appendChild(script);
   });
   return loading;
+}
+
+/**
+ * Opens a Stars invoice inside Telegram and resolves with how it ended.
+ * Outside Telegram (or on a client too old for payments) it rejects.
+ */
+export async function openInvoice(url: string): Promise<InvoiceStatus> {
+  const webApp = await loadTelegramWebApp();
+  if (!webApp) throw new Error('Purchases are made in the Telegram app.');
+  return new Promise((resolve, reject) => {
+    try {
+      webApp.openInvoice(url, (status) => resolve(status));
+    } catch {
+      reject(new Error('Update Telegram to pay with Stars.'));
+    }
+  });
+}
+
+/** A t.me link that opens the Mini App on the store page. */
+export function storeStartLink(botUsername: string): string {
+  return `https://t.me/${encodeURIComponent(botUsername)}?startapp=store`;
 }
 
 /** A t.me link that opens the Mini App on a club's join page. */

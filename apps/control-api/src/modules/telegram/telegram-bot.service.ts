@@ -1,12 +1,21 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import type { RequestContext } from '../../common/request-context';
 import { APP_CONFIG, AppConfig } from '../../config/config';
 import { MetricsService } from '../../metrics/metrics.service';
+import { findProduct } from '../store/store.catalog';
+import { PaymentOutcome, StoreService } from '../store/store.service';
+import {
+  preCheckoutQuerySchema,
+  refundedPaymentSchema,
+  successfulPaymentSchema,
+} from '../store/telegram-payments';
 import { TelegramClient } from './telegram.client';
 
 /** The parts of a Bot API update this service reads. */
 export interface TelegramUpdate {
   update_id: number;
   message?: TelegramMessage;
+  pre_checkout_query?: unknown;
   [other: string]: unknown;
 }
 
@@ -15,6 +24,8 @@ export interface TelegramMessage {
   chat: { id: number; type: string };
   from?: { id: number; is_bot?: boolean; first_name?: string; username?: string };
   text?: string;
+  successful_payment?: unknown;
+  refunded_payment?: unknown;
   [other: string]: unknown;
 }
 
@@ -36,9 +47,11 @@ export function parseCommand(
 }
 
 /**
- * Bot commands (ADR-018): /start opens the Mini App (a club join code in
- * the start payload opens that club's join page), /help, /terms and
- * /paysupport. Everything else is ignored: the bot does not chat.
+ * Bot updates (ADR-018). Commands: /start opens the Mini App (a club join
+ * code in the start payload opens that club's join page), /help, /terms and
+ * /paysupport. Stars payments (T2): pre-checkout queries are answered, and
+ * payments and refunds go to the store. Everything else is ignored: the bot
+ * does not chat.
  */
 @Injectable()
 export class TelegramBotService {
@@ -46,14 +59,37 @@ export class TelegramBotService {
 
   constructor(
     private readonly telegram: TelegramClient,
+    private readonly store: StoreService,
     private readonly metrics: MetricsService,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
-  async handleUpdate(update: TelegramUpdate): Promise<void> {
+  /**
+   * Handles one update. Payment errors propagate (the webhook answers 500
+   * and Telegram delivers the update again; recording is idempotent).
+   */
+  async handleUpdate(update: TelegramUpdate, ctx: RequestContext): Promise<void> {
     const msg = update.message;
-    const kind = msg ? (msg.text?.startsWith('/') ? 'command' : 'message') : 'other';
+    const kind = update.pre_checkout_query
+      ? 'pre_checkout_query'
+      : msg?.successful_payment
+        ? 'payment'
+        : msg?.refunded_payment
+          ? 'refund'
+          : msg
+            ? msg.text?.startsWith('/')
+              ? 'command'
+              : 'message'
+            : 'other';
     this.metrics.telegramUpdates.inc({ kind });
+    if (kind === 'pre_checkout_query') return this.answerPreCheckout(update.pre_checkout_query);
+    if (kind === 'payment' && msg) return this.onPayment(msg, ctx);
+    if (kind === 'refund' && msg) {
+      const refund = refundedPaymentSchema.safeParse(msg.refunded_payment);
+      if (refund.success)
+        await this.store.paymentRefunded(refund.data.telegram_payment_charge_id, ctx);
+      return;
+    }
     if (!msg?.text || msg.from?.is_bot) return;
     const cmd = parseCommand(msg.text, this.config.TELEGRAM_BOT_USERNAME);
     if (!cmd) return;
@@ -63,6 +99,55 @@ export class TelegramBotService {
       await this.telegram.sendMessage(msg.chat.id, reply.text, reply.extra);
     } catch {
       // Logged by the client; a failed reply must not make Telegram retry.
+    }
+  }
+
+  /** Telegram waits at most 10 seconds for this answer. */
+  private async answerPreCheckout(raw: unknown): Promise<void> {
+    const parsed = preCheckoutQuerySchema.safeParse(raw);
+    if (!parsed.success) return;
+    const query = parsed.data;
+    let problem: string | null;
+    try {
+      problem = await this.store.preCheckout(query);
+    } catch {
+      problem = 'Purchases are not available right now. Please try again later.';
+    }
+    await this.telegram.call('answerPreCheckoutQuery', {
+      pre_checkout_query_id: query.id,
+      ok: problem === null,
+      ...(problem ? { error_message: problem } : {}),
+    });
+  }
+
+  private async onPayment(msg: TelegramMessage, ctx: RequestContext): Promise<void> {
+    const payment = successfulPaymentSchema.safeParse(msg.successful_payment);
+    if (!payment.success || !msg.from) return;
+    const outcome = await this.store.paymentReceived(msg.from.id, payment.data, ctx);
+    if (outcome.duplicate) return;
+    await this.telegram
+      .sendMessage(msg.chat.id, this.thanks(outcome))
+      .catch(() => undefined /* logged by the client */);
+  }
+
+  private thanks(outcome: PaymentOutcome): string {
+    if (!outcome.matched || !outcome.product) {
+      return (
+        'Thank you! We received your payment but could not match it to a purchase. ' +
+        'Send /paysupport and we will sort it out.'
+      );
+    }
+    switch (findProduct(this.config, outcome.product).kind) {
+      case 'SUBSCRIPTION':
+        return (
+          'Thank you! Club Pro is active' +
+          (outcome.activeUntil ? ` until ${outcome.activeUntil.toISOString().slice(0, 10)}` : '') +
+          '. It renews monthly; cancel any time on the club page.'
+        );
+      case 'ONE_TIME':
+        return 'Thank you! Your premium themes are unlocked: choose them in the table settings.';
+      default:
+        return 'Thank you for the tip! It helps keep KofClub running.';
     }
   }
 

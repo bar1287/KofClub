@@ -174,7 +174,11 @@ describe('Telegram sign-in and bot (integration)', () => {
   it('answers bot commands through the webhook, only for Telegram', async () => {
     const config = await http().get('/v1/telegram/config').expect(200);
     expectSchema('TelegramConfig', config.body);
-    expect(config.body).toEqual({ enabled: true, botUsername: 'kofclub_test_bot' });
+    expect(config.body).toEqual({
+      enabled: true,
+      botUsername: 'kofclub_test_bot',
+      storeEnabled: false,
+    });
 
     const update = (text: string, chatType = 'private') => ({
       update_id: Date.now(),
@@ -237,6 +241,7 @@ describe('Telegram sign-in and bot (integration)', () => {
       expect((await request(plain.app.getHttpServer()).get('/v1/telegram/config')).body).toEqual({
         enabled: false,
         botUsername: null,
+        storeEnabled: false,
       });
       await request(plain.app.getHttpServer())
         .post('/v1/telegram/webhook')

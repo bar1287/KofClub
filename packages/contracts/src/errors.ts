@@ -66,6 +66,8 @@ export const ErrorCodes = {
   TELEGRAM_AUTH_INVALID: 'TELEGRAM_AUTH_INVALID',
   TELEGRAM_NOT_LINKED: 'TELEGRAM_NOT_LINKED',
   TELEGRAM_ALREADY_LINKED: 'TELEGRAM_ALREADY_LINKED',
+  STORE_DISABLED: 'STORE_DISABLED',
+  CLUB_PLAN_LIMIT: 'CLUB_PLAN_LIMIT',
 } as const satisfies { [K in ErrorCode]: K };
 
 export const ALL_ERROR_CODES: readonly ErrorCode[] = Object.values(ErrorCodes);

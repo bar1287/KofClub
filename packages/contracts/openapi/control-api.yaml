@@ -42,6 +42,8 @@ tags:
     description: Virtual-chip tournaments (registration, blind levels, balancing, prize payouts)
   - name: telegram
     description: Telegram Mini App sign-in, account linking and the bot webhook (ADR-018)
+  - name: store
+    description: Telegram Stars store for digital goods that never touch gameplay (Club Pro, themes, tips; ADR-018)
   - name: admin
     description: Platform administration (PLATFORM_ADMIN in a session verified with a second factor; otherwise 403 MFA_REQUIRED, ADR-017)
 paths:
@@ -334,6 +336,126 @@ paths:
         '401':
           $ref: '#/components/responses/Error'
         '404':
+          $ref: '#/components/responses/Error'
+  /v1/store:
+    get:
+      tags: [store]
+      operationId: getStore
+      summary: What the Stars store sells (digital goods only; never chips, seats, entries or prizes)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: The catalog and whether purchases are possible here
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoreCatalog'
+        '401':
+          $ref: '#/components/responses/Error'
+  /v1/store/orders:
+    post:
+      tags: [store]
+      operationId: createStarOrder
+      summary: Start a purchase; returns a Telegram Stars invoice link to open in the Mini App
+      description: |
+        Needs a linked Telegram account (the payer). CLUB_PRO needs `clubId`
+        and is sold to the club's owner only. The order is fulfilled when
+        Telegram reports the payment to the bot webhook.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateStarOrderRequest'
+      responses:
+        '201':
+          description: Invoice created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StarOrderCreated'
+        '400':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+  /v1/me/store:
+    get:
+      tags: [store]
+      operationId: getMyStore
+      summary: My entitlements and Stars payments
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyStore'
+        '401':
+          $ref: '#/components/responses/Error'
+  /v1/clubs/{clubId}/plan:
+    parameters:
+      - $ref: '#/components/parameters/ClubId'
+    get:
+      tags: [store]
+      operationId: getClubPlan
+      summary: The club's plan (Free or Club Pro) and its limits (open tables, members)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClubPlan'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+  /v1/clubs/{clubId}/plan/renewal:
+    parameters:
+      - $ref: '#/components/parameters/ClubId'
+    put:
+      tags: [store]
+      operationId: setClubPlanRenewal
+      summary: Cancel or resume the monthly Club Pro renewal (the subscriber only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClubPlanRenewalRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClubPlan'
+        '400':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '503':
           $ref: '#/components/responses/Error'
   /v1/me/mfa:
     get:
@@ -1770,6 +1892,63 @@ paths:
           $ref: '#/components/responses/Error'
         '409':
           $ref: '#/components/responses/Error'
+  /v1/admin/star-payments:
+    get:
+      tags: [admin]
+      operationId: adminStarPayments
+      summary: Telegram Stars payments, newest first (PLATFORM_ADMIN)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StarPaymentPage'
+        '400':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+  /v1/admin/star-payments/{paymentId}/refund:
+    parameters:
+      - name: paymentId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+    post:
+      tags: [admin]
+      operationId: adminRefundStarPayment
+      summary: Refund a Stars payment to the payer and take back what it bought (PLATFORM_ADMIN, audited)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefundStarPaymentRequest'
+      responses:
+        '200':
+          description: Refunded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StarPayment'
+        '400':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
 components:
   securitySchemes:
     bearerAuth:
@@ -1939,13 +2118,16 @@ components:
     TelegramConfig:
       type: object
       additionalProperties: false
-      required: [enabled, botUsername]
+      required: [enabled, botUsername, storeEnabled]
       properties:
         enabled:
           type: boolean
         botUsername:
           type: string
           nullable: true
+        storeEnabled:
+          type: boolean
+          description: The Telegram Stars store is on (ADR-018)
     RegisterRequest:
       type: object
       additionalProperties: false
@@ -3646,6 +3828,217 @@ components:
         - TELEGRAM_AUTH_INVALID
         - TELEGRAM_NOT_LINKED
         - TELEGRAM_ALREADY_LINKED
+        # store
+        - STORE_DISABLED
+        - CLUB_PLAN_LIMIT
+    StoreProductId:
+      type: string
+      description: Digital goods only. Nothing here buys chips, seats, entries or prizes (ADR-018).
+      enum: [CLUB_PRO, PREMIUM_THEMES, TIP_SMALL, TIP_MEDIUM, TIP_LARGE]
+    StoreProduct:
+      type: object
+      additionalProperties: false
+      required: [id, kind, title, description, stars, periodDays, owned]
+      properties:
+        id:
+          $ref: '#/components/schemas/StoreProductId'
+        kind:
+          type: string
+          enum: [SUBSCRIPTION, ONE_TIME, TIP]
+        title:
+          type: string
+        description:
+          type: string
+        stars:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 10000
+          description: Price in Telegram Stars (XTR)
+        periodDays:
+          type: integer
+          nullable: true
+          description: Subscription period (30), null for one-time items
+        owned:
+          type: boolean
+          description: The caller already owns this one-time item
+    StoreCatalog:
+      type: object
+      additionalProperties: false
+      required: [enabled, botUsername, products]
+      properties:
+        enabled:
+          type: boolean
+          description: Purchases are possible on this deployment (inside the Telegram Mini App)
+        botUsername:
+          type: string
+          nullable: true
+        products:
+          type: array
+          items:
+            $ref: '#/components/schemas/StoreProduct'
+    CreateStarOrderRequest:
+      type: object
+      additionalProperties: false
+      required: [product]
+      properties:
+        product:
+          $ref: '#/components/schemas/StoreProductId'
+        clubId:
+          $ref: '#/components/schemas/Uuid'
+    StarOrderCreated:
+      type: object
+      additionalProperties: false
+      required: [orderId, invoiceLink]
+      properties:
+        orderId:
+          $ref: '#/components/schemas/Uuid'
+        invoiceLink:
+          type: string
+          description: Open with Telegram.WebApp.openInvoice
+    Entitlement:
+      type: string
+      enum: [PREMIUM_THEMES]
+    StarPayment:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          id,
+          orderId,
+          product,
+          clubId,
+          userId,
+          username,
+          stars,
+          recurring,
+          subscriptionExpiresAt,
+          paidAt,
+          refundedAt,
+          refundReason,
+        ]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        orderId:
+          type: string
+          format: uuid
+          nullable: true
+        product:
+          type: string
+          enum: [CLUB_PRO, PREMIUM_THEMES, TIP_SMALL, TIP_MEDIUM, TIP_LARGE, null]
+          nullable: true
+          description: Null when the payment matched no order (refund it)
+        clubId:
+          type: string
+          format: uuid
+          nullable: true
+        userId:
+          type: string
+          format: uuid
+          nullable: true
+        username:
+          type: string
+          nullable: true
+        stars:
+          type: integer
+          format: int64
+        recurring:
+          type: boolean
+          description: A monthly renewal charged by Telegram
+        subscriptionExpiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        paidAt:
+          type: string
+          format: date-time
+        refundedAt:
+          type: string
+          format: date-time
+          nullable: true
+        refundReason:
+          type: string
+          nullable: true
+    MyStore:
+      type: object
+      additionalProperties: false
+      required: [entitlements, payments]
+      properties:
+        entitlements:
+          type: array
+          items:
+            $ref: '#/components/schemas/Entitlement'
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/StarPayment'
+    StarPaymentPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/StarPayment'
+        nextCursor:
+          type: string
+          nullable: true
+    RefundStarPaymentRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 200
+    ClubPlanLimits:
+      type: object
+      additionalProperties: false
+      required: [maxOpenTables, maxMembers]
+      properties:
+        maxOpenTables:
+          type: integer
+        maxMembers:
+          type: integer
+    ClubPlan:
+      type: object
+      additionalProperties: false
+      required:
+        [clubId, plan, activeUntil, renewing, canManageRenewal, limitsEnforced, limits, proLimits]
+      properties:
+        clubId:
+          $ref: '#/components/schemas/Uuid'
+        plan:
+          type: string
+          enum: [FREE, PRO]
+        activeUntil:
+          type: string
+          format: date-time
+          nullable: true
+          description: End of the paid Club Pro period (renewals extend it)
+        renewing:
+          type: boolean
+          description: Telegram renews Club Pro monthly unless the subscriber cancels
+        canManageRenewal:
+          type: boolean
+          description: The caller is the subscriber and can cancel or resume the renewal
+        limitsEnforced:
+          type: boolean
+          description: False where the store is off; then clubs have no plan limits
+        limits:
+          $ref: '#/components/schemas/ClubPlanLimits'
+        proLimits:
+          $ref: '#/components/schemas/ClubPlanLimits'
+    ClubPlanRenewalRequest:
+      type: object
+      additionalProperties: false
+      required: [renewing]
+      properties:
+        renewing:
+          type: boolean
     ErrorBody:
       type: object
       required: [code, message, requestId]

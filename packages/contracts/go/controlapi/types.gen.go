@@ -76,6 +76,24 @@ func (e ClubMyRole) Valid() bool {
 	}
 }
 
+// Defines values for ClubPlanPlan.
+const (
+	ClubPlanPlanFREE ClubPlanPlan = "FREE"
+	ClubPlanPlanPRO  ClubPlanPlan = "PRO"
+)
+
+// Valid indicates whether the value is a known member of the ClubPlanPlan enum.
+func (e ClubPlanPlan) Valid() bool {
+	switch e {
+	case ClubPlanPlanFREE:
+		return true
+	case ClubPlanPlanPRO:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ClubRole.
 const (
 	ClubRoleADMIN  ClubRole = "ADMIN"
@@ -175,6 +193,21 @@ func (e CreateTournamentRequestGameType) Valid() bool {
 	}
 }
 
+// Defines values for Entitlement.
+const (
+	EntitlementPREMIUMTHEMES Entitlement = "PREMIUM_THEMES"
+)
+
+// Valid indicates whether the value is a known member of the Entitlement enum.
+func (e Entitlement) Valid() bool {
+	switch e {
+	case EntitlementPREMIUMTHEMES:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ErrorCode.
 const (
 	ErrorCodeACCOUNTSUSPENDED         ErrorCode = "ACCOUNT_SUSPENDED"
@@ -192,6 +225,7 @@ const (
 	ErrorCodeCHATDISABLED             ErrorCode = "CHAT_DISABLED"
 	ErrorCodeCLUBBANNED               ErrorCode = "CLUB_BANNED"
 	ErrorCodeCLUBNOTFOUND             ErrorCode = "CLUB_NOT_FOUND"
+	ErrorCodeCLUBPLANLIMIT            ErrorCode = "CLUB_PLAN_LIMIT"
 	ErrorCodeCONFLICT                 ErrorCode = "CONFLICT"
 	ErrorCodeEMAILTAKEN               ErrorCode = "EMAIL_TAKEN"
 	ErrorCodeFORBIDDEN                ErrorCode = "FORBIDDEN"
@@ -220,6 +254,7 @@ const (
 	ErrorCodeSEATTAKEN                ErrorCode = "SEAT_TAKEN"
 	ErrorCodeSERVICEUNAVAILABLE       ErrorCode = "SERVICE_UNAVAILABLE"
 	ErrorCodeSTALEGAMESTATE           ErrorCode = "STALE_GAME_STATE"
+	ErrorCodeSTOREDISABLED            ErrorCode = "STORE_DISABLED"
 	ErrorCodeTABLECLOSED              ErrorCode = "TABLE_CLOSED"
 	ErrorCodeTABLEFULL                ErrorCode = "TABLE_FULL"
 	ErrorCodeTABLENOTFOUND            ErrorCode = "TABLE_NOT_FOUND"
@@ -267,6 +302,8 @@ func (e ErrorCode) Valid() bool {
 	case ErrorCodeCLUBBANNED:
 		return true
 	case ErrorCodeCLUBNOTFOUND:
+		return true
+	case ErrorCodeCLUBPLANLIMIT:
 		return true
 	case ErrorCodeCONFLICT:
 		return true
@@ -323,6 +360,8 @@ func (e ErrorCode) Valid() bool {
 	case ErrorCodeSERVICEUNAVAILABLE:
 		return true
 	case ErrorCodeSTALEGAMESTATE:
+		return true
+	case ErrorCodeSTOREDISABLED:
 		return true
 	case ErrorCodeTABLECLOSED:
 		return true
@@ -700,6 +739,84 @@ func (e RiskEventSeverity) Valid() bool {
 	case RiskEventSeverityLOW:
 		return true
 	case RiskEventSeverityMEDIUM:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StarPaymentProduct.
+const (
+	StarPaymentProductCLUBPRO       StarPaymentProduct = "CLUB_PRO"
+	StarPaymentProductLessThannil   StarPaymentProduct = "<nil>"
+	StarPaymentProductPREMIUMTHEMES StarPaymentProduct = "PREMIUM_THEMES"
+	StarPaymentProductTIPLARGE      StarPaymentProduct = "TIP_LARGE"
+	StarPaymentProductTIPMEDIUM     StarPaymentProduct = "TIP_MEDIUM"
+	StarPaymentProductTIPSMALL      StarPaymentProduct = "TIP_SMALL"
+)
+
+// Valid indicates whether the value is a known member of the StarPaymentProduct enum.
+func (e StarPaymentProduct) Valid() bool {
+	switch e {
+	case StarPaymentProductCLUBPRO:
+		return true
+	case StarPaymentProductLessThannil:
+		return true
+	case StarPaymentProductPREMIUMTHEMES:
+		return true
+	case StarPaymentProductTIPLARGE:
+		return true
+	case StarPaymentProductTIPMEDIUM:
+		return true
+	case StarPaymentProductTIPSMALL:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StoreProductKind.
+const (
+	StoreProductKindONETIME      StoreProductKind = "ONE_TIME"
+	StoreProductKindSUBSCRIPTION StoreProductKind = "SUBSCRIPTION"
+	StoreProductKindTIP          StoreProductKind = "TIP"
+)
+
+// Valid indicates whether the value is a known member of the StoreProductKind enum.
+func (e StoreProductKind) Valid() bool {
+	switch e {
+	case StoreProductKindONETIME:
+		return true
+	case StoreProductKindSUBSCRIPTION:
+		return true
+	case StoreProductKindTIP:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StoreProductId.
+const (
+	StoreProductIdCLUBPRO       StoreProductId = "CLUB_PRO"
+	StoreProductIdPREMIUMTHEMES StoreProductId = "PREMIUM_THEMES"
+	StoreProductIdTIPLARGE      StoreProductId = "TIP_LARGE"
+	StoreProductIdTIPMEDIUM     StoreProductId = "TIP_MEDIUM"
+	StoreProductIdTIPSMALL      StoreProductId = "TIP_SMALL"
+)
+
+// Valid indicates whether the value is a known member of the StoreProductId enum.
+func (e StoreProductId) Valid() bool {
+	switch e {
+	case StoreProductIdCLUBPRO:
+		return true
+	case StoreProductIdPREMIUMTHEMES:
+		return true
+	case StoreProductIdTIPLARGE:
+		return true
+	case StoreProductIdTIPMEDIUM:
+		return true
+	case StoreProductIdTIPSMALL:
 		return true
 	default:
 		return false
@@ -1182,6 +1299,39 @@ type ClubList struct {
 	Items []Club `json:"items"`
 }
 
+// ClubPlan defines model for ClubPlan.
+type ClubPlan struct {
+	// ActiveUntil End of the paid Club Pro period (renewals extend it)
+	ActiveUntil *time.Time `json:"activeUntil"`
+
+	// CanManageRenewal The caller is the subscriber and can cancel or resume the renewal
+	CanManageRenewal bool           `json:"canManageRenewal"`
+	ClubId           Uuid           `json:"clubId"`
+	Limits           ClubPlanLimits `json:"limits"`
+
+	// LimitsEnforced False where the store is off; then clubs have no plan limits
+	LimitsEnforced bool           `json:"limitsEnforced"`
+	Plan           ClubPlanPlan   `json:"plan"`
+	ProLimits      ClubPlanLimits `json:"proLimits"`
+
+	// Renewing Telegram renews Club Pro monthly unless the subscriber cancels
+	Renewing bool `json:"renewing"`
+}
+
+// ClubPlanPlan defines model for ClubPlan.Plan.
+type ClubPlanPlan string
+
+// ClubPlanLimits defines model for ClubPlanLimits.
+type ClubPlanLimits struct {
+	MaxMembers    int `json:"maxMembers"`
+	MaxOpenTables int `json:"maxOpenTables"`
+}
+
+// ClubPlanRenewalRequest defines model for ClubPlanRenewalRequest.
+type ClubPlanRenewalRequest struct {
+	Renewing bool `json:"renewing"`
+}
+
 // ClubRole defines model for ClubRole.
 type ClubRole string
 
@@ -1203,6 +1353,14 @@ type CreateInviteRequest struct {
 
 // CreateInviteRequestRole defines model for CreateInviteRequest.Role.
 type CreateInviteRequestRole string
+
+// CreateStarOrderRequest defines model for CreateStarOrderRequest.
+type CreateStarOrderRequest struct {
+	ClubId *Uuid `json:"clubId,omitempty"`
+
+	// Product Digital goods only. Nothing here buys chips, seats, entries or prizes (ADR-018).
+	Product StoreProductId `json:"product"`
+}
 
 // CreateTableRequest defines model for CreateTableRequest.
 type CreateTableRequest struct {
@@ -1264,6 +1422,9 @@ type CreateTournamentRequest struct {
 
 // CreateTournamentRequestGameType defines model for CreateTournamentRequest.GameType.
 type CreateTournamentRequestGameType string
+
+// Entitlement defines model for Entitlement.
+type Entitlement string
 
 // ErrorBody defines model for ErrorBody.
 type ErrorBody struct {
@@ -1624,6 +1785,12 @@ type MuckPreferenceResult struct {
 	TableId         Uuid `json:"tableId"`
 }
 
+// MyStore defines model for MyStore.
+type MyStore struct {
+	Entitlements []Entitlement `json:"entitlements"`
+	Payments     []StarPayment `json:"payments"`
+}
+
 // PlatformOverview defines model for PlatformOverview.
 type PlatformOverview struct {
 	Clubs struct {
@@ -1667,6 +1834,11 @@ type PlatformRole string
 // RefreshRequest defines model for RefreshRequest.
 type RefreshRequest struct {
 	RefreshToken *string `json:"refreshToken,omitempty"`
+}
+
+// RefundStarPaymentRequest defines model for RefundStarPaymentRequest.
+type RefundStarPaymentRequest struct {
+	Reason string `json:"reason"`
 }
 
 // RegisterRequest defines model for RegisterRequest.
@@ -1778,6 +1950,76 @@ type SessionList struct {
 	Items []Session `json:"items"`
 }
 
+// StarOrderCreated defines model for StarOrderCreated.
+type StarOrderCreated struct {
+	// InvoiceLink Open with Telegram.WebApp.openInvoice
+	InvoiceLink string `json:"invoiceLink"`
+	OrderId     Uuid   `json:"orderId"`
+}
+
+// StarPayment defines model for StarPayment.
+type StarPayment struct {
+	ClubId  *openapi_types.UUID `json:"clubId"`
+	Id      Uuid                `json:"id"`
+	OrderId *openapi_types.UUID `json:"orderId"`
+	PaidAt  time.Time           `json:"paidAt"`
+
+	// Product Null when the payment matched no order (refund it)
+	Product *StarPaymentProduct `json:"product"`
+
+	// Recurring A monthly renewal charged by Telegram
+	Recurring             bool                `json:"recurring"`
+	RefundReason          *string             `json:"refundReason"`
+	RefundedAt            *time.Time          `json:"refundedAt"`
+	Stars                 int64               `json:"stars"`
+	SubscriptionExpiresAt *time.Time          `json:"subscriptionExpiresAt"`
+	UserId                *openapi_types.UUID `json:"userId"`
+	Username              *string             `json:"username"`
+}
+
+// StarPaymentProduct Null when the payment matched no order (refund it)
+type StarPaymentProduct string
+
+// StarPaymentPage defines model for StarPaymentPage.
+type StarPaymentPage struct {
+	Items      []StarPayment `json:"items"`
+	NextCursor *string       `json:"nextCursor"`
+}
+
+// StoreCatalog defines model for StoreCatalog.
+type StoreCatalog struct {
+	BotUsername *string `json:"botUsername"`
+
+	// Enabled Purchases are possible on this deployment (inside the Telegram Mini App)
+	Enabled  bool           `json:"enabled"`
+	Products []StoreProduct `json:"products"`
+}
+
+// StoreProduct defines model for StoreProduct.
+type StoreProduct struct {
+	Description string `json:"description"`
+
+	// Id Digital goods only. Nothing here buys chips, seats, entries or prizes (ADR-018).
+	Id   StoreProductId   `json:"id"`
+	Kind StoreProductKind `json:"kind"`
+
+	// Owned The caller already owns this one-time item
+	Owned bool `json:"owned"`
+
+	// PeriodDays Subscription period (30), null for one-time items
+	PeriodDays *int `json:"periodDays"`
+
+	// Stars Price in Telegram Stars (XTR)
+	Stars int64  `json:"stars"`
+	Title string `json:"title"`
+}
+
+// StoreProductKind defines model for StoreProduct.Kind.
+type StoreProductKind string
+
+// StoreProductId Digital goods only. Nothing here buys chips, seats, entries or prizes (ADR-018).
+type StoreProductId string
+
 // Table defines model for Table.
 type Table struct {
 	ActionTimeoutSec int `json:"actionTimeoutSec"`
@@ -1887,6 +2129,9 @@ type TableSeat struct {
 type TelegramConfig struct {
 	BotUsername *string `json:"botUsername"`
 	Enabled     bool    `json:"enabled"`
+
+	// StoreEnabled The Telegram Stars store is on (ADR-018)
+	StoreEnabled bool `json:"storeEnabled"`
 }
 
 // TelegramLink defines model for TelegramLink.
@@ -2236,6 +2481,14 @@ type AdminRiskEventsParams struct {
 // AdminRiskEventsParamsStatus defines parameters for AdminRiskEvents.
 type AdminRiskEventsParamsStatus string
 
+// AdminStarPaymentsParams defines parameters for AdminStarPayments.
+type AdminStarPaymentsParams struct {
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Cursor Opaque cursor from a previous page's `nextCursor`.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+}
+
 // AdminSearchUsersParams defines parameters for AdminSearchUsers.
 type AdminSearchUsersParams struct {
 	// Q Case-insensitive prefix (username/email for users, name for clubs).
@@ -2397,6 +2650,12 @@ type ListMyHandsParams struct {
 	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
 }
 
+// CreateStarOrderParams defines parameters for CreateStarOrder.
+type CreateStarOrderParams struct {
+	// IdempotencyKey Unique key making a retried state-changing request a no-op.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
 // LeaveTableParams defines parameters for LeaveTable.
 type LeaveTableParams struct {
 	// IdempotencyKey Unique key making a retried state-changing request a no-op.
@@ -2434,6 +2693,9 @@ type AdminSetClubStatusJSONRequestBody = UpdateAccountStatusRequest
 
 // AdminReviewRiskEventJSONRequestBody defines body for AdminReviewRiskEvent for application/json ContentType.
 type AdminReviewRiskEventJSONRequestBody = ReviewRiskEventRequest
+
+// AdminRefundStarPaymentJSONRequestBody defines body for AdminRefundStarPayment for application/json ContentType.
+type AdminRefundStarPaymentJSONRequestBody = RefundStarPaymentRequest
 
 // AdminSetUserStatusJSONRequestBody defines body for AdminSetUserStatus for application/json ContentType.
 type AdminSetUserStatusJSONRequestBody = UpdateAccountStatusRequest
@@ -2480,6 +2742,9 @@ type ReverseLedgerTransactionJSONRequestBody = ReversalRequest
 // UpdateClubMemberJSONRequestBody defines body for UpdateClubMember for application/json ContentType.
 type UpdateClubMemberJSONRequestBody = UpdateMemberRequest
 
+// SetClubPlanRenewalJSONRequestBody defines body for SetClubPlanRenewal for application/json ContentType.
+type SetClubPlanRenewalJSONRequestBody = ClubPlanRenewalRequest
+
 // CreateTableJSONRequestBody defines body for CreateTable for application/json ContentType.
 type CreateTableJSONRequestBody = CreateTableRequest
 
@@ -2497,6 +2762,9 @@ type DisableTotpJSONRequestBody = MfaCodeRequest
 
 // LinkTelegramJSONRequestBody defines body for LinkTelegram for application/json ContentType.
 type LinkTelegramJSONRequestBody = TelegramLinkRequest
+
+// CreateStarOrderJSONRequestBody defines body for CreateStarOrder for application/json ContentType.
+type CreateStarOrderJSONRequestBody = CreateStarOrderRequest
 
 // SetAutoTopUpJSONRequestBody defines body for SetAutoTopUp for application/json ContentType.
 type SetAutoTopUpJSONRequestBody = AutoTopUpRequest

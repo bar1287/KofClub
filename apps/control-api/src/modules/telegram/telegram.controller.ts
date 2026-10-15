@@ -4,6 +4,7 @@ import { Public } from '../../common/auth/public.decorator';
 import { constantTimeEqual } from '../../common/crypto';
 import { AppError } from '../../common/errors/app-error';
 import { NoRateLimit } from '../../common/rate-limit/no-rate-limit.decorator';
+import { Ctx, RequestContext } from '../../common/request-context';
 import { ZodPipe } from '../../common/validation/zod.pipe';
 import { APP_CONFIG, AppConfig } from '../../config/config';
 import { TelegramBotService, TelegramUpdate } from './telegram-bot.service';
@@ -13,6 +14,7 @@ export const telegramUpdateSchema = z.object({ update_id: z.number().int() }).pa
 export interface TelegramConfigDto {
   enabled: boolean;
   botUsername: string | null;
+  storeEnabled: boolean;
 }
 
 @Public()
@@ -26,7 +28,11 @@ export class TelegramController {
   @Get('config')
   settings(): TelegramConfigDto {
     const enabled = Boolean(this.config.TELEGRAM_BOT_TOKEN);
-    return { enabled, botUsername: enabled ? (this.config.TELEGRAM_BOT_USERNAME ?? null) : null };
+    return {
+      enabled,
+      botUsername: enabled ? (this.config.TELEGRAM_BOT_USERNAME ?? null) : null,
+      storeEnabled: enabled && this.config.TELEGRAM_STARS_ENABLED,
+    };
   }
 
   /** Bot API updates. Only Telegram knows the webhook secret. */
@@ -36,6 +42,7 @@ export class TelegramController {
   async webhook(
     @Headers('x-telegram-bot-api-secret-token') secret: string | undefined,
     @Body(new ZodPipe(telegramUpdateSchema)) update: TelegramUpdate,
+    @Ctx() ctx: RequestContext,
   ): Promise<{ ok: true }> {
     const expected = this.config.TELEGRAM_WEBHOOK_SECRET;
     if (!this.config.TELEGRAM_BOT_TOKEN || !expected) {
@@ -44,7 +51,7 @@ export class TelegramController {
     if (!secret || !constantTimeEqual(secret, expected)) {
       throw new AppError('AUTH_REQUIRED', 'Invalid webhook secret');
     }
-    await this.bot.handleUpdate(update);
+    await this.bot.handleUpdate(update, ctx);
     return { ok: true };
   }
 }

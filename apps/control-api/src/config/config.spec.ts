@@ -81,4 +81,31 @@ describe('loadConfig', () => {
       }),
     ).toThrow(/TELEGRAM_MINI_APP_URL/);
   });
+
+  it('enables the Stars store only with the bot and a support contact', () => {
+    const tg = {
+      TELEGRAM_BOT_TOKEN: '123456789:' + 'A'.repeat(35),
+      TELEGRAM_BOT_USERNAME: 'kofclub_bot',
+      TELEGRAM_WEBHOOK_SECRET: 's'.repeat(40),
+      TELEGRAM_MINI_APP_URL: 'https://poker.example.test',
+    };
+    expect(loadConfig(base).TELEGRAM_STARS_ENABLED).toBe(false);
+    expect(() => loadConfig({ ...base, TELEGRAM_STARS_ENABLED: 'true' })).toThrow(
+      /TELEGRAM_BOT_TOKEN/,
+    );
+    expect(() => loadConfig({ ...base, ...tg, TELEGRAM_STARS_ENABLED: 'true' })).toThrow(
+      /TELEGRAM_SUPPORT_CONTACT/,
+    );
+    const on = loadConfig({
+      ...base,
+      ...tg,
+      TELEGRAM_STARS_ENABLED: 'true',
+      TELEGRAM_SUPPORT_CONTACT: '@help',
+    });
+    expect(on).toMatchObject({ TELEGRAM_STARS_ENABLED: true, STARS_PRICE_CLUB_PRO: 250 });
+    expect(() => loadConfig({ ...base, STARS_PRICE_CLUB_PRO: '20000' })).toThrow(
+      /STARS_PRICE_CLUB_PRO/,
+    );
+    expect(() => loadConfig({ ...base, CLUB_PRO_MAX_MEMBERS: '10' })).toThrow(/Club Pro limits/);
+  });
 });

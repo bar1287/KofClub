@@ -6,6 +6,7 @@ import { ErrorAlert } from '@/components/ErrorAlert';
 import { PlatformAuditPanel } from '@/components/platform-admin/AuditPanel';
 import { ClubsPanel } from '@/components/platform-admin/ClubsPanel';
 import { OverviewPanel } from '@/components/platform-admin/OverviewPanel';
+import { PaymentsPanel } from '@/components/platform-admin/PaymentsPanel';
 import { RiskPanel } from '@/components/platform-admin/RiskPanel';
 import { UsersPanel } from '@/components/platform-admin/UsersPanel';
 import { RequireAuth } from '@/components/RequireAuth';
@@ -17,6 +18,7 @@ const TABS = [
   { id: 'users', label: 'Accounts' },
   { id: 'clubs', label: 'Clubs' },
   { id: 'risk', label: 'Risk cases' },
+  { id: 'payments', label: 'Stars payments' },
   { id: 'audit', label: 'Audit log' },
 ] as const;
 type Tab = (typeof TABS)[number]['id'];
@@ -100,6 +102,7 @@ function PlatformAdmin() {
         {tab === 'users' && <UsersPanel />}
         {tab === 'clubs' && <ClubsPanel />}
         {tab === 'risk' && <RiskPanel />}
+        {tab === 'payments' && <PaymentsPanel />}
         {tab === 'audit' && <PlatformAuditPanel />}
       </div>
     </div>

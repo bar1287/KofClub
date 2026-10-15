@@ -141,6 +141,42 @@ export type paths = {
     patch: operations['adminReviewRiskEvent'];
     trace?: never;
   };
+  '/v1/admin/star-payments': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Telegram Stars payments, newest first (PLATFORM_ADMIN) */
+    get: operations['adminStarPayments'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/star-payments/{paymentId}/refund': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        paymentId: components['schemas']['Uuid'];
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Refund a Stars payment to the payer and take back what it bought (PLATFORM_ADMIN, audited) */
+    post: operations['adminRefundStarPayment'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/admin/users': {
     parameters: {
       query?: never;
@@ -646,6 +682,44 @@ export type paths = {
     patch: operations['updateClubMember'];
     trace?: never;
   };
+  '/v1/clubs/{clubId}/plan': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        clubId: components['parameters']['ClubId'];
+      };
+      cookie?: never;
+    };
+    /** The club's plan (Free or Club Pro) and its limits (open tables, members) */
+    get: operations['getClubPlan'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/clubs/{clubId}/plan/renewal': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        clubId: components['parameters']['ClubId'];
+      };
+      cookie?: never;
+    };
+    get?: never;
+    /** Cancel or resume the monthly Club Pro renewal (the subscriber only) */
+    put: operations['setClubPlanRenewal'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/clubs/{clubId}/tables': {
     parameters: {
       query?: never;
@@ -930,6 +1004,23 @@ export type paths = {
     patch?: never;
     trace?: never;
   };
+  '/v1/me/store': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** My entitlements and Stars payments */
+    get: operations['getMyStore'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/me/telegram': {
     parameters: {
       query?: never;
@@ -943,6 +1034,45 @@ export type paths = {
     post: operations['linkTelegram'];
     /** Unlink Telegram (only for accounts that also have a password) */
     delete: operations['unlinkTelegram'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/store': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** What the Stars store sells (digital goods only; never chips, seats, entries or prizes) */
+    get: operations['getStore'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/store/orders': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Start a purchase; returns a Telegram Stars invoice link to open in the Mini App
+     * @description Needs a linked Telegram account (the payer). CLUB_PRO needs `clubId`
+     *     and is sold to the club's owner only. The order is fulfilled when
+     *     Telegram reports the payment to the bot webhook.
+     */
+    post: operations['createStarOrder'];
+    delete?: never;
     options?: never;
     head?: never;
     patch?: never;
@@ -1537,6 +1667,31 @@ export type components = {
     ClubList: {
       items: components['schemas']['Club'][];
     };
+    ClubPlan: {
+      /**
+       * Format: date-time
+       * @description End of the paid Club Pro period (renewals extend it)
+       */
+      activeUntil: string | null;
+      /** @description The caller is the subscriber and can cancel or resume the renewal */
+      canManageRenewal: boolean;
+      clubId: components['schemas']['Uuid'];
+      limits: components['schemas']['ClubPlanLimits'];
+      /** @description False where the store is off; then clubs have no plan limits */
+      limitsEnforced: boolean;
+      /** @enum {string} */
+      plan: 'FREE' | 'PRO';
+      proLimits: components['schemas']['ClubPlanLimits'];
+      /** @description Telegram renews Club Pro monthly unless the subscriber cancels */
+      renewing: boolean;
+    };
+    ClubPlanLimits: {
+      maxMembers: number;
+      maxOpenTables: number;
+    };
+    ClubPlanRenewalRequest: {
+      renewing: boolean;
+    };
     /** @enum {string} */
     ClubRole: 'OWNER' | 'ADMIN' | 'AGENT' | 'MEMBER';
     /** @enum {string} */
@@ -1555,6 +1710,10 @@ export type components = {
        * @enum {string}
        */
       role: 'MEMBER' | 'AGENT';
+    };
+    CreateStarOrderRequest: {
+      clubId?: components['schemas']['Uuid'];
+      product: components['schemas']['StoreProductId'];
     };
     CreateTableRequest: {
       /** @default 20 */
@@ -1622,6 +1781,8 @@ export type components = {
        */
       startsAt?: string;
     };
+    /** @enum {string} */
+    Entitlement: 'PREMIUM_THEMES';
     ErrorBody: {
       code: components['schemas']['ErrorCode'];
       details?: {
@@ -1692,7 +1853,9 @@ export type components = {
       | 'TELEGRAM_NOT_CONFIGURED'
       | 'TELEGRAM_AUTH_INVALID'
       | 'TELEGRAM_NOT_LINKED'
-      | 'TELEGRAM_ALREADY_LINKED';
+      | 'TELEGRAM_ALREADY_LINKED'
+      | 'STORE_DISABLED'
+      | 'CLUB_PLAN_LIMIT';
     ErrorEnvelope: {
       error: components['schemas']['ErrorBody'];
     };
@@ -2055,6 +2218,10 @@ export type components = {
       muckLosingHands: boolean;
       tableId: components['schemas']['Uuid'];
     };
+    MyStore: {
+      entitlements: components['schemas']['Entitlement'][];
+      payments: components['schemas']['StarPayment'][];
+    };
     PlatformOverview: {
       clubs: {
         active: number;
@@ -2205,6 +2372,9 @@ export type components = {
     RefreshRequest: {
       refreshToken?: string;
     };
+    RefundStarPaymentRequest: {
+      reason: string;
+    };
     RegisterRequest: {
       deviceId?: string;
       /** Format: email */
@@ -2310,6 +2480,68 @@ export type components = {
     SessionList: {
       items: components['schemas']['Session'][];
     };
+    StarOrderCreated: {
+      /** @description Open with Telegram.WebApp.openInvoice */
+      invoiceLink: string;
+      orderId: components['schemas']['Uuid'];
+    };
+    StarPayment: {
+      /** Format: uuid */
+      clubId: string | null;
+      id: components['schemas']['Uuid'];
+      /** Format: uuid */
+      orderId: string | null;
+      /** Format: date-time */
+      paidAt: string;
+      /**
+       * @description Null when the payment matched no order (refund it)
+       * @enum {string|null}
+       */
+      product: 'CLUB_PRO' | 'PREMIUM_THEMES' | 'TIP_SMALL' | 'TIP_MEDIUM' | 'TIP_LARGE' | null;
+      /** @description A monthly renewal charged by Telegram */
+      recurring: boolean;
+      /** Format: date-time */
+      refundedAt: string | null;
+      refundReason: string | null;
+      /** Format: int64 */
+      stars: number;
+      /** Format: date-time */
+      subscriptionExpiresAt: string | null;
+      /** Format: uuid */
+      userId: string | null;
+      username: string | null;
+    };
+    StarPaymentPage: {
+      items: components['schemas']['StarPayment'][];
+      nextCursor: string | null;
+    };
+    StoreCatalog: {
+      botUsername: string | null;
+      /** @description Purchases are possible on this deployment (inside the Telegram Mini App) */
+      enabled: boolean;
+      products: components['schemas']['StoreProduct'][];
+    };
+    StoreProduct: {
+      description: string;
+      id: components['schemas']['StoreProductId'];
+      /** @enum {string} */
+      kind: 'SUBSCRIPTION' | 'ONE_TIME' | 'TIP';
+      /** @description The caller already owns this one-time item */
+      owned: boolean;
+      /** @description Subscription period (30), null for one-time items */
+      periodDays: number | null;
+      /**
+       * Format: int64
+       * @description Price in Telegram Stars (XTR)
+       */
+      stars: number;
+      title: string;
+    };
+    /**
+     * @description Digital goods only. Nothing here buys chips, seats, entries or prizes (ADR-018).
+     * @enum {string}
+     */
+    StoreProductId: 'CLUB_PRO' | 'PREMIUM_THEMES' | 'TIP_SMALL' | 'TIP_MEDIUM' | 'TIP_LARGE';
     StreetDealtEvent: {
       board: components['schemas']['Card'][];
       cards: components['schemas']['Card'][];
@@ -2443,6 +2675,8 @@ export type components = {
     TelegramConfig: {
       botUsername: string | null;
       enabled: boolean;
+      /** @description The Telegram Stars store is on (ADR-018) */
+      storeEnabled: boolean;
     };
     TelegramLink: {
       firstName: string | null;
@@ -2975,6 +3209,63 @@ export interface operations {
       403: components['responses']['Error'];
       404: components['responses']['Error'];
       409: components['responses']['Error'];
+    };
+  };
+  adminStarPayments: {
+    parameters: {
+      query?: {
+        /** @description Opaque cursor from a previous page's `nextCursor`. */
+        cursor?: components['parameters']['Cursor'];
+        limit?: components['parameters']['Limit'];
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StarPaymentPage'];
+        };
+      };
+      400: components['responses']['Error'];
+      403: components['responses']['Error'];
+    };
+  };
+  adminRefundStarPayment: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        paymentId: components['schemas']['Uuid'];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['RefundStarPaymentRequest'];
+      };
+    };
+    responses: {
+      /** @description Refunded */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StarPayment'];
+        };
+      };
+      400: components['responses']['Error'];
+      403: components['responses']['Error'];
+      404: components['responses']['Error'];
+      409: components['responses']['Error'];
+      503: components['responses']['Error'];
     };
   };
   adminSearchUsers: {
@@ -3771,6 +4062,61 @@ export interface operations {
       404: components['responses']['Error'];
     };
   };
+  getClubPlan: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        clubId: components['parameters']['ClubId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ClubPlan'];
+        };
+      };
+      403: components['responses']['Error'];
+      404: components['responses']['Error'];
+    };
+  };
+  setClubPlanRenewal: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        clubId: components['parameters']['ClubId'];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ClubPlanRenewalRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ClubPlan'];
+        };
+      };
+      400: components['responses']['Error'];
+      403: components['responses']['Error'];
+      404: components['responses']['Error'];
+      409: components['responses']['Error'];
+      503: components['responses']['Error'];
+    };
+  };
   listClubTables: {
     parameters: {
       query?: never;
@@ -4189,6 +4535,27 @@ export interface operations {
       404: components['responses']['Error'];
     };
   };
+  getMyStore: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MyStore'];
+        };
+      };
+      401: components['responses']['Error'];
+    };
+  };
   linkTelegram: {
     parameters: {
       query?: never;
@@ -4233,6 +4600,59 @@ export interface operations {
         content?: never;
       };
       409: components['responses']['Error'];
+    };
+  };
+  getStore: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The catalog and whether purchases are possible here */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StoreCatalog'];
+        };
+      };
+      401: components['responses']['Error'];
+    };
+  };
+  createStarOrder: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Unique key making a retried state-changing request a no-op. */
+        'Idempotency-Key'?: components['parameters']['IdempotencyKey'];
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CreateStarOrderRequest'];
+      };
+    };
+    responses: {
+      /** @description Invoice created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StarOrderCreated'];
+        };
+      };
+      400: components['responses']['Error'];
+      403: components['responses']['Error'];
+      404: components['responses']['Error'];
+      409: components['responses']['Error'];
+      503: components['responses']['Error'];
     };
   };
   getTable: {

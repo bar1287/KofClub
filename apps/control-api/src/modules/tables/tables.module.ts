@@ -1,12 +1,13 @@
 import { Module } from '@nestjs/common';
 import { ClubsModule } from '../clubs/clubs.module';
+import { PlansModule } from '../plans/plans.module';
 import { GameServiceClient } from './game-service.client';
 import { TablesController } from './tables.controller';
 import { TablesRepository } from './tables.repository';
 import { TablesService } from './tables.service';
 
 @Module({
-  imports: [ClubsModule],
+  imports: [ClubsModule, PlansModule],
   controllers: [TablesController],
   providers: [TablesService, TablesRepository, GameServiceClient],
   exports: [TablesRepository, GameServiceClient],

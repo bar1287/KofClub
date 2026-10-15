@@ -93,6 +93,22 @@ const envSchema = z.object({
   TELEGRAM_API_URL: z.string().url().default('https://api.telegram.org'),
   /** How old Mini App init data may be when signing in. */
   TELEGRAM_INIT_DATA_MAX_AGE_SECONDS: z.coerce.number().int().min(60).max(86400).default(3600),
+
+  // --- Telegram Stars store (T2, ADR-018): digital goods only ----------------
+  /** Sell Club Pro, premium themes and tips for Stars (needs the bot). */
+  TELEGRAM_STARS_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
+  /** Club Pro, per 30 days, in Stars. */
+  STARS_PRICE_CLUB_PRO: z.coerce.number().int().min(1).max(10000).default(250),
+  /** Premium felts and card backs, once, in Stars. */
+  STARS_PRICE_PREMIUM_THEMES: z.coerce.number().int().min(1).max(10000).default(150),
+  /** Plan limits, enforced only while the store is on. */
+  CLUB_FREE_MAX_OPEN_TABLES: z.coerce.number().int().min(1).max(1000).default(3),
+  CLUB_FREE_MAX_MEMBERS: z.coerce.number().int().min(2).max(100000).default(50),
+  CLUB_PRO_MAX_OPEN_TABLES: z.coerce.number().int().min(1).max(1000).default(30),
+  CLUB_PRO_MAX_MEMBERS: z.coerce.number().int().min(2).max(100000).default(1000),
 });
 
 export type AppConfig = z.infer<typeof envSchema>;
@@ -154,6 +170,27 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
             message: 'must be https in production (Telegram opens only https Mini Apps)',
           });
         }
+      }
+      if (cfg.TELEGRAM_STARS_ENABLED) {
+        for (const key of ['TELEGRAM_BOT_TOKEN', 'TELEGRAM_SUPPORT_CONTACT'] as const) {
+          if (!cfg[key]) {
+            ctx.addIssue({
+              code: 'custom',
+              path: [key],
+              message: 'required with TELEGRAM_STARS_ENABLED (Telegram requires payment support)',
+            });
+          }
+        }
+      }
+      if (
+        cfg.CLUB_PRO_MAX_OPEN_TABLES < cfg.CLUB_FREE_MAX_OPEN_TABLES ||
+        cfg.CLUB_PRO_MAX_MEMBERS < cfg.CLUB_FREE_MAX_MEMBERS
+      ) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['CLUB_PRO_MAX_OPEN_TABLES'],
+          message: 'Club Pro limits must be at least the free limits',
+        });
       }
       if (cfg.APP_ENV === 'production' && !cfg.RATE_LIMIT_ENABLED) {
         ctx.addIssue({

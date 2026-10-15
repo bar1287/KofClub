@@ -44,6 +44,13 @@ export class MetricsService {
     registers: [this.registry],
   });
 
+  readonly storeEvents = new Counter({
+    name: 'stars_store_events_total',
+    help: 'Telegram Stars store events (order, checkout_accepted/declined, paid, payment_duplicate, unmatched, refunded), by product.',
+    labelNames: ['event', 'product'] as const,
+    registers: [this.registry],
+  });
+
   constructor() {
     this.registry.setDefaultLabels({ service: 'control-api' });
     collectDefaultMetrics({ register: this.registry });

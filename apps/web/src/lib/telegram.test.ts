@@ -3,6 +3,7 @@ import {
   clubStartLink,
   initDataFromHash,
   joinCodeFromStartParam,
+  routeForStartParam,
   shareClubLink,
   startParamOf,
   telegramOutcome,
@@ -34,6 +35,13 @@ describe('Telegram launch data', () => {
     ]) {
       expect(joinCodeFromStartParam(bad)).toBeNull();
     }
+  });
+
+  it('routes start parameters to the join page or the store', () => {
+    expect(routeForStartParam('c-abc123')).toBe('/join?code=ABC123');
+    expect(routeForStartParam('store')).toBe('/store');
+    expect(routeForStartParam('other')).toBeNull();
+    expect(routeForStartParam(null)).toBeNull();
   });
 
   it('builds share links that open the Mini App on the join page', () => {

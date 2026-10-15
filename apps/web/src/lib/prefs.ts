@@ -3,8 +3,17 @@
  * the server. Every value is validated on load so a bad stored value falls
  * back to the default instead of breaking the page.
  */
-export const FELTS = ['green', 'blue', 'red', 'purple', 'gray'] as const;
-export const CARD_BACKS = ['blue', 'red', 'black'] as const;
+export const FELTS = [
+  'green',
+  'blue',
+  'red',
+  'purple',
+  'gray',
+  'midnight',
+  'royal',
+  'emerald',
+] as const;
+export const CARD_BACKS = ['blue', 'red', 'black', 'gold', 'teal'] as const;
 export const MOTIONS = ['auto', 'reduced'] as const;
 
 export type Felt = (typeof FELTS)[number];
@@ -32,6 +41,30 @@ export const DEFAULT_PREFS: Prefs = {
 };
 
 export const PREFS_KEY = 'kofclub.prefs';
+
+/**
+ * Premium themes (T2, ADR-018): looks only, unlocked with Telegram Stars
+ * where the store is on. Nothing changes in the game.
+ */
+export const PREMIUM_FELTS: readonly Felt[] = ['midnight', 'royal', 'emerald'];
+export const PREMIUM_CARD_BACKS: readonly CardBack[] = ['gold', 'teal'];
+
+export function isPremiumFelt(f: Felt): boolean {
+  return PREMIUM_FELTS.includes(f);
+}
+
+export function isPremiumCardBack(b: CardBack): boolean {
+  return PREMIUM_CARD_BACKS.includes(b);
+}
+
+/** What is shown without premium themes: premium choices fall back to the defaults. */
+export function withoutPremium(prefs: Prefs): Prefs {
+  return {
+    ...prefs,
+    felt: isPremiumFelt(prefs.felt) ? DEFAULT_PREFS.felt : prefs.felt,
+    cardBack: isPremiumCardBack(prefs.cardBack) ? DEFAULT_PREFS.cardBack : prefs.cardBack,
+  };
+}
 
 function oneOf<T extends string>(options: readonly T[], value: unknown, fallback: T): T {
   return options.includes(value as T) ? (value as T) : fallback;
